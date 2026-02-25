@@ -1,0 +1,9 @@
+---
+description: Kinetic Platform API and workflow knowledge
+globs: ["**/*.js", "**/*.ts", "**/*.rb"]
+---
+
+Apply the following knowledge when writing code that interacts with the Kinetic Platform REST API or Task workflow engine.
+
+@../../platform/core-api.md
+@../../platform/workflows.md

@@ -1,0 +1,12 @@
+---
+description: Kinetic React portal patterns
+globs: ["**/*.jsx", "**/*.tsx"]
+---
+
+Apply the following patterns when building or modifying Kinetic React portals using @kineticdata/react and KineticLib.
+
+@../../react/bootstrap.md
+@../../react/forms.md
+@../../react/data-fetching.md
+@../../react/mutations.md
+@../../react/state.md
