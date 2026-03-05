@@ -1,5 +1,11 @@
 # Kinetic Platform Skills
 
+## How to Use These Skills
+- **Before implementing** anything involving the Kinetic Platform API, workflows, forms, or React portals, consult the relevant skill files below.
+- **When you discover** new patterns, corrections, or undocumented behavior about the Kinetic Platform, update the appropriate SKILL.md file.
+- If no skill file covers a topic, create a new one following the structure in the README and register it here.
+- Keep skills concise and example-driven. Avoid duplicating content across skills.
+
 ## Mandatory Rules
 Always use `@kineticdata/react` for Kinetic Platform interactions in React portals. Prefer exported helpers (`KineticLib`, `fetch*`, `searchSubmissions`) and only use `bundle.apiLocation()` + `getCsrfToken()` when no helper exists.
 
