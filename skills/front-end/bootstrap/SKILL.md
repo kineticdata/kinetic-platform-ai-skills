@@ -1,3 +1,8 @@
+---
+name: bootstrap
+description: KineticLib setup, CoreForm prerequisites, App auth state machine, Vite dev proxy configuration, useData hook implementation, and project folder structure for Kinetic front-end portals.
+---
+
 # Portal Bootstrap and App Context
 
 ## Mandatory API Client Rule
@@ -162,7 +167,7 @@ return (
 
 **State machine:**
 1. `!initialized || !space` → show Loading
-2. `!loggedIn` → PublicRoutes (login, create-account, reset-password)
+2. `!loggedIn` → PublicRoutes (login, reset-password)
 3. `kapp && profile` loaded → PrivateRoutes
 4. `timedOut` (session expired while logged in) → overlay dialog with Login
 
@@ -217,23 +222,14 @@ const kappParams = useMemo(
 
 ## kappSlug Resolution
 
-The portal kapp slug is resolved from space attributes, with a hard-coded fallback:
+The portal kapp slug is resolved from a space attribute, with a hard-coded fallback:
 
 ```js
-// helpers/lifecycle.js
-export const PLATFORM_ONE_KAPP_SLUG = 'platform-one';
-export const KAPP_SLUG_ATTRIBUTES = [
-  'Lifecycle Kapp Slug',
-  'Service Portal Kapp Slug',
-];
-
-// In appActions.setSpace:
-state.kappSlug =
-  KAPP_SLUG_ATTRIBUTES.map(name => getAttributeValue(space, name)).find(Boolean)
-  || PLATFORM_ONE_KAPP_SLUG;
+// In appActions.setSpace (helpers/state.js):
+state.kappSlug = getAttributeValue(space, 'Service Portal Kapp Slug', 'service-portal');
 ```
 
-The portal checks `Lifecycle Kapp Slug` first, then `Service Portal Kapp Slug`, then falls back to `'platform-one'`.
+The attribute name and fallback are project-specific. Configure the space attribute in the Kinetic Console to point to the correct kapp slug. See the State Management skill for the full `appActions` definition.
 
 ---
 
@@ -270,10 +266,11 @@ navigate('/requests', { state: { persistToasts: true } });
 
 ```
 PrivateRoutes
+├── /theme                    (spaceAdmin only)                 → Theme
 ├── /kapps/:kappSlug/forms/:formSlug/submissions/:submissionId  → redirect
 ├── /kapps/:kappSlug/forms/:formSlug/:submissionId?             → Form
 ├── /kapps/:kappSlug                                            → redirect to /
-├── /actions/*         (role-gated — internal users only)       → Actions
+├── /actions/*                                                  → Actions
 ├── /requests/*                                                 → Requests
 ├── /forms/:formSlug/:submissionId?                             → Form
 ├── /profile                                                    → Profile
@@ -282,9 +279,9 @@ PrivateRoutes
 └── /*                 → Home
 
 PublicRoutes
+├── /public/*          → Placeholder (for public-facing content)
+├── /reset-password/:token?  → ResetPassword
 ├── /login             → Login
-├── /create-account    → CreateAccount
-├── /reset-password    → ResetPassword
 └── /*                 → Login (catch-all)
 ```
 
@@ -343,7 +340,7 @@ export const appActions = regRedux('app', initialState, {
 appActions.setSpace({ space });
 ```
 
-See `react/state.md` for the full `appActions` and `themeActions` definitions.
+See the State Management skill for the full `appActions` and `themeActions` definitions.
 
 ---
 
@@ -351,14 +348,11 @@ See `react/state.md` for the full `appActions` and `themeActions` definitions.
 
 `useData` must be implemented in the project — it is not exported by `@kineticdata/react`. Place it in `src/hooks/useData.js`:
 
+See the Data Fetching skill for the full `useData` implementation with timestamp-based stale response rejection and `actions.reloadData`. The simplified version below shows the core concept:
+
 ```js
 import { useState, useEffect } from "react";
 
-/**
- * Calls fetchFn(params) whenever params changes.
- * When params is null, the fetch is skipped and loading is false.
- * Returns { loading, response }.
- */
 export function useData(fetchFn, params) {
   const [state, setState] = useState({ loading: params !== null, response: null });
 
@@ -381,6 +375,8 @@ export function useData(fetchFn, params) {
   return state;
 }
 ```
+
+The production version in the Data Fetching skill adds `initialized`, `actions.reloadData`, and race condition safety via timestamps. Use that version in real projects.
 
 Gate fetches on previous data by passing `null` as params until prerequisites are ready (see App Context Fetching above). Use `useMemo` for param objects to keep referential stability.
 
@@ -417,30 +413,40 @@ server: {
 
 Set `REACT_APP_PROXY_HOST` in `.env.development.local` to the Kinetic base URL (e.g. `https://myspace.kinops.io`). `setupEnv.cjs` creates this file automatically.
 
-**Origin header rewrite (required for login):** Browsers send `Origin: http://localhost:3000` on POST requests. Vite's `changeOrigin: true` only rewrites the `Host` header — Kinetic will reject the mismatched origin with "Invalid CORS request". Add an `onProxyReq` handler to rewrite it:
+**Origin header rewrite (required for login):** Browsers send `Origin: http://localhost:3000` on POST requests. Vite's `changeOrigin: true` only rewrites the `Host` header — Kinetic will reject the mismatched origin with "Invalid CORS request". Add an `onProxyReq` handler to rewrite it (only when Origin header is present):
 
 ```js
 configure: proxy => {
+  proxy.on('error', err => console.log('proxy error', err));
   proxy.on("proxyReq", proxyReq => {
-    proxyReq.setHeader("origin", target);
+    if (proxyReq.getHeader('origin')) {
+      proxyReq.setHeader("origin", env.REACT_APP_PROXY_HOST);
+    }
   });
   // ... existing proxyRes cookie handler
 },
 ```
 
-**Required `define` shims:** `@kineticdata/react` is a CommonJS bundle that references Node.js globals (`process.env`, `global`) which don't exist in the browser. Add these to `vite.config.js`:
+**Required `define` shim:** `@kineticdata/react` is a CommonJS bundle that references `process.env` which doesn't exist in the browser. Add to `vite.config.js`:
 
 ```js
 define: {
-  "process.env": {},
-  global: "globalThis",
+  'process.env': env,   // env from loadEnv(mode, process.cwd(), '')
 },
 ```
 
-**Required extra dependency:** `isarray` is a missing transitive dependency of `@kineticdata/react` that Vite cannot resolve. Install it explicitly:
+The `global` shimming is handled in `index.html` via `window.global ||= window;` (see the CoreForm bundle scripts section above).
 
-```bash
-npm install isarray
+**JSX in `.js` files:** If your project uses JSX in `.js` files (not `.jsx`), configure esbuild:
+
+```js
+esbuild: {
+  loader: 'jsx',
+  include: /src\/.*\.jsx?$/,
+},
+optimizeDeps: {
+  esbuildOptions: { loader: { '.js': 'jsx' } },
+},
 ```
 
 **Vite plugins used:** `@vitejs/plugin-react`, `vite-plugin-svgr`, `@tailwindcss/vite`.
@@ -484,20 +490,20 @@ Keep `App.jsx` as a thin shell: auth state machine, data fetching for space/kapp
 Kinetic's `attributesMap` (returned when `include=attributesMap` is used) stores all attribute values as **arrays**, even single-value attributes:
 
 ```js
-space.attributesMap["Lifecycle Kapp Slug"]  // → ["platform-one"], NOT "platform-one"
+space.attributesMap["Service Portal Kapp Slug"]  // → ["service-portal"], NOT "service-portal"
 ```
 
 Always read a single value with `[0]`:
 
 ```js
 // WRONG — passing an array as a React prop (e.g. <select value>) causes warnings
-const slug = space.attributesMap["Lifecycle Kapp Slug"];
+const slug = space.attributesMap["Service Portal Kapp Slug"];
 
 // CORRECT
-const slug = space.attributesMap["Lifecycle Kapp Slug"]?.[0];
+const slug = space.attributesMap["Service Portal Kapp Slug"]?.[0];
 ```
 
-The `getAttributeValue` helper in `react/state.md` handles this automatically. Use it when available.
+The `getAttributeValue` helper in the State Management skill handles this automatically. Use it when available.
 
 ---
 

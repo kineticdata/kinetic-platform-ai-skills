@@ -1,3 +1,8 @@
+---
+name: mutations
+description: executeIntegration helper, submission CRUD, profile/kapp/space updates for Kinetic front-end portals.
+---
+
 # Mutations
 
 ## `executeIntegration` — Kinetic Integration Caller
@@ -55,104 +60,20 @@ On error: `{ error: { message, key, ...rest } }` — always an object, never thr
 
 ---
 
-## Lifecycle Integration Constants and Wrappers
+## Named Integration Wrappers (Project-Specific Pattern)
 
-Named wrappers for the Platform One lifecycle integrations:
+For projects with many named integrations, create curried wrappers to avoid repeating integration names:
 
 ```js
-// portal/src/helpers/api.js
-export const LIFECYCLE_INTEGRATIONS = {
-  CREATE_CUSTOMER_ACCESS:      'Create Customer Access Context',
-  UPDATE_CUSTOMER_ACCESS:      'Update Customer Access Context',
-  DISABLE_CUSTOMER_ACCESS:     'Disable Customer Access Context',
-  CREATE_TICKETING_RECORD:     'Create Ticketing Record',
-  UPDATE_TICKETING_RECORD:     'Update Ticketing Record',
-  SEND_LIFECYCLE_NOTIFICATION: 'Send Lifecycle Notification',
-};
-
-const executeLifecycleIntegration =
+// Example pattern — adapt integration names to your project
+const executeNamedIntegration =
   integrationName =>
   ({ kappSlug, formSlug, parameters }) =>
     executeIntegration({ kappSlug, formSlug, integrationName, parameters });
 
-export const executeCreateCustomerAccess    = executeLifecycleIntegration(LIFECYCLE_INTEGRATIONS.CREATE_CUSTOMER_ACCESS);
-export const executeUpdateCustomerAccess    = executeLifecycleIntegration(LIFECYCLE_INTEGRATIONS.UPDATE_CUSTOMER_ACCESS);
-export const executeDisableCustomerAccess   = executeLifecycleIntegration(LIFECYCLE_INTEGRATIONS.DISABLE_CUSTOMER_ACCESS);
-export const executeCreateTicketingRecord   = executeLifecycleIntegration(LIFECYCLE_INTEGRATIONS.CREATE_TICKETING_RECORD);
-export const executeUpdateTicketingRecord   = executeLifecycleIntegration(LIFECYCLE_INTEGRATIONS.UPDATE_TICKETING_RECORD);
-export const executeSendLifecycleNotification = executeLifecycleIntegration(LIFECYCLE_INTEGRATIONS.SEND_LIFECYCLE_NOTIFICATION);
-```
-
-**Usage:**
-```js
-const result = await executeCreateCustomerAccess({
-  kappSlug,
-  formSlug,
-  parameters: { customerId, submissionId, requestedBy, accessProfile },
-});
-if (result.error) { /* handle */ }
-```
-
----
-
-## Integration Payload Contracts
-
-### Identity Lifecycle
-
-**`Create Customer Access Context`** — provision initial access after onboarding approval
-```json
-// Request
-{ "customerId": "string", "submissionId": "string", "requestedBy": "string",
-  "accessProfile": { "environment": "string", "roles": ["string"] } }
-// Response
-{ "status": "created", "identityRecordId": "string" }
-```
-
-**`Update Customer Access Context`** — apply lifecycle changes to access profile
-```json
-// Request
-{ "customerId": "string", "submissionId": "string", "changeType": "string",
-  "accessProfile": { "environment": "string", "roles": ["string"] } }
-// Response
-{ "status": "updated", "identityRecordId": "string" }
-```
-
-**`Disable Customer Access Context`** — decommission access during offboarding
-```json
-// Request
-{ "customerId": "string", "submissionId": "string", "reason": "string" }
-// Response
-{ "status": "disabled", "identityRecordId": "string" }
-```
-
-### Ticketing
-
-**`Create Ticketing Record`** — create operational ticket from lifecycle submission
-```json
-// Request
-{ "submissionId": "string", "customerId": "string", "queue": "string",
-  "summary": "string", "details": "string" }
-// Response
-{ "status": "created", "ticketId": "string", "ticketUrl": "string" }
-```
-
-**`Update Ticketing Record`** — sync lifecycle state changes to external ticket
-```json
-// Request
-{ "submissionId": "string", "ticketId": "string", "status": "string", "comment": "string" }
-// Response
-{ "status": "updated", "ticketId": "string" }
-```
-
-### Notification
-
-**`Send Lifecycle Notification`** — trigger customer/internal lifecycle emails
-```json
-// Request
-{ "submissionId": "string", "notificationType": "string",
-  "recipients": ["string"], "templateData": {} }
-// Response
-{ "status": "sent", "deliveryId": "string" }
+// Create project-specific wrappers
+export const executeCreateTicket = executeNamedIntegration('Create Ticketing Record');
+export const executeSendNotification = executeNamedIntegration('Send Notification');
 ```
 
 ---
@@ -257,9 +178,10 @@ if (!error) {
 ```js
 import { updateSpace } from '@kineticdata/react';
 
+// Attribute name is project-specific — match what's used in kappSlug resolution
 const { error } = await updateSpace({
   space: {
-    attributesMap: { 'Lifecycle Kapp Slug': [newKappSlug] },
+    attributesMap: { 'Service Portal Kapp Slug': [newKappSlug] },
   },
 });
 ```

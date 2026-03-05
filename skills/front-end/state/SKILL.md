@@ -1,3 +1,8 @@
+---
+name: state
+description: regRedux dynamic slice registration, appActions, themeActions, viewActions, confirmation modal, toast system, theme system, and utility helpers for Kinetic front-end portals.
+---
+
 # State Management
 
 ## `regRedux` — Dynamic Slice Registration
@@ -74,7 +79,6 @@ export const appActions = regRedux(
     kappSlug: null,      // resolved from space attributes
     kapp: null,
     profile: null,
-    userRole: null,      // 'internal' | 'external'
     error: null,
   },
   {
@@ -85,10 +89,11 @@ export const appActions = regRedux(
       if (error) state.error = error;
       else {
         state.space = space;
-        // Resolve kapp slug from space attributes with fallback
-        state.kappSlug =
-          KAPP_SLUG_ATTRIBUTES.map(name => getAttributeValue(space, name)).find(Boolean)
-          || PLATFORM_ONE_KAPP_SLUG;
+        // Resolve kapp slug from a space attribute with a fallback default.
+        // The attribute name and fallback are project-specific. Common patterns:
+        //   getAttributeValue(space, 'Service Portal Kapp Slug', 'service-portal')
+        //   getAttributeValue(space, 'Lifecycle Kapp Slug', 'platform-one')
+        state.kappSlug = getAttributeValue(space, 'Service Portal Kapp Slug', 'service-portal');
       }
     },
     setKapp(state, { error, kapp }) {
@@ -97,10 +102,7 @@ export const appActions = regRedux(
     },
     setProfile(state, { error, profile }) {
       if (error) state.error = state.error || error;
-      else {
-        state.profile = profile;
-        state.userRole = inferUserRole(profile);
-      }
+      else state.profile = profile;
     },
     updateProfile(state, profile) {
       Object.assign(state.profile, profile);  // merge partial update
@@ -113,7 +115,6 @@ export const appActions = regRedux(
 ```js
 const kappSlug  = useSelector(state => state.app.kappSlug);
 const profile   = useSelector(state => state.app.profile);
-const userRole  = useSelector(state => state.app.userRole);
 const spaceAdmin = useSelector(state => state.app.profile?.spaceAdmin);
 ```
 
@@ -252,52 +253,52 @@ clearToasts();
 
 ---
 
-## User Role Detection
-
-```js
-// portal/src/helpers/lifecycle.js
-export const USER_ROLES = { EXTERNAL: 'external', INTERNAL: 'internal' };
-
-const INTERNAL_TEAM_PATTERNS = [
-  /platform one/i, /operations/i, /approvals?/i, /admin/i,
-];
-
-export const inferUserRole = profile => {
-  if (profile?.spaceAdmin) return USER_ROLES.INTERNAL;
-  const teams = (profile?.memberships || []).map(({ team }) => team?.name || '');
-  const isInternal = teams.some(team =>
-    INTERNAL_TEAM_PATTERNS.some(pattern => pattern.test(team))
-  );
-  return isInternal ? USER_ROLES.INTERNAL : USER_ROLES.EXTERNAL;
-};
-
-export const canAccessWorkQueue = profile =>
-  inferUserRole(profile) === USER_ROLES.INTERNAL;
-```
-
-`userRole` is set on the `app` redux slice when profile is fetched. Read it anywhere:
-```js
-const userRole = useSelector(state => state.app.userRole);
-const isInternal = userRole === 'internal';
-```
-
----
-
 ## Theme System
 
 The portal theme is stored as JSON in the kapp's `Theme` attribute. CSS variables are injected into `document.adoptedStyleSheets`.
 
 ```js
 // portal/src/helpers/theme.js
-export const THEME_SCHEMA = [
-  { key: 'colorPrimary',   label: 'Primary Color',   type: 'color', cssVar: '--color-primary' },
-  { key: 'colorSecondary', label: 'Secondary Color',  type: 'color', cssVar: '--color-secondary' },
-  // ... additional schema entries
-];
 
-// calculateThemeState: parses JSON string from kapp attribute, merges into state
-// buildStyleObject: converts state to { '--css-var': 'value' } object
-// useDefaultTheme: returns the default theme values
+// Schema defines which CSS variables can be themed
+export const THEME_SCHEMA = {
+  colors: [
+    'base-100', 'base-200', 'base-300', 'base-content',
+    'primary', 'primary-content', 'secondary', 'secondary-content',
+    'accent', 'accent-content', 'neutral', 'neutral-content',
+    'info', 'info-content', 'success', 'success-content',
+    'warning', 'warning-content', 'error', 'error-content',
+  ],
+  radius: ['box', 'field', 'selector'],
+};
+
+// Theme state stored in Redux
+export const themeState = {
+  ready: false,  // has the theme been initialized
+  data: {},      // parsed theme data (colors, radius, logo, etc.)
+  css: null,     // generated CSS string for :root overrides
+};
+
+// calculateThemeState: parses JSON string from kapp attribute into state
+// buildStyleObject: converts config to { '--color-primary': '#fff', ... } object
+// buildStylesheet: generates ':root { --color-primary: #fff; ... }' CSS string
+// useDefaultTheme: returns [ref, defaultTheme] — ref attaches to a DOM element,
+//   defaultTheme is extracted via getComputedStyle on first render
+```
+
+**Injecting theme CSS in App.jsx:**
+```js
+// App.jsx — apply theme CSS to document
+useEffect(() => {
+  const css = themeCSS;  // from useSelector(state => state.theme.css)
+  if (css) {
+    const sheet = new CSSStyleSheet();
+    sheet.replace(css);
+    document.adoptedStyleSheets = [sheet];
+  } else {
+    document.adoptedStyleSheets = [];
+  }
+}, [themeCSS]);
 ```
 
 **Updating theme (kapp attribute → CSS vars):**
@@ -306,7 +307,7 @@ export const THEME_SCHEMA = [
 themeActions.setTheme({ kapp });
 ```
 
-The theme editor (`portal/src/pages/theme/index.jsx`) saves JSON back to the `Theme` attribute via `updateKapp`, then calls `themeActions.setTheme` to apply immediately.
+The theme editor saves JSON back to the `Theme` attribute via `updateKapp`, then calls `themeActions.setTheme` to apply immediately.
 
 ---
 

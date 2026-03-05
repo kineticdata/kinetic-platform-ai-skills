@@ -1,3 +1,8 @@
+---
+name: data-fetching
+description: useData, usePaginatedData, usePagination, usePoller hooks, defineKqlQuery builder, searchSubmissions patterns, and datastore queries for Kinetic front-end portals.
+---
+
 # Data Fetching
 
 ## `useData` — Single Fetch Hook
@@ -254,7 +259,7 @@ const q = defineKqlQuery()
   .end()({ types: ['Service'], username: 'john.doe' });
 ```
 
-**KQL gotchas (see `platform/core-api.md` for full rules):**
+**KQL gotchas (see the KQL and Indexing skill for full rules):**
 - All queried fields require an **index** on the form — queries fail silently without one
 - Range operators (`>`, `<`, `BETWEEN`, also `!=`) require `orderBy` on the same field
 - Multi-field `AND` requires a **compound index**
@@ -273,8 +278,9 @@ const params = {
     q: defineKqlQuery()...,
     include: ['details', 'values', 'form', 'form.attributesMap'],
     limit: 25,          // default 25, max 1000 per page
-    orderBy: 'createdAt',
-    direction: 'DESC',
+    // Note: orderBy and direction are handled by @kineticdata/react internally.
+    // The raw Core API does NOT support 'direction' as a query parameter.
+    // Only use orderBy with KQL range operators (see KQL and Indexing skill).
   },
   // pageToken is injected by usePaginatedData automatically
 };

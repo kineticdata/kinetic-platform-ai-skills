@@ -52,7 +52,6 @@ This project uses the Kinetic Platform. Apply the rules below when writing or su
 
 ---
 
-For full details see:
-- `platform/core-api.md` — complete API reference, pagination, KQL
-- `platform/workflows.md` — workflow concepts, Task API, XML schema
-- `react/bootstrap.md`, `react/forms.md`, `react/data-fetching.md`, `react/mutations.md` — React patterns
+For full details see the skills library:
+- `skills/platform/` — API basics, KQL & indexing, pagination, workflow engine, workflow XML schema, decision frameworks, architectural patterns, form engine, integrations, WebAPIs & webhooks, users/teams/security, Ruby SDK, template provisioning
+- `skills/front-end/` — bootstrap, forms, data fetching, mutations, state management

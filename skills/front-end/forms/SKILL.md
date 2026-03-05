@@ -1,4 +1,58 @@
+---
+name: forms
+description: CoreForm vs client-side forms decision framework, KineticForm wrapper, CoreForm direct usage, generateFormLayout factory, globals.jsx setup, widget system, and form environment configuration for Kinetic front-end portals.
+---
+
 # Forms and Widgets (CoreForm / KineticForm)
+
+## CoreForm vs Client-Side API
+
+There are two ways to build form experiences in Kinetic:
+
+### CoreForm (Server-Rendered via `@kineticdata/react`)
+
+The platform renders the form using its built-in form engine. The form definition (fields, pages, events, validation, integrations) is configured in the low-code Form Builder and rendered at runtime by `CoreForm`.
+
+**Choose CoreForm when:**
+- A builder/admin needs to modify the form without frontend code changes
+- The form uses platform features: multi-page navigation, field events, conditional visibility, bridged resources, integrations, validation patterns, review/confirmation pages
+- The form needs to trigger workflows on save/submit (this happens automatically)
+- The form structure may evolve over time via the Form Builder
+
+**Trade-offs:**
+- Less control over rendering — the form engine controls the HTML/CSS output
+- Platform CSS is inherited; customization is via `bundle.config` field overrides (jQuery-based) or CSS
+- `bundle.config` supports overriding: `text`, `checkbox`, `radio`, `dropdown`, `date`, `datetime`, `time`, `attachment` — but NOT `section`, `content`, or `button`
+
+### Client-Side API Forms
+
+Build the form entirely in the frontend (React, HTML, etc.) and submit via the Kinetic REST API (`POST /submissions` or `PATCH /submissions`).
+
+**Choose client-side when:**
+- The form is static and its structure is known at build time
+- Full control over UI/UX is required (custom layouts, animations, inline editing)
+- The form is a "utility form" facilitating a specific feature — not a configurable service request
+- Examples: adding notes to a submission, quick-action modals, inline status updates, admin tools
+
+**Trade-offs:**
+- You must rebuild anything the form engine provides: client-side validation, conditional field logic, integration-driven dropdowns
+- Server-side validation (required fields, regex patterns) still runs on the API — but you lose the client-side UX (inline errors, field-level feedback)
+- Workflows still fire based on submission events (created, submitted, etc.) — the rendering method doesn't affect this
+
+**Common "utility form" pattern:**
+```
+UI renders a text input for "Notes"
+  → User types a note and clicks Save
+  → Frontend calls POST /submissions on a "Notes" form
+    with values: { "Notes": "...", "Reference ID": parentSubmissionId }
+  → Workflow on "Notes" form fires and processes the note
+```
+
+Forms in Kinetic are often used like database tables — each form is a "table," each submission is a "row," and fields are "columns." There are no first-class foreign key relationships; reference fields are plain text fields storing IDs.
+
+**Decision should be made upfront.** If unclear, AI should ask the developer which approach they prefer before generating code.
+
+---
 
 ## KineticForm — Standard Wrapper
 

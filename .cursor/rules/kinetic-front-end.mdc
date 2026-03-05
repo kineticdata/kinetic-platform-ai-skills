@@ -1,0 +1,12 @@
+---
+description: Kinetic front-end portal patterns
+globs: ["**/*.jsx", "**/*.tsx"]
+---
+
+Apply the following patterns when building or modifying Kinetic front-end portals using @kineticdata/react and KineticLib.
+
+@../../skills/front-end/bootstrap/SKILL.md
+@../../skills/front-end/forms/SKILL.md
+@../../skills/front-end/data-fetching/SKILL.md
+@../../skills/front-end/mutations/SKILL.md
+@../../skills/front-end/state/SKILL.md
