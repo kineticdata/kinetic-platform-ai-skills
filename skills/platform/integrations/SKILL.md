@@ -23,6 +23,16 @@ A **Connection** represents an external system. It stores:
 
 Connections are created and managed in the Space console under Plugins > Connections.
 
+**Integrator REST API:** Connections and Operations can also be managed programmatically via the Integrator API at `{server}/app/integrator/api`. This API uses **OAuth 2.0 implicit grant** authentication (not Basic Auth like the Core/Task APIs). See the API Basics skill for the full OAuth flow. Key endpoints:
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/connections` | List all connections |
+| POST | `/connections` | Create a connection |
+| PUT | `/connections/{id}` | Update a connection (deep-merge credentials) |
+| GET | `/connections/{id}/operations` | List operations for a connection |
+| POST | `/connections/{id}/operations` | Create an operation |
+
 ### Operations
 
 An **Operation** defines a specific action within a Connection:

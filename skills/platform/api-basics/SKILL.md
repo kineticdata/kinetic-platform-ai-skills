@@ -15,9 +15,41 @@ The Task API lives under a different path (`/app/components/task/app/api/v2`) th
 
 ## Authentication
 
+### Core & Task APIs — Basic Auth
+
 - Uses **HTTP Basic Authentication**: `Authorization: Basic <base64(username:password)>`
 - Verify auth works with `GET /app/api/v1/me`
-- Other methods exist (LDAP, SAML SSO, OAuth) but Basic Auth is the standard for REST API
+- Other methods exist (LDAP, SAML SSO, OAuth) but Basic Auth is the standard for Core and Task REST APIs
+
+### Integrator API — OAuth 2.0 Implicit Grant
+
+The Integrator API (`/app/integrator/api`) does **not** accept Basic Auth. It requires an OAuth 2.0 bearer token obtained via the implicit grant flow:
+
+1. Send a GET request with Basic Auth credentials to the authorize endpoint:
+   ```
+   GET {server}/app/oauth/authorize?grant_type=implicit&response_type=token&client_id=system
+   Authorization: Basic <base64(username:password)>
+   ```
+2. The server responds with a **302/303 redirect**. The `Location` header contains the access token in the URL fragment:
+   ```
+   Location: ...#access_token=<token>&expires_in=43200&token_type=bearer
+   ```
+3. Extract `access_token` from the fragment and use it as a Bearer token:
+   ```
+   Authorization: Bearer <access_token>
+   ```
+
+**Key details:**
+- Follow the redirect **manually** (`redirect: "manual"` in fetch) — do not let the HTTP client auto-follow
+- Default token lifetime is 12 hours (`expires_in=43200`); cache and reuse with a ~30s expiry buffer
+- The `client_id=system` is the built-in OAuth client
+- The Ruby SDK (`KineticSdk::Integrator`) handles this internally when you pass `oauth_client_id` and `oauth_client_secret` in options
+
+## Base URL Patterns — Integrator API
+
+- **Integrator API:** `{server}/app/integrator/api`
+- Endpoints: `/connections`, `/connections/{id}`, `/connections/{id}/operations`
+- Requires OAuth bearer token (see Authentication above)
 
 ## Core API v1 Endpoints
 
