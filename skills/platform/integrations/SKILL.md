@@ -19,7 +19,7 @@ A **Connection** represents an external system. It stores:
 - Base URL
 - Authentication (API Key, Bearer Token, OAuth 2.0, Basic Auth)
 - Default headers
-- Connection type: HTTP (REST API) or SQL Database (PostgreSQL, MySQL, SQL Server)
+- Connection type: HTTP (REST API) or SQL Database (PostgreSQL, SQL Server)
 
 Connections are created and managed in the Space console under Plugins > Connections.
 
@@ -42,6 +42,149 @@ An **Operation** defines a specific action within a Connection:
 - Output mappings (extract values from the response)
 
 Operations are testable from the platform UI before being used in forms or workflows.
+
+### Integrator REST API
+
+The Integrator API (v6.1.6) is available at `/app/integrator/api/`. Most endpoints require JWT/Bearer authentication. Unprotected: `/healthz`, `/version`.
+
+#### Connection Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/connections` | List all connections |
+| POST | `/api/connections` | Create a connection |
+| GET | `/api/connections/{id}` | Get a connection |
+| PUT/PATCH | `/api/connections/{id}` | Update a connection |
+| DELETE | `/api/connections/{id}` | Delete a connection |
+| POST | `/api/connections/{id}/test` | Test connection (accepts optional config overrides) |
+| POST | `/api/connections/{id}/restart` | Restart a connection |
+
+#### Operation Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/connections/{connection_id}/operations` | List operations for a connection |
+| POST | `/api/connections/{connection_id}/operations` | Create an operation |
+| GET | `/api/connections/{connection_id}/operations/{id}` | Get an operation |
+| PUT/PATCH | `/api/connections/{connection_id}/operations/{id}` | Update an operation |
+| DELETE | `/api/connections/{connection_id}/operations/{id}` | Delete an operation |
+
+#### Execution & Utility Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/execute` | Execute an operation (optional `?debug` query param for raw response) |
+| POST | `/api/operations/inspect` | Detect input parameters in an operation config |
+| POST | `/api/transform/test` | Test output transformation expressions |
+| GET | `/healthz` | Health check (unprotected) |
+| GET | `/version` | Build version info (unprotected) |
+
+#### Connection Schema
+
+```json
+{
+  "id": "uuid",
+  "type": "http" | "postgres" | "mssql",
+  "name": "string (required)",
+  "description": "",
+  "documentationLink": "",
+  "config": { "configType": "http|postgres|mssql", ... },
+  "secrets": {},
+  "status": { "healthy": false },
+  "lockVersion": 0
+}
+```
+
+#### Connection Config by Type
+
+**HTTP (`configType: "http"`):**
+- `baseUrl` (required) — endpoint base address
+- `testPath` — path used for connection testing
+- `caCert` — trusted CA x509 certificate (optional)
+- `auth` — one of:
+  - `basic` — `{ authType: "basic", username, password }`
+  - `raw_bearer_token` — `{ authType: "raw_bearer_token", header: "Authorization", prefix: "Bearer", token }`
+  - `client_credentials` — `{ authType: "client_credentials", tokenUrl, clientId, clientSecret, clientAuth: "basic_auth"|"www_form_urlencoded", scope }`
+  - `http_bearer_token` — dynamic token via a separate HTTP operation with `tokenOutput` and `expirationOutput` expressions
+
+**PostgreSQL (`configType: "postgres"`):**
+- `host`, `port`, `username`, `password`, `database` (all required)
+- `poolSize` (default: 5, min: 1)
+- `caCert` (optional)
+
+**SQL Server (`configType: "mssql"`):**
+- `host`, `port`, `username`, `password`, `database` (all required)
+- `instance` (optional)
+- `poolSize` (default: 5, min: 1)
+- `caCert` (optional)
+
+#### Operation Schema
+
+```json
+{
+  "id": "uuid",
+  "name": "string (required)",
+  "connectionId": "uuid (required)",
+  "config": { "configType": "http|postgres|mssql", ... },
+  "outputs": {},
+  "notes": null,
+  "documentationLink": ""
+}
+```
+
+#### Operation Config by Type
+
+**HTTP (`configType: "http"`):**
+- `method` (required) — `GET|POST|PUT|DELETE|PATCH`
+- `path` (required) — appended to connection's `baseUrl`
+- `body` — `{ bodyType: "raw", raw }` | `{ bodyType: "www_form_urlencoded", form }` | `{ bodyType: "multipart_form", parts: [{ name, content, contentType?, fileName? }] }`
+- `params` — query parameters (object of string values)
+- `headers` — request headers (values: string or string array)
+- `followRedirect` (default: false)
+- `streamResponse` (default: false)
+- `includeEmptyParams` (default: false)
+
+**PostgreSQL (`configType: "postgres"`):**
+- `statement` (required) — SQL query with `$1, $2, ...` placeholders
+- `parameters` — array of values bound to positional placeholders
+
+**SQL Server (`configType: "mssql"`):**
+- `statement` (required) — SQL query with `@name` placeholders
+- `parameters` — object mapping named placeholders to values
+
+#### Operation Outputs
+
+A map of named expressions that extract values from the response:
+```json
+{
+  "outputs": {
+    "Total Count": { "value": "body.count" },
+    "Items": {
+      "value": "body.submissions",
+      "children": {
+        "Id": { "value": "id" },
+        "Name": { "value": "values.Name" }
+      }
+    }
+  }
+}
+```
+
+#### Execute Request
+
+```json
+POST /api/execute
+{
+  "connectionId": "uuid (required)",
+  "operationId": "uuid (use saved operation)",
+  "operation": { ... },
+  "parameters": { "param_name": "value" }
+}
+```
+
+- Use `operationId` to run a saved operation, or inline an `operation` object.
+- `parameters` provides runtime values for templated inputs.
+- Add `?debug` query param for detailed response: `{ duration, outputs, raw: { statusCode, headers, body } }`.
 
 ### Usage in Forms
 
