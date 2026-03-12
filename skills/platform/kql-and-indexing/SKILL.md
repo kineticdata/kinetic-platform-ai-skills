@@ -46,6 +46,95 @@ q=values[Status] IN ("New", "Open")
 
 **Warning:** `!=` looks like equality but is classified as a **range operator** by Kinetic. It requires `orderBy` and disrupts `pageToken` pagination. For "not equal" filters in paginated UIs, omit it from KQL and filter client-side.
 
+## Kapp-Level Queries: Kapp Fields and Kapp Indexes (Critical)
+
+**Kapp-wide searches** (searching across all forms in a kapp without specifying a `form` slug) require **Kapp Fields** and **Kapp-level index definitions** — form-level indexes alone are NOT sufficient.
+
+### How Kapp Fields Work
+
+A "Kapp Field" declares a field name at the kapp level. When a form in the kapp has a field with the same name and type, that form is **automatically opted in** to the kapp index. This is what enables kapp-wide queries like `type IN ['Approval','Task'] AND values[Assigned Individual] = "user"`.
+
+Without kapp fields, the query fails with: `"The query included one or more unexpected parts: values[Assigned Individual]"`
+
+### Setting Up Kapp Fields
+
+Create kapp fields via `PUT /kapps/{kappSlug}` with a `fields` array:
+
+```
+PUT /kapps/{kappSlug}
+Content-Type: application/json
+
+{
+  "fields": [
+    {"name": "Assigned Individual", "renderType": "text"},
+    {"name": "Assigned Team", "renderType": "text"},
+    {"name": "Requested For", "renderType": "text"}
+  ]
+}
+```
+
+Verify with: `GET /kapps/{kappSlug}?include=fields,indexDefinitions`
+
+**IMPORTANT:** The PUT replaces ALL kapp fields. Always include existing fields alongside new ones.
+
+### Setting Up Kapp-Level Index Definitions
+
+After creating kapp fields, create kapp-level indexes (also via `PUT /kapps/{kappSlug}`):
+
+```
+PUT /kapps/{kappSlug}
+Content-Type: application/json
+
+{
+  "indexDefinitions": [
+    {"name": "type,values[Assigned Individual]", "parts": ["type", "values[Assigned Individual]"], "unique": false},
+    {"name": "type,values[Assigned Team]", "parts": ["type", "values[Assigned Team]"], "unique": false},
+    {"name": "type,coreState,values[Assigned Individual]", "parts": ["type", "coreState", "values[Assigned Individual]"], "unique": false},
+    {"name": "type,coreState,values[Assigned Team]", "parts": ["type", "coreState", "values[Assigned Team]"], "unique": false}
+  ]
+}
+```
+
+**IMPORTANT:** The PUT replaces ALL kapp index definitions. Always include existing indexes alongside new ones.
+
+### Building Kapp-Level Indexes
+
+New kapp indexes have status `"New"` and return empty results until built. Trigger the build at the **kapp** level (not form level):
+
+```
+POST /kapps/{kappSlug}/backgroundJobs
+Content-Type: application/json
+
+{
+  "type": "Build Index",
+  "content": {
+    "indexes": [
+      "type,values[Assigned Individual]",
+      "type,values[Assigned Team]",
+      "type,coreState,values[Assigned Individual]",
+      "type,coreState,values[Assigned Team]"
+    ]
+  }
+}
+```
+
+Poll `GET /kapps/{kappSlug}?include=indexDefinitions` until all statuses are `"Built"`.
+
+### Standard Kapp Index Pattern
+
+For assignment-based kapp-wide queries (commonly used in self-service use cases where there are multiple forms that represent different types of requests), the proven index set is:
+
+| Index | Used for |
+|-------|----------|
+| `type,values[Assigned Individual]` | Assignment filter without coreState |
+| `type,values[Assigned Team]` | Team filter without coreState |
+| `type,coreState,values[Assigned Individual]` | Assignment filter with status filter |
+| `type,coreState,values[Assigned Team]` | Team filter with status filter |
+| `type,coreState,submittedBy,createdBy,values[Requested For]` | Requester filter with status |
+| `type,values[Requested For]` | Requester filter without status |
+
+---
+
 ## Form Index Definitions (Critical for KQL)
 
 **KQL queries will NOT work without index definitions** on the form. Even simple equality queries like `values[Status] = "Active"` return a 400 error if the field lacks an index. The error message is explicit: `"The query requires one of the following index definitions to exist: values[Status]"`.
@@ -153,6 +242,7 @@ function buildAlertKql() {
 
 ## KQL Gotchas Summary
 
+- **Kapp-wide queries require Kapp Fields + Kapp-level indexes** — form-level indexes alone are not enough. Missing kapp fields causes `"The query included one or more unexpected parts: values[...]"`.
 - KQL queries require form index definitions to exist for the fields being searched — **multi-field AND queries require compound (multi-part) indexes**, not just individual field indexes
 - **KQL range operators (`=*`, `>`, `<`, `BETWEEN`) require `orderBy`** — see above
 - **KQL `!=` is a range operator** — it requires `orderBy`, which forces a sort order incompatible with `pageToken` pagination. For "not equal" filters in paginated UIs, fetch without the filter and apply client-side.
