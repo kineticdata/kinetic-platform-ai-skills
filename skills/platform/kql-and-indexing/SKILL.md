@@ -218,6 +218,108 @@ Valid job types: `"Build Index"`, `"Cleanup Index"`, `"Populate Index"`, `"Reind
 
 Poll the form's `indexDefinitions` until all statuses change from `"New"` to `"Built"`. With 1000 records this takes ~5 seconds.
 
+## Kapp-Wide Searching (Cross-Form Queries)
+
+When you omit the `form` parameter from a `searchSubmissions` call, the platform searches **all forms in the kapp**. This enables querying across multiple forms of the same type (e.g., all `Event Sign Up` forms).
+
+### How Kapp-Wide Opt-In Works
+
+Forms automatically participate in kapp-wide searches when:
+1. A **kapp-level field** with the same `name` and `renderType` exists on the kapp
+2. The form has a field with that same name and field type (text, checkbox, etc.)
+
+If the kapp field doesn't exist, kapp-wide queries on `values[FieldName]` will fail or return no results.
+
+### Kapp-Level Fields
+
+Kapp-level fields are defined on the kapp itself (not on a form type). Retrieve them with:
+
+```
+GET /kapps/{kappSlug}?include=fields,indexDefinitions
+```
+
+Returns `fields` (array of `{ name, renderType }`) and `indexDefinitions` (same shape as form-level).
+
+Add a new kapp field by including the full fields array in a PUT:
+
+```
+PUT /kapps/{kappSlug}
+Content-Type: application/json
+
+{
+  "fields": [
+    { "name": "Existing Field", "renderType": "text" },
+    { "name": "New Field", "renderType": "text" }
+  ]
+}
+```
+
+**IMPORTANT:** Like form indexes, the PUT replaces all fields. Always include the existing fields alongside new ones.
+
+Available `renderType` values match form field types: `text`, `checkbox`, `dropdown`, `date`, etc.
+
+### Kapp-Level Index Definitions
+
+Kapp-wide queries also require **kapp-level compound indexes** — the same principle as form-level indexes but defined on the kapp. The `type` system property (form type name) is almost always the first part, since kapp-wide searches are typically scoped to a form type.
+
+Add indexes via the same PUT:
+
+```
+PUT /kapps/{kappSlug}
+Content-Type: application/json
+
+{
+  "indexDefinitions": [
+    { "name": "type,values[Event ID]", "parts": ["type", "values[Event ID]"], "unique": false }
+  ]
+}
+```
+
+**IMPORTANT:** Always include all existing index definitions in the PUT — it replaces the entire array.
+
+### Triggering a Kapp Index Build
+
+New kapp indexes have status `"New"` and return empty results until built. Unlike form indexes (which use `/forms/{form}/backgroundJobs`), kapp indexes use the **kapp-level** background jobs endpoint:
+
+```
+POST /kapps/{kappSlug}/backgroundJobs
+Content-Type: application/json
+
+{
+  "type": "Build Index",
+  "content": {
+    "indexes": ["type,values[Event ID]"]
+  }
+}
+```
+
+**Note:** This endpoint is not in the OAS spec but works at runtime. The space-level `GET /backgroundJobs` endpoint does not expose these jobs. Instead, poll the kapp's `indexDefinitions` until status changes from `"New"` to `"Built"`.
+
+### Practical Pattern: Querying by Form Type + Field Value
+
+```js
+// KQL: type = 'Event Sign Up' AND values[Event ID] = 'xxx'
+const byTypeAndEventId = defineKqlQuery()
+  .equals('type', 'formType')
+  .equals('values[Event ID]', 'eventId')
+  .end();
+
+searchSubmissions({
+  kapp: kappSlug,
+  // No 'form' — searches all forms in the kapp
+  search: {
+    q: byTypeAndEventId({ formType: 'Event Sign Up', eventId }),
+    include: ['details', 'values'],
+    limit: 500,
+  },
+});
+```
+
+This requires:
+- A kapp-level field `Event ID` with `renderType: "text"`
+- A kapp-level compound index `["type", "values[Event ID]"]` — status `"Built"`
+- The `serve-day-sign-up` (or any `Event Sign Up` form) to have an `Event ID` field with `renderType: "text"`
+
 ## KQL + Client Filter Strategy
 
 Only combine fields in KQL `AND` if a compound index exists. Extra filters become client-side filters on the 25 returned items:
