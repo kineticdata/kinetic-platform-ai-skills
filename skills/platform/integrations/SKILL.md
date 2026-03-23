@@ -1,6 +1,6 @@
 ---
 name: integrations
-description: Connections/Operations (modern), Bridges (legacy), Handlers (workflow), and File Resources for integrating the Kinetic Platform with external systems.
+description: Connections/Operations (modern), Bridges (legacy), Handlers (workflow), File Resources, LogHub API, handler import gotchas, and Kinetic Agent management for integrating the Kinetic Platform with external systems.
 ---
 
 # Integrations
@@ -424,4 +424,116 @@ Only when you need to stream file content from an external system into the Kinet
 | **Runs on** | Kinetic Platform | Kinetic Agent | Task Engine / Agent | Kinetic Agent |
 | **Code required** | No (low-code config) | Java adapter | Ruby handler | Java adapter |
 | **Supports** | REST APIs, SQL databases | Any (via adapter) | Any (via Ruby) | File streaming |
+
+---
+
+## LogHub API (Real-Time Logs)
+
+The LogHub API provides access to real-time platform logs.
+
+### Endpoint
+
+```
+GET /app/loghub/api/v1/logs?limit=25&format=ndjson&start={ISO}&end={ISO}&tail=true
+```
+
+### Authentication
+
+Requires **Bearer JWT** (NOT Basic Auth). The JWT must be signed with the space's `oauthSigningKey` using HMAC-SHA256.
+
+JWT payload:
+```json
+{
+  "clientId": "system",
+  "displayName": "Admin",
+  "email": "admin@example.com",
+  "exp": 1234567890,
+  "iss": "kinetic-data",
+  "spaceAdmin": true,
+  "spaceSlug": "my-space",
+  "username": "admin"
+}
+```
+
+Retrieve the signing key: `GET /app/api/v1/space?include=details` → `space.oauthSigningKey`
+
+### Response Format
+
+NDJSON (one JSON object per line). The last line is metadata with `nextPageToken`.
+
+### Log Entry Fields
+
+| Field | Description |
+|-------|-------------|
+| `timestamp` | ISO 8601 timestamp |
+| `level` | `INFO`, `DEBUG`, `WARN`, `ERROR` |
+| `message` | Log message text |
+| `app.component` | `core` or `task` |
+| `app.user` | Username associated with the request |
+| `app.requestPath` | API path |
+| `app.requestMethod` | HTTP method |
+| `app.responseStatus` | HTTP response code |
+| `app.responseTime` | Response time in ms |
+| `app.correlationId` | Request correlation ID |
+
+### Availability
+
+**Not available on all servers.** Check whether the LogHub endpoint exists before building features that depend on it.
+
+---
+
+## Handler Import & Management Gotchas
+
+### Binary Upload Requires Raw Buffer
+
+When uploading handler ZIPs through a Node.js proxy, the request body must be a raw `Buffer`. Using `.toString()` corrupts the ZIP file:
+
+```js
+// WRONG — corrupts binary data
+const body = await req.text();
+
+// CORRECT — preserve raw bytes
+const body = Buffer.from(await req.arrayBuffer());
+```
+
+The handler import endpoint is `POST /handlers` (Task API v2) with multipart form data, field name `package`. Add `?force=true` to overwrite an existing handler.
+
+### Connection Test Always Returns 200
+
+`POST /connections/{id}/test` **always returns HTTP 200** — even when the connection fails. Check the `status` field in the response body:
+
+```js
+const result = await testConnection(id);
+if (result.status === 'error') {
+  // Connection failed — result.message has details
+}
+```
+
+### Handler Properties Format Mismatch
+
+The GET and PUT endpoints use different formats:
+
+- **GET** `/handlers/{id}?include=properties` returns: `[{name, value, type, required}, ...]`
+- **PUT** `/handlers/{id}` accepts: `{properties: {"name": "value", ...}}` (flat key-value object)
+
+### SMTP Handler Gmail Configuration
+
+| Property | Value |
+|----------|-------|
+| `server` | `smtp.gmail.com` |
+| `port` | `587` |
+| `tls` | `true` |
+| `username` | Gmail address |
+| `password` | Gmail App Password (NOT regular password) |
+
+### Kinetic Agent CRUD
+
+Agents are managed via the Core API:
+
+```
+GET/POST   /app/api/v1/platformComponents/agents
+PUT/DELETE /app/api/v1/platformComponents/agents/{slug}
+```
+
+Body: `{ "slug": "my-agent", "url": "https://agent.example.com", "secret": "shared-secret" }`
 | **Real-time capable** | Yes (forms, kapp integrations) | Yes (forms) | No (async workflows only) | Yes (file streaming) |

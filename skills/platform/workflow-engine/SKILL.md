@@ -1,6 +1,6 @@
 ---
 name: workflow-engine
-description: Kinetic Platform workflow engine concepts, execution model, Task API v2 reference, observed response formats, and lessons learned for building workflow UIs.
+description: Kinetic Platform workflow engine concepts, execution model, Task API v2 reference, observed response formats, run status derivation, tree type classification, stuck run repair, and lessons learned for building workflow UIs.
 ---
 
 # Kinetic Platform Workflow Engine
@@ -520,3 +520,51 @@ With `include=details`:
 - Show "Showing 1–25 of 2,689" and `Previous` / `Next` buttons
 - Don't show "Page 1 of 108" — you don't know how many pages exist without loading all data
 - **Prev/Next within detail views**: when drilling into a run or task, provide prev/next buttons to navigate siblings without returning to the list
+
+### Run Status Is Misleading
+
+`run.status` is almost always `"Started"` — even after the workflow has completed successfully. The engine does not reliably update run status to `"Complete"`. **Derive real status from triggers:**
+
+```
+GET /triggers?runId={id}&status=Failed&count=true
+→ count > 0 = failed run
+→ count = 0 = likely succeeded (check if all triggers are Closed)
+```
+
+For UI display, classify runs by checking their triggers rather than trusting `run.status`.
+
+### Tree Type Classification via `sourceGroup`
+
+The `sourceGroup` field on trees reveals the tree type without needing additional lookups:
+
+| `sourceGroup` Pattern | Tree Type | Example |
+|----------------------|-----------|---------|
+| `"WebApis > {kapp-slug}"` | WebAPI tree | `"WebApis > services"` |
+| UUID v4 format | Event-triggered tree | `"bee52c65-dbae-4959-894e-b659e59eaba1"` |
+| Other (e.g., `"-"`) | Routine | `"-"` |
+
+### Stuck Run Repair
+
+When a run is stuck (Start node processed but downstream nodes never fire), manually create a trigger to advance past the stuck point:
+
+```
+POST /app/components/task/app/api/v2/runs/{runId}/triggers
+{
+  "nodeId": "utilities_echo_v1_1",
+  "action": "Root",
+  "type": "Automatic",
+  "loopIndex": "/"
+}
+```
+
+This creates a downstream trigger to resume execution from the specified node.
+
+### NEVER Use Task API PUT on Core API-Registered Workflows
+
+**Critical:** Using `PUT /trees/{title}` (Task API v2) on a workflow created via the Core API (`POST /kapps/{kapp}/workflows`) **wipes** the `event`, `platformItemType`, and `platformItemId` fields. The workflow disappears from the Kinetic admin UI and stops firing on form events.
+
+Task API v2 PUT is **only safe** for:
+- WebAPI trees (no Core API registration)
+- Routines (no Core API registration)
+
+For event-triggered workflows, always use the Core API: `PUT /kapps/{kapp}/workflows/{id}` with `{treeXml: "..."}` or use `update_workflow_tree`.
