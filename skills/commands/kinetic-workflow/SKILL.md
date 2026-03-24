@@ -12,8 +12,8 @@ The user wants to create a workflow on the Kinetic Platform. The argument descri
 ## Step 1: Read Reference Docs
 
 Before generating any workflow definition, read:
-- `skills/platform/workflow-engine/SKILL.md` — execution model, nodes, connectors, routines
-- `skills/platform/workflow-xml/SKILL.md` — XML schema, ERB syntax, handler IDs, parameter formats
+- The **Workflow Engine** platform skill — execution model, nodes, connectors, routines
+- The **Workflow XML** platform skill — XML schema, ERB syntax, handler IDs, parameter formats
 
 ## Step 2: Determine Workflow Type
 
