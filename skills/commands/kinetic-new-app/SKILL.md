@@ -12,8 +12,8 @@ The user wants to create a new application on the Kinetic Platform. Parse the ar
 ## Step 1: Read Reference Docs
 
 Before scaffolding, read:
-- `skills/platform/api-basics/SKILL.md` — Core API reference
-- `skills/platform/kql-and-indexing/SKILL.md` — KQL and index management
+- The **API Basics** platform skill — Core API reference
+- The **KQL & Indexing** platform skill — KQL and index management
 
 ## Step 2: Plan the Application
 

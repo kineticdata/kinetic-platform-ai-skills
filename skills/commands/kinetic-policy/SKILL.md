@@ -11,7 +11,7 @@ The user describes an access control requirement in plain language. Generate the
 
 ## Step 1: Read Reference
 
-Read `skills/platform/users-teams-security/SKILL.md` for the full ABAC model, KSL functions, policy types, and experiment findings.
+Read the **Users, Teams & Security** platform skill for the full ABAC model, KSL functions, policy types, and experiment findings.
 
 ## Step 2: Understand the Requirement
 

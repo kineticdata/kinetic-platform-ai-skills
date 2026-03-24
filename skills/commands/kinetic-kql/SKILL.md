@@ -11,7 +11,7 @@ The user describes a query in natural language. Generate the correct KQL string 
 
 ## Step 1: Read Reference
 
-Read `skills/platform/kql-and-indexing/SKILL.md` for the full KQL operator reference, index management, and pagination rules. Also see `skills/platform/pagination/SKILL.md` for pagination patterns.
+Read the **KQL & Indexing** platform skill for the full KQL operator reference, index management, and pagination rules. Also see the **Pagination** platform skill for pagination patterns.
 
 ## Step 2: Generate the Query
 
