@@ -1,6 +1,6 @@
 ---
 name: webapis-and-webhooks
-description: WebAPIs (custom REST endpoints backed by workflows), Webhooks (event-driven workflow triggers), security policies, callback patterns, and API management for the Kinetic Platform.
+description: WebAPIs (custom REST endpoints backed by workflows), Webhooks (event-driven workflow triggers), runtime vs Core API endpoints, synchronous timeout, WebAPI CRUD, security policies, and callback patterns for the Kinetic Platform.
 ---
 
 # WebAPIs and Webhooks
@@ -32,11 +32,42 @@ WebAPI trees have a distinctive `sourceGroup` format in the Task API:
 
 Tree title format: `Kinetic Request CE :: WebApis > {kapp-slug} :: {webapi-name}`
 
-### Synchronous Timeout
+### Runtime vs Core API Endpoints (Critical)
 
-WebAPIs support a **synchronous timeout** (max 30 seconds). If the workflow completes within the timeout, the response is returned inline. If it exceeds the timeout, the caller receives a timeout response.
+The platform has **two different endpoints** for WebAPIs — confusing them is a common mistake:
 
-For long-running operations, use the **callback pattern**: the WebAPI returns immediately with a token, and the workflow calls back to the external system when done (see External System Sync in the Architectural Patterns skill).
+| Endpoint | Purpose | Returns |
+|----------|---------|---------|
+| `GET /app/kapps/{kapp}/webApis/{slug}` | **Runtime** — executes the workflow tree | Tree output (JSON, XML, text) |
+| `GET /app/api/v1/kapps/{kapp}/webApis/{slug}` | **Core API** — metadata only | WebAPI definition (slug, method, security) |
+
+The Core API endpoint does NOT run the workflow — it only returns the WebAPI's configuration.
+
+### Synchronous Invocation with `timeout`
+
+Add `&timeout=N` (seconds) to the runtime URL for synchronous response:
+
+```
+GET /app/kapps/{kapp}/webApis/{slug}?param1=value&timeout=30
+```
+
+- **With `timeout`**: Server waits for tree to complete, returns the Return node's `content` directly
+- **Without `timeout`**: Returns `{runId}` immediately (async) — caller must poll for results
+- **Hard maximum: 30 seconds** — values > 30 cause HTTP 500 and create orphan runs that never complete
+
+### WebAPI CRUD
+
+Create WebAPIs via the Core API:
+
+```
+POST /app/api/v1/kapps/{kapp}/webApis
+{ "slug": "my-endpoint", "method": "GET" }
+```
+
+- Slugs must be **lowercase with hyphens only** (no underscores, no uppercase)
+- Do NOT use `POST /kapps/{kapp}/webApis/{slug}` — the slug goes in the body, not the URL
+- Delete: `DELETE /app/api/v1/kapps/{kapp}/webApis/{slug}`
+- List: `GET /app/api/v1/kapps/{kapp}/webApis`
 
 ### Security Policies on WebAPIs
 

@@ -1,6 +1,6 @@
 ---
 name: pagination
-description: Core API pageToken pagination, 1000-record cap, keyset pagination for large datasets, Task API offset pagination, and server-side/client-side pagination patterns.
+description: Core API pageToken pagination, 1000-record cap, keyset pagination for large datasets, Task API offset pagination, server-side/client-side pagination patterns, golden rule (max 25 client-side), and deletion pagination gotchas.
 ---
 
 # Pagination
@@ -164,6 +164,70 @@ Each tab follows: **load → applyFilters(direction) → render**
 - `'reset'` — new query, go to page 1
 - `'next'` / `'prev'` — navigate using stored pageToken stack
 - omitted — re-fetch current page (after write actions)
+
+## Golden Rule: Max 25 Per Client-Side Fetch
+
+**Never load all records into the browser.** Never use `collectAll()` or loop through pages client-side. Always:
+
+1. Fetch with `limit=25` and `pageToken`
+2. Show one page at a time with Prev/Next buttons
+3. Let the user paginate forward/backward
+
+Server-side `collectByQuery()` for aggregation (dashboards, KPIs) is fine — the browser makes a single fetch to your server endpoint, and the server handles the pagination internally.
+
+This rule has no exceptions — not even for export or bulk operations. Use `limit=25` with `pageToken`, add delays between pages, and implement backoff on errors.
+
+---
+
+## `collectByQuery` maxPages Performance Trap
+
+Setting `maxPages=40` in server-side aggregation means up to 40 sequential API calls (~500ms each = **20 seconds**). For dashboard endpoints where you know the query scope:
+
+**Better approach: KQL range queries with larger limits**
+
+```js
+// BAD: 40 sequential API calls
+const all = await collectByQuery('incidents', 'values[Status]="Open"', auth, 40);
+
+// GOOD: 1 API call with date-scoped range query
+const kql = `values[Status]="Open" AND values[Created] >= "${startDate}" AND values[Created] < "${endDate}"`;
+const r = await kineticRequest('GET',
+  `/kapps/${kapp}/forms/incidents/submissions?include=values&limit=200&q=${encodeURIComponent(kql)}&orderBy=values[Created]`,
+  null, auth);
+```
+
+`limit=200` is valid (hard cap is 1000). Reserve `collectByQuery` with high `maxPages` for truly unbounded aggregation (rollups, backfill).
+
+---
+
+## Deletion Pagination Gotcha
+
+When bulk-deleting records, **do not re-fetch page 1 after each deletion batch**. The API returns records in `createdAt` descending order (newest first). If target records are on later pages, re-fetching page 1 keeps returning the same non-target records.
+
+**Correct approach:** Paginate forward using `pageToken` through all pages, collecting IDs to delete. Then delete in batches. Do multiple full passes until a clean pass finds nothing.
+
+```js
+// Paginate forward, collect matching IDs
+let pageToken = null;
+const toDelete = [];
+do {
+  let url = `/kapps/${kapp}/forms/${form}/submissions?include=values&limit=25`;
+  if (pageToken) url += `&pageToken=${pageToken}`;
+  const r = await fetch(url);
+  const data = await r.json();
+  for (const s of data.submissions) {
+    if (shouldDelete(s)) toDelete.push(s.id);
+  }
+  pageToken = data.nextPageToken;
+} while (pageToken);
+
+// Delete in parallel batches of 10
+for (let i = 0; i < toDelete.length; i += 10) {
+  await Promise.all(toDelete.slice(i, i + 10).map(id => deleteSubmission(id)));
+}
+```
+
+---
 
 ## Pagination Gotchas
 

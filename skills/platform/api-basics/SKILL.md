@@ -1,6 +1,6 @@
 ---
 name: api-basics
-description: Base URLs, authentication, Core API v1 and Task API v2 endpoints, response formats, submission PATCH, and common gotchas for the Kinetic Platform REST API.
+description: Base URLs, authentication, Core API v1 and Task API v2 endpoints, response formats, submission PATCH, submission lifecycle (coreState transitions), bulk operations, and common gotchas for the Kinetic Platform REST API.
 ---
 
 # Kinetic Core API Basics
@@ -221,6 +221,77 @@ Two approaches for updating field values:
 - **`PUT /submissions/{id}`** with `{ "values": { "Field": "NewValue" } }` — full submission update. Body wraps values under a `values` key. Can also update `coreState` and other submission-level properties.
 
 Both are partial — only included fields change; omitted fields are untouched.
+
+## Submission Lifecycle (coreState)
+
+Submissions move through three states: **Draft** → **Submitted** → **Closed**. Understanding these transitions is critical for workflows, queries, and data management.
+
+### States
+
+| State | Meaning | Editable? | Triggers Workflow? |
+|-------|---------|-----------|-------------------|
+| **Draft** | Incomplete, may have missing required fields | Yes | "Submission Created" (on initial POST) |
+| **Submitted** | Complete, ready for processing | Yes | "Submission Submitted" (on Draft→Submitted transition) |
+| **Closed** | Finalized | **No** — locked from further edits | "Submission Closed" |
+
+### Transitions
+
+| Transition | How | Notes |
+|-----------|-----|-------|
+| Create as Draft | `POST .../submissions` with `{values:{...}}` | Default — no `coreState` needed |
+| Create as Submitted | `POST .../submissions` with `{values:{...}, coreState:"Submitted"}` | Fires "Submission Created", NOT "Submission Submitted" |
+| Draft → Submitted | `PUT /submissions/{id}` with `{coreState:"Submitted"}` | Auto-sets `submittedAt`/`submittedBy` |
+| Submitted → Closed | `PUT /submissions/{id}` with `{coreState:"Closed"}` | Auto-sets `closedAt`/`closedBy`, locked from further edits |
+| Draft → Closed | `PUT /submissions/{id}` with `{coreState:"Closed"}` | Skips Submitted; auto-sets `submittedAt` to match `closedAt` |
+
+### Common Patterns
+
+- **Lookup/reference tables** — stay Submitted forever (never close)
+- **Tickets/requests** — normal lifecycle: Draft → Submitted → (workflow processes) → Closed
+- **Approvals** — created as Draft by workflow, submitted by approver, closed after decision
+- **Filter by state** — `?coreState=Submitted` query param (no KQL needed) or KQL `coreState="Submitted"` (needs coreState index)
+
+### Important
+
+- **`POST /submissions/{id}/submit` does NOT exist** (404) — use `PUT /submissions/{id}` with `{coreState:"Submitted"}` instead
+- Creating with `coreState:"Submitted"` fires "Submission Created" — NOT "Submission Submitted". The "Submitted" event only fires on the explicit Draft→Submitted transition.
+
+---
+
+## No Batch Delete API
+
+The platform only supports `DELETE /submissions/{id}` — one submission at a time. There is no bulk/batch delete endpoint.
+
+For bulk deletes, use parallel requests:
+
+```js
+// Delete in batches of 10 concurrent requests (~10x faster than sequential)
+for (let i = 0; i < ids.length; i += 10) {
+  const batch = ids.slice(i, i + 10);
+  await Promise.all(batch.map(id =>
+    fetch(`/submissions/${id}`, { method: 'DELETE', headers: authHeaders })
+  ));
+}
+```
+
+---
+
+## Uniqueness Violations Return 400
+
+Both Core API (webApis) and Task API (trees) return HTTP **400** (not 409) for duplicate names:
+
+```json
+{"errorKey": "uniqueness_violation"}
+```
+
+When checking for duplicates programmatically, check both status codes:
+```js
+if (e.status === 400 && e.message?.includes('uniqueness_violation')) {
+  // Already exists — handle accordingly
+}
+```
+
+---
 
 ## Form and Submission Gotchas
 

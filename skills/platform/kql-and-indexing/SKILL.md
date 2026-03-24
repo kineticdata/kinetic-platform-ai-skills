@@ -1,6 +1,6 @@
 ---
 name: kql-and-indexing
-description: Kinetic Query Language (KQL) operators, form index definitions, compound indexes, and query gotchas for searching Kinetic Platform submissions.
+description: Kinetic Query Language (KQL) operators, form index definitions, compound indexes, range queries with compound indexes, and query gotchas for searching Kinetic Platform submissions.
 ---
 
 # KQL and Indexing
@@ -182,6 +182,27 @@ Create compound indexes by putting multiple fields in the `parts` array:
 ```
 
 **Note:** Kinetic auto-names compound indexes by joining parts with commas (e.g., `values[Status],values[Category]`), regardless of the `name` you provide. The `name` field is ignored for compound indexes.
+
+### Range Queries with Compound Indexes
+
+Compound indexes support mixed equality + range queries. The leading field(s) use equality, and the **trailing field** can use a range operator with `orderBy`:
+
+```
+# Compound index: [values[Status], values[Created]]
+# Equality on leading field, range on trailing field
+
+q=values[Status]="Open" AND values[Created] >= "2026-03-01" AND values[Created] < "2026-03-15"
+  &orderBy=values[Created]
+  &limit=200
+```
+
+This reduces dashboard queries from many paginated calls to a **single API call**. For example, instead of using `collectByQuery` with `maxPages=40` (~20 seconds), a scoped range query with `limit=200` returns results in one round-trip.
+
+**Rules:**
+- Equality conditions must be on the **leading** index parts
+- Range condition must be on the **trailing** index part
+- `orderBy` must reference the range field
+- Works with `>=`, `<`, `>`, `<=`, `BETWEEN`, `=*`
 
 For N filterable fields, you need indexes for all combinations used in queries:
 - 2 fields combined: `[A,B]`
