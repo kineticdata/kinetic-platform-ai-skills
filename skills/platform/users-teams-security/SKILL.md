@@ -301,7 +301,7 @@ Kapp Modification rights grant access/create/modify for all contained forms and 
 
 ### Security Gotchas
 
-- **Never use `profileAttributes` in security policies** — users can set their own profile attributes, creating a privilege escalation vector. Always use `identity('attribute:X')` (admin-set) for access control.
+- **Never use `profileAttributes` in security policies** — users can set their own profile attributes, creating a privilege escalation vector. Always use `identity('attribute:X')` (admin-set) for access control. Demonstrated: a policy checking `identity('profileAttribute:Nickname') === 'VIP'` was bypassed when a non-admin user set their own Nickname to "VIP" via `PUT /users/{username}` (profile attributes are accepted, user attributes are silently ignored for non-admins).
 - **`identity('attribute:X')` may return an array or string** — always handle both: `if (cl instanceof Array) cl = cl[0];`
 - **Submission Display policies redact values, not hide submissions** — unauthorized users can still see that submissions exist and who created them, just not the field values.
 - **Kapp Display policy is UI-enforced, not API-enforced** — users may still access kapp resources via REST API even when Display policy blocks them. Form Display IS API-enforced.

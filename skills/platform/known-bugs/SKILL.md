@@ -67,7 +67,24 @@ const treeName = (typeof run.tree === 'object' ? run.tree?.name : run.tree) || '
 
 ---
 
-## Bug 6: `GET /errors` Hard-Caps at 5 Results
+## Bug 6: SMTP Handler Omits `Handler Error Message` on Success
+
+**Symptom:** The `smtp_email_send_v1` handler sends the email successfully (task status: Closed, `Message Id` returned), but a downstream node referencing `@results['Send Email']['Handler Error Message']` fails with `IndexError`. The Return node shows `originator: "ENGINE Run Error"`.
+
+**Impact:** Any workflow that checks for errors after sending email fails on the success path. Error management shows: `"The \"content\" parameter of the \"Return Result\" node could not be evaluated due to an IndexError."`
+
+**Root cause:** The handler defines two results: `Handler Error Message` and `Message Id`. On success, it only returns `Message Id` — the `Handler Error Message` key is **omitted entirely** from the results hash (not set to empty string). Ruby's `[]` on the Task engine hash raises `IndexError` for missing keys.
+
+**Workaround:** Use Ruby `rescue` in ERB expressions:
+```ruby
+<%= @results['Send Email']['Handler Error Message'] rescue '' %>
+```
+
+**General lesson:** Always use `rescue` or `.fetch()` when accessing handler result keys that may be conditional. Don't assume declared result keys will always be present in the hash.
+
+---
+
+## Bug 7: `GET /errors` Hard-Caps at 5 Results
 
 **Symptom:** The Task API errors endpoint returns a maximum of **5 error records per request**, regardless of the `limit` parameter value.
 

@@ -256,6 +256,15 @@ Available adapters discoverable via `GET /meta/sourceAdapters`.
 **Pagination:** `limit` (default 100) + `offset` (default 0)
 **Filtering:** `tree`, `source`, `start`, `end` query params on `/runs`
 
+**Critical: Component Path vs Direct Path for Routine Creation**
+
+| Path | Inputs/Outputs | treeJson |
+|------|---------------|----------|
+| `/app/components/task/app/api/v2/trees` | **Works** — saves `taskDefinition` | Works |
+| `/kinetic-task/app/api/v2/trees` | **Silently dropped** | Works |
+
+The component path (`/app/components/task/...`) is what the Kinetic Console uses internally. The direct path (`/kinetic-task/...`) does NOT support `inputs`/`outputs` on POST — they are silently ignored, producing a routine with no public interface. **Always use the component path for routine creation.**
+
 ### Tree Endpoints
 
 | Method | Path | Description |
@@ -361,6 +370,8 @@ Available adapters discoverable via `GET /meta/sourceAdapters`.
 - **Kapp-level:** `POST /kapps/{kapp}/workflows` — fires for ALL forms in the kapp
 - **Form-level:** `POST /kapps/{kapp}/forms/{form}/workflows` — fires only for that form
 - Both share the same tree infrastructure in the Task API
+
+**IMPORTANT:** These are completely separate queries. `GET /kapps/{kapp}/workflows` returns **only kapp-level** workflows — form-level workflows are invisible. To discover ALL workflows in a kapp, you must iterate each form with `GET /kapps/{kapp}/forms/{form}/workflows`. The `platformItemType` field distinguishes them: `"Kapp"` vs `"Form"`.
 
 ### Why NOT Task API for Workflow Creation
 
