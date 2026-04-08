@@ -249,6 +249,13 @@ Content-Type: application/json
   - `forms.details` — embed forms with timestamps (required alongside `forms.fields` to get form metadata)
   - `forms.indexDefinitions` — embed forms with their index definitions
   
+  **Selective value includes** — when loading many submissions from forms with lots of fields, request only the fields you need:
+  ```
+  # Only return Employee Name and Status values (not all 20+ fields):
+  GET /kapps/{kapp}/forms/{form}/submissions?include=details,values[Employee Name],values[Status]
+  ```
+  This dramatically reduces response size for list views. Without this, `include=values` returns ALL field values for every submission.
+  
   **Performance tip:** Use nested includes to build UIs with a single API call instead of N+1:
   ```
   # One call to get a kapp with ALL forms, their fields, and index definitions:
