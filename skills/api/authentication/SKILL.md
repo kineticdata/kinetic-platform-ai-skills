@@ -81,7 +81,7 @@ Location: ...#access_token=<TOKEN>&token_type=bearer&expires_in=43200
 
 ```bash
 curl -H "Authorization: Bearer <TOKEN>" \
-  "https://myspace.kinops.io/app/components/integrator/app/api/v1/connections"
+  "https://myspace.kinops.io/app/integrator/api/connections"
 ```
 
 ### Token Lifecycle
@@ -95,14 +95,14 @@ curl -H "Authorization: Bearer <TOKEN>" \
 ```
 Core:       https://<space-slug>.kinops.io/app/api/v1
 Task:       https://<space-slug>.kinops.io/app/components/task/app/api/v2
-Integrator: https://<space-slug>.kinops.io/app/components/integrator/app/api/v1
+Integrator: https://<space-slug>.kinops.io/app/integrator/api
 ```
 
 ### Self-Hosted Deployments
 ```
 Core:       https://<server>/kinetic/<space-slug>/app/api/v1
 Task:       https://<server>/kinetic/<space-slug>/app/components/task/app/api/v2
-Integrator: https://<server>/kinetic/<space-slug>/app/components/integrator/app/api/v1
+Integrator: https://<server>/kinetic/<space-slug>/app/integrator/api
 ```
 
 ## Self-Signed Certificates

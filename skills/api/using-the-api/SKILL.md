@@ -180,4 +180,4 @@ execute_api({ method: "POST", path: "/kapps/services/forms", body: { slug: "my-f
 
 The `path` is relative to the Core API base URL. For Task API or Integrator API endpoints, prefix accordingly:
 - Task: `execute_api({ method: "GET", path: "/components/task/app/api/v2/runs" })`
-- Integrator: `execute_api({ method: "GET", path: "/components/integrator/app/api/v1/connections" })`
+- Integrator: `execute_api({ method: "GET", path: "/integrator/api/connections" })`

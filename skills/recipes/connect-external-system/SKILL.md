@@ -57,8 +57,8 @@ export INTEGRATOR_TOKEN="eyJhbGciOi..."
 **Integrator API base URL:**
 | Environment | URL |
 |-------------|-----|
-| Cloud (kinops) | `https://<space-slug>.kinops.io/app/components/integrator/app/api/v1` |
-| Self-hosted | `https://<server>/kinetic/<space-slug>/app/components/integrator/app/api/v1` |
+| Cloud (kinops) | `https://<space-slug>.kinops.io/app/integrator/api` |
+| Self-hosted | `https://<server>/kinetic/<space-slug>/app/integrator/api` |
 
 ---
 
@@ -70,7 +70,7 @@ A Connection represents one external system instance. Create one per system (one
 curl -s -X POST \
   -H "Authorization: Bearer $INTEGRATOR_TOKEN" \
   -H "Content-Type: application/json" \
-  "https://myspace.kinops.io/app/components/integrator/app/api/v1/connections" \
+  "https://myspace.kinops.io/app/integrator/api/connections" \
   -d '{
     "name": "Ticketing System",
     "type": "HTTP",
@@ -116,7 +116,7 @@ Save the `id` — you need it to create Operations.
 ```bash
 curl -s \
   -H "Authorization: Bearer $INTEGRATOR_TOKEN" \
-  "https://myspace.kinops.io/app/components/integrator/app/api/v1/connections"
+  "https://myspace.kinops.io/app/integrator/api/connections"
 ```
 
 **Update credentials (deep-merge — does not wipe other fields):**
@@ -125,7 +125,7 @@ curl -s \
 curl -s -X PUT \
   -H "Authorization: Bearer $INTEGRATOR_TOKEN" \
   -H "Content-Type: application/json" \
-  "https://myspace.kinops.io/app/components/integrator/app/api/v1/connections/{connectionId}" \
+  "https://myspace.kinops.io/app/integrator/api/connections/{connectionId}" \
   -d '{
     "credentials": {
       "type": "bearer",
@@ -146,7 +146,7 @@ export CONNECTION_ID="1415539c-ab12-4e67-8f2d-000000000001"
 curl -s -X POST \
   -H "Authorization: Bearer $INTEGRATOR_TOKEN" \
   -H "Content-Type: application/json" \
-  "https://myspace.kinops.io/app/components/integrator/app/api/v1/connections/$CONNECTION_ID/operations" \
+  "https://myspace.kinops.io/app/integrator/api/connections/$CONNECTION_ID/operations" \
   -d '{
     "name": "Get Ticket",
     "method": "GET",
@@ -265,7 +265,7 @@ Save the operation `id` — it is referenced in workflow tasks and form integrat
 ```bash
 curl -s \
   -H "Authorization: Bearer $INTEGRATOR_TOKEN" \
-  "https://myspace.kinops.io/app/components/integrator/app/api/v1/connections/$CONNECTION_ID/operations"
+  "https://myspace.kinops.io/app/integrator/api/connections/$CONNECTION_ID/operations"
 ```
 
 ---
