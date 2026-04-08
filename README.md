@@ -4,28 +4,38 @@ A shareable AI skills library for building on the Kinetic Platform. Organized fo
 
 ## Skills
 
-### Platform (`skills/platform/`)
+### Recipes (`skills/recipes/`)
 
 | Skill | Description |
 |-------|-------------|
-| [api-basics](skills/platform/api-basics/SKILL.md) | Base URLs, authentication, Core API v1 and Task API v2 endpoints, response formats, submission PATCH, and common gotchas |
-| [kql-and-indexing](skills/platform/kql-and-indexing/SKILL.md) | KQL operators, form index definitions, compound indexes, and query gotchas |
-| [pagination](skills/platform/pagination/SKILL.md) | Core API pageToken pagination, 1000-record cap, keyset pagination, Task API offset pagination |
-| [workflow-engine](skills/platform/workflow-engine/SKILL.md) | Workflow engine concepts, execution model, ERB context, events/coreState, programmatic workflow creation, Task API v2 reference |
-| [workflow-xml](skills/platform/workflow-xml/SKILL.md) | XML/treeJson schema, task nodes, flow control, system handlers, return node rules, critical node flags, error management API, triggers API |
-| [decision-frameworks](skills/platform/decision-frameworks/SKILL.md) | Integration type selection, data storage patterns, workflow execution model |
-| [architectural-patterns](skills/platform/architectural-patterns/SKILL.md) | Deferral pattern, approvals, fulfillment, work routing, SLA tracking, external system sync, bulk operations |
-| [form-engine](skills/platform/form-engine/SKILL.md) | Form JSON schema, field types, events, expressions, K() JavaScript API, bundle.config overrides |
-| [integrations](skills/platform/integrations/SKILL.md) | Connections/Operations, Bridges, Handlers, File Resources — when to use each |
-| [webapis-and-webhooks](skills/platform/webapis-and-webhooks/SKILL.md) | WebAPIs (custom REST endpoints), Webhooks (event triggers), security, callback patterns |
-| [users-teams-security](skills/platform/users-teams-security/SKILL.md) | Users, Teams, KSL security definitions, two-layer security model, policy endpoints, attribute definitions, submission activities |
+| [create-submission-form](skills/recipes/create-submission-form/SKILL.md) | Step-by-step recipe for creating forms with fields, indexes, events, and submission handling |
+| [add-approval-workflow](skills/recipes/add-approval-workflow/SKILL.md) | Recipe for adding deferral-based approval workflows to forms |
+| [connect-external-system](skills/recipes/connect-external-system/SKILL.md) | Recipe for connecting to external REST APIs using Connections and Operations |
+| [build-paginated-list](skills/recipes/build-paginated-list/SKILL.md) | Recipe for building paginated submission lists in React portals |
+| [build-service-portal](skills/recipes/build-service-portal/SKILL.md) | End-to-end recipe for building a self-service portal |
+
+### Concepts (`skills/concepts/`)
+
+| Skill | Description |
+|-------|-------------|
+| [api-basics](skills/concepts/api-basics/SKILL.md) | Base URLs, authentication, Core API v1 and Task API v2 endpoints, response formats, submission PATCH, and common gotchas |
+| [kql-and-indexing](skills/concepts/kql-and-indexing/SKILL.md) | KQL operators, form index definitions, compound indexes, and query gotchas |
+| [pagination](skills/concepts/pagination/SKILL.md) | Core API pageToken pagination, 1000-record cap, keyset pagination, Task API offset pagination |
+| [workflow-engine](skills/concepts/workflow-engine/SKILL.md) | Workflow engine concepts, execution model, ERB context, events/coreState, programmatic workflow creation, Task API v2 reference |
+| [workflow-xml](skills/concepts/workflow-xml/SKILL.md) | XML/treeJson schema, task nodes, flow control, system handlers, return node rules, critical node flags, error management API, triggers API |
+| [decision-frameworks](skills/concepts/decision-frameworks/SKILL.md) | Integration type selection, data storage patterns, workflow execution model |
+| [architectural-patterns](skills/concepts/architectural-patterns/SKILL.md) | Deferral pattern, approvals, fulfillment, work routing, SLA tracking, external system sync, bulk operations |
+| [form-engine](skills/concepts/form-engine/SKILL.md) | Form JSON schema, field types, events, expressions, K() JavaScript API, bundle.config overrides |
+| [integrations](skills/concepts/integrations/SKILL.md) | Connections/Operations, Bridges, Handlers, File Resources — when to use each |
+| [webapis-and-webhooks](skills/concepts/webapis-and-webhooks/SKILL.md) | WebAPIs (custom REST endpoints), Webhooks (event triggers), security, callback patterns |
+| [users-teams-security](skills/concepts/users-teams-security/SKILL.md) | Users, Teams, KSL security definitions, two-layer security model, policy endpoints, attribute definitions, submission activities |
 
 #### Provisioning & Automation
 
 | Skill | Description |
 |-------|-------------|
-| [ruby-sdk](skills/platform/ruby-sdk/SKILL.md) | Kinetic Ruby SDK (kinetic_sdk gem) for environment provisioning, data migrations, and scripted administration |
-| [template-provisioning](skills/platform/template-provisioning/SKILL.md) | Template export/import structure, install.rb scripts, connection/operation JSON schema, bootstrap patterns |
+| [ruby-sdk](skills/concepts/ruby-sdk/SKILL.md) | Kinetic Ruby SDK (kinetic_sdk gem) for environment provisioning, data migrations, and scripted administration |
+| [template-provisioning](skills/concepts/template-provisioning/SKILL.md) | Template export/import structure, install.rb scripts, connection/operation JSON schema, bootstrap patterns |
 
 ### Front-End (`skills/front-end/`)
 
@@ -36,6 +46,13 @@ A shareable AI skills library for building on the Kinetic Platform. Organized fo
 | [data-fetching](skills/front-end/data-fetching/SKILL.md) | useData, usePaginatedData, defineKqlQuery, searchSubmissions |
 | [mutations](skills/front-end/mutations/SKILL.md) | executeIntegration, submission CRUD, profile/kapp/space updates |
 | [state](skills/front-end/state/SKILL.md) | regRedux, appActions, theme, toasts, confirmation modal, utilities |
+
+### API Reference (`skills/api/`)
+
+| Skill | Description |
+|-------|-------------|
+| [authentication](skills/api/authentication/SKILL.md) | Authentication patterns for Core, Integrator, and Task APIs |
+| [using-the-api](skills/api/using-the-api/SKILL.md) | Common API usage patterns, request/response conventions |
 
 ---
 
@@ -60,7 +77,7 @@ Claude Code follows `@`-imports transitively — referencing `CLAUDE.md` pulls i
 To reference individual skills:
 
 ```markdown
-@/path/to/kinetic-platform-ai-skills/skills/platform/api-basics/SKILL.md
+@/path/to/kinetic-platform-ai-skills/skills/concepts/api-basics/SKILL.md
 ```
 
 ### Cursor
@@ -113,13 +130,15 @@ Then reference from `~/.claude/CLAUDE.md` for global access across all projects.
 ### Adding a New Skill
 
 1. **Choose the right domain folder:**
-   - `skills/platform/` — API, workflow, integration, provisioning, and server-side topics
+   - `skills/recipes/` — End-to-end guides for specific workflows or features
+   - `skills/concepts/` — Core platform concepts, APIs, and architecture topics
+   - `skills/api/` — API reference and integration patterns
    - `skills/front-end/` — React portal patterns, UI components, data hooks, state management
 
 2. **Create the skill directory and file:**
    ```bash
-   mkdir -p skills/platform/my-new-skill
-   touch skills/platform/my-new-skill/SKILL.md
+   mkdir -p skills/concepts/my-new-skill
+   touch skills/concepts/my-new-skill/SKILL.md
    ```
 
 3. **Add YAML frontmatter** — only `name` and `description` are supported:
@@ -142,7 +161,7 @@ Then reference from `~/.claude/CLAUDE.md` for global access across all projects.
 4. **Write the content:**
    - Keep each skill under ~500 lines / ~5,000 tokens for progressive disclosure
    - Use code blocks with language tags for examples
-   - Cross-reference other skills by relative path: `See the Pagination skill (\`platform/pagination\`)`
+   - Cross-reference other skills by relative path: `See the Pagination skill (\`concepts/pagination\`)`
    - Keep content generic — avoid references to specific project codebases or environments
 
 5. **Register the skill** in these files:
