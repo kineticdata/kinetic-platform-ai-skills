@@ -273,6 +273,44 @@ All responses are JSON. Resources are wrapped in a key matching the resource typ
 
 **Note:** Core API does NOT provide a total count. You cannot display "Page 1 of N" or "Showing X of Y" — only "Page N" with Next/Previous buttons.
 
+## File Uploads (Multipart Submissions)
+
+To create a submission with file attachments in a single request, use the multipart endpoint:
+
+```
+POST /app/api/v1/kapps/{kappSlug}/forms/{formSlug}/submissions-multipart
+Content-Type: multipart/form-data
+```
+
+The first part named `_submission` contains the JSON body. Subsequent parts contain file attachments:
+
+```javascript
+const formData = new FormData();
+formData.append("_submission", JSON.stringify({ values: { Summary: "Bug report" } }));
+formData.append("Screenshots", fileInput.files[0], "screenshot.png");
+```
+
+For updating an existing submission with attachments: `POST /app/api/v1/submissions-multipart/{submissionId}`
+
+## Translations (i18n)
+
+The Translations API manages locale-specific string overrides. Changes are staged then published by clearing the cache.
+
+```bash
+GET    /translations/settings/locales           # List enabled locales
+POST   /translations/settings/locales           # Enable a locale: { "code": "fr" }
+GET    /translations/contexts                    # List translation contexts
+POST   /translations/entries                     # Import translations (CSV or JSON)
+GET    /translations/entries?context=X&locale=Y  # Export translations
+DELETE /translations/cache                       # Publish staged changes
+```
+
+Import accepts CSV (`Context,Locale,Key,Value`) or JSON arrays of `{ context, locale, key, value }`.
+
+**Gotcha:** Deleting a context deletes ALL its translation entries. Edits are staged — you must clear the cache (`DELETE /translations/cache`) to publish.
+
+---
+
 ## `/me` Endpoint Response Shape
 
 The `/me` endpoint returns user properties at the **top level**, not nested under a `user` key:

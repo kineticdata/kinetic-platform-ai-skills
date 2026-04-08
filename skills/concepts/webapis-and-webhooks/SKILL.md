@@ -122,6 +122,22 @@ Each webhook maps an event type to a workflow tree.
 
 ---
 
+## Webhook Jobs (Execution History)
+
+Webhook Jobs are execution records for individual webhook invocations. Use them to monitor delivery success and retry failures.
+
+```bash
+GET /app/api/v1/kapps/{kappSlug}/webhookJobs           # List kapp webhook jobs
+GET /app/api/v1/webhookJobs                              # List space webhook jobs
+GET /app/api/v1/kapps/{kappSlug}/webhookJobs/{id}       # Get job detail
+```
+
+**Query parameters:** `status` (queued/failed), `webhook` (name filter), `parentType` + `parentKey` (filter by triggering entity), `limit` (default 25), `pageToken`, `start`/`end` (date range).
+
+**Gotcha:** Default limit is 25 (not the usual 1000). `parentType` and `parentKey` must be used together.
+
+---
+
 ## Webhooks vs WebAPIs Decision
 
 | Feature | Webhooks | WebAPIs |

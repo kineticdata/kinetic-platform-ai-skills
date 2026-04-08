@@ -40,6 +40,7 @@ When you discover new patterns, corrections, or undocumented behavior, update th
 | Users, Teams & Security | `skills/concepts/users-teams-security/SKILL.md` | User/team CRUD, KSL security expressions, policy definitions, attribute definitions, activities |
 | Ruby SDK | `skills/concepts/ruby-sdk/SKILL.md` | `kinetic_sdk` gem — scripted admin, migrations, bulk operations, environment provisioning |
 | Template Provisioning | `skills/concepts/template-provisioning/SKILL.md` | Template directory structure, install.rb scripts, connection JSON, export/import patterns |
+| Models (Data Views) | `skills/concepts/models/SKILL.md` | Bridge data models — read-only views backed by bridge adapters for querying external data |
 
 ### Front-End — React Portal Patterns
 
