@@ -32,6 +32,45 @@ Connections are created and managed in the Space console under Plugins > Connect
 | PUT | `/connections/{id}` | Update a connection (deep-merge credentials) |
 | GET | `/connections/{id}/operations` | List operations for a connection |
 | POST | `/connections/{id}/operations` | Create an operation |
+| PUT | `/connections/{id}/operations/{opId}` | Update an operation |
+| DELETE | `/connections/{id}/operations/{opId}` | Delete an operation |
+| POST | `/connections/{id}/restart` | Restart a connection |
+| POST | `/execute` | Execute an operation directly |
+| GET | `/export` | Export all connections and operations |
+| POST | `/import` | Import connections and operations |
+| POST | `/import/validate` | Validate import payload |
+| GET | `/healthz` | Health check (messaging + node process) |
+| GET | `/version` | Integrator version info |
+| POST | `/operations-search` | Search operations across connections |
+
+**Important:** The Integrator API returns **bare arrays** for list endpoints (not wrapped in an object like Core API). Example: `GET /connections` returns `[{...}, {...}]`, not `{"connections": [...]}`.
+
+**Connection response shape:**
+```json
+{
+  "id": "a2ffa6fa-...",
+  "name": "ServiceNow Production",
+  "type": "http",
+  "config": { "configType": "http", "baseUrl": "https://instance.service-now.com", "auth": null },
+  "status": { "healthy": true, "events": [...] },
+  "secrets": {},
+  "description": "",
+  "insertedAt": "2024-12-19T17:44:32Z",
+  "lockVersion": 2
+}
+```
+
+**Operation response shape:**
+```json
+{
+  "id": "f865d438-...",
+  "name": "Create Ticket",
+  "connectionId": "a2ffa6fa-...",
+  "config": { ... },
+  "outputs": [...],
+  "notes": ""
+}
+```
 
 ### Operations
 

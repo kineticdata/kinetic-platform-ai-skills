@@ -75,6 +75,85 @@ The Integrator API (`/app/integrator/api`) does **not** accept Basic Auth. It re
 | Update Submission | PUT | `/app/api/v1/submissions/{submissionId}` |
 | Delete Submission | DELETE | `/app/api/v1/submissions/{submissionId}` |
 
+### Additional Core API Resources
+
+| Resource | Method | Path |
+|----------|--------|------|
+| Create Form | POST | `/app/api/v1/kapps/{kappSlug}/forms` |
+| Update Form | PUT | `/app/api/v1/kapps/{kappSlug}/forms/{formSlug}` |
+| Delete Form | DELETE | `/app/api/v1/kapps/{kappSlug}/forms/{formSlug}` |
+| Create Kapp | POST | `/app/api/v1/kapps` |
+| Update Kapp | PUT | `/app/api/v1/kapps/{kappSlug}` |
+| Delete Kapp | DELETE | `/app/api/v1/kapps/{kappSlug}` |
+| Create User | POST | `/app/api/v1/users` |
+| Update User | PUT | `/app/api/v1/users/{username}` |
+| Delete User | DELETE | `/app/api/v1/users/{username}` |
+| Create Team | POST | `/app/api/v1/teams` |
+| Update Team | PUT | `/app/api/v1/teams/{slug}` |
+| Delete Team | DELETE | `/app/api/v1/teams/{slug}` |
+| Update Space | PUT | `/app/api/v1/space` |
+| Update Profile | PUT | `/app/api/v1/me` |
+| Workflows (Form) | GET/POST | `/app/api/v1/kapps/{kappSlug}/forms/{formSlug}/workflows` |
+| Workflow Detail | GET/PUT/DELETE | `/app/api/v1/kapps/{kappSlug}/forms/{formSlug}/workflows/{id}` |
+| WebAPIs | GET/POST | `/app/api/v1/kapps/{kappSlug}/webApis` (or space-level `/app/api/v1/webApis`) |
+| Webhooks | GET/POST | `/app/api/v1/kapps/{kappSlug}/webhooks` (or space-level `/app/api/v1/webhooks`) |
+| Security Policies | GET/POST | `/app/api/v1/kapps/{kappSlug}/securityPolicyDefinitions` |
+| File Resources | GET/POST | `/app/api/v1/fileResources` |
+| Version | GET | `/app/api/v1/version` |
+| Activity Metrics | GET | `/app/api/v1/activity` |
+| Notices | GET | `/app/api/v1/notices` |
+| Background Jobs | GET | `/app/api/v1/backgroundJobs` |
+| Memberships | POST/DELETE | `/app/api/v1/memberships` |
+| User Preferences | GET/POST/DELETE | `/app/api/v1/userPreferences` |
+| User Invitation Tokens | GET/POST/DELETE | `/app/api/v1/userInvitationTokens` |
+| Translations | GET/POST/PUT/DELETE | `/app/api/v1/translations/*` |
+| Attribute Definitions | GET/POST/PUT/DELETE | `/app/api/v1/spaceAttributeDefinitions` (and user/team/form variants) |
+| Models (Data Views) | GET/POST/PUT/DELETE | `/app/api/v1/models` |
+| Multipart Submission | POST | `/app/api/v1/kapps/{kappSlug}/forms/{formSlug}/submissions-multipart` |
+
+### Data Models
+
+Models define read-only data views backed by bridge adapters. Each model has:
+- `name` — display name
+- `status` — `"Active"` or `"Inactive"`
+- `mappings` — array of bridge mappings with `bridgeSlug`, `structure`, and attribute field expressions
+- `qualifications` — named queries with parameters and result type (`"Single"` or `"Multiple"`)
+
+```
+GET /app/api/v1/models          # List all models
+GET /app/api/v1/models/{name}   # Get model detail
+POST /app/api/v1/models         # Create model
+PUT /app/api/v1/models/{name}   # Update model
+DELETE /app/api/v1/models/{name}# Delete model
+```
+
+### Activity Metrics
+
+Returns submission counts by kapp for the space:
+
+```bash
+GET /app/api/v1/activity
+# Response: { "submissionBreakdown": [{ "category": "Services", "value": 1000 }, ...] }
+```
+
+### Platform Version
+
+```bash
+GET /app/api/v1/version
+# Response: { "version": { "version": "6.1.7", "buildDate": "2026-02-12...", "buildNumber": "..." } }
+```
+
+### Notices
+
+Platform health notices (e.g., missing routines, configuration issues):
+
+```bash
+GET /app/api/v1/notices
+# Response: { "notices": [{ "component": "task", "key": "RoutineMissing", "message": "...", "data": {...} }] }
+```
+
+---
+
 ## Submission PATCH (Setting Custom Timestamps)
 
 The PATCH endpoints allow creating or updating submissions **with full control over system timestamps**. Unlike POST (create) or PUT (update), PATCH does **not** trigger field validations, evaluate core state conditions, or execute webhooks.

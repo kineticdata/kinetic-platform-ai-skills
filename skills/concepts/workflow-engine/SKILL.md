@@ -520,3 +520,69 @@ With `include=details`:
 - Show "Showing 1–25 of 2,689" and `Previous` / `Next` buttons
 - Don't show "Page 1 of 108" — you don't know how many pages exist without loading all data
 - **Prev/Next within detail views**: when drilling into a run or task, provide prev/next buttons to navigate siblings without returning to the list
+
+---
+
+## Additional Task API Resources
+
+### Engine Status
+
+```bash
+GET /engine
+# Response: { "buildDate": "...", "status": "Running", "statusMessage": null, "version": "6.1.7" }
+```
+
+### Environment Info
+
+```bash
+GET /environment
+# Response: { "System Information": { "Host": "...", "Java Version": "...", "Ruby Version": "..." }, "Server Information": { ... } }
+```
+
+### Categories (Handler Organization)
+
+Handlers are organized into categories:
+```bash
+GET /categories
+# Response: { "count": N, "categories": [{ "name": "System Controls", "description": "...", "type": "Integrated" }, ...] }
+```
+
+Types: `"Integrated"` (built-in system handlers), `"Stored"` (uploaded handlers).
+
+### Sources (Workflow Trigger Sources)
+
+Sources define where workflow triggers originate:
+```bash
+GET /sources?include=details
+```
+
+### Groups
+
+Logical groupings for organizing trees and handlers.
+
+### Policy Rules (Access Control)
+
+Ruby-expression-based access rules for the Task API:
+```bash
+GET /policyRules
+# Response: { "policyRules": [{ "name": "Admins", "rule": "@identity.get_property('spaceAdmin') == 'true'", "type": "API Access" }, ...] }
+```
+
+### Access Keys
+
+API authentication keys for machine-to-machine access to the Task API (alternative to Basic Auth).
+
+### Errors and System Errors
+
+```bash
+GET /errors?limit=10&include=details     # Application-level errors (workflow failures)
+GET /systemErrors?limit=10&include=details  # System-level errors (infrastructure issues)
+```
+
+### Triggers
+
+Triggers are execution records for workflow nodes — they represent scheduled or completed handler executions:
+```bash
+GET /triggers?include=details&limit=10
+# Each trigger has: action, branchId, nodeId, nodeName, status, type, token, results, message
+```
