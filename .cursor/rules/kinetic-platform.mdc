@@ -5,16 +5,21 @@ globs: ["**/*.js", "**/*.ts", "**/*.rb", "**/*.yaml", "**/*.yml"]
 
 Apply the following knowledge when writing code that interacts with the Kinetic Platform REST API or Task workflow engine.
 
-@../../skills/platform/api-basics/SKILL.md
-@../../skills/platform/kql-and-indexing/SKILL.md
-@../../skills/platform/pagination/SKILL.md
-@../../skills/platform/workflow-engine/SKILL.md
-@../../skills/platform/workflow-xml/SKILL.md
-@../../skills/platform/decision-frameworks/SKILL.md
-@../../skills/platform/architectural-patterns/SKILL.md
-@../../skills/platform/form-engine/SKILL.md
-@../../skills/platform/integrations/SKILL.md
-@../../skills/platform/webapis-and-webhooks/SKILL.md
-@../../skills/platform/users-teams-security/SKILL.md
-@../../skills/platform/ruby-sdk/SKILL.md
-@../../skills/platform/template-provisioning/SKILL.md
+@../../skills/concepts/api-basics/SKILL.md
+@../../skills/concepts/kql-and-indexing/SKILL.md
+@../../skills/concepts/pagination/SKILL.md
+@../../skills/concepts/workflow-engine/SKILL.md
+@../../skills/concepts/workflow-xml/SKILL.md
+@../../skills/concepts/decision-frameworks/SKILL.md
+@../../skills/concepts/architectural-patterns/SKILL.md
+@../../skills/concepts/form-engine/SKILL.md
+@../../skills/concepts/integrations/SKILL.md
+@../../skills/concepts/webapis-and-webhooks/SKILL.md
+@../../skills/concepts/users-teams-security/SKILL.md
+@../../skills/concepts/ruby-sdk/SKILL.md
+@../../skills/concepts/template-provisioning/SKILL.md
+@../../skills/recipes/create-submission-form/SKILL.md
+@../../skills/recipes/add-approval-workflow/SKILL.md
+@../../skills/recipes/connect-external-system/SKILL.md
+@../../skills/api/authentication/SKILL.md
+@../../skills/api/using-the-api/SKILL.md
