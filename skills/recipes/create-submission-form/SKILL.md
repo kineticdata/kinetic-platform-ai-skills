@@ -105,6 +105,38 @@ Content-Type: application/json
 | `time` | `string` | Time picker |
 | `attachment` | `file` | File upload; set `"allowMultiple": true` in `renderAttributes` for multi-file |
 
+### Required Field Properties
+
+**Critical:** The API validates that ALL field properties are present. Omitting any property results in a `400 Invalid Form` error. Every field element MUST include these properties:
+
+```json
+{
+  "type": "field",
+  "name": "Field Name",
+  "label": "Field Name",
+  "key": "f1",
+  "renderType": "text",
+  "dataType": "string",
+  "required": false,
+  "enabled": true,
+  "visible": true,
+  "defaultValue": null,
+  "defaultDataSource": "none",
+  "defaultResourceName": null,
+  "requiredMessage": null,
+  "omitWhenHidden": null,
+  "pattern": null,
+  "constraints": [],
+  "events": [],
+  "rows": 1,
+  "renderAttributes": {}
+}
+```
+
+Section elements also require: `renderType: null`, `omitWhenHidden: null`, `renderAttributes: {}`.
+
+Form-level and page-level `events: []` must also be present (even if empty).
+
 ### Typical Field Pattern
 
 Most submission-driven forms have three categories of fields:
@@ -116,6 +148,7 @@ Most submission-driven forms have three categories of fields:
   "type": "field",
   "name": "Location",
   "label": "Location",
+  "key": "f1",
   "renderType": "text",
   "dataType": "string",
   "required": true,
@@ -123,6 +156,12 @@ Most submission-driven forms have three categories of fields:
   "visible": true,
   "defaultValue": null,
   "defaultDataSource": "none",
+  "defaultResourceName": null,
+  "requiredMessage": null,
+  "omitWhenHidden": null,
+  "pattern": null,
+  "constraints": [],
+  "events": [],
   "rows": 1,
   "renderAttributes": {}
 }
@@ -135,6 +174,7 @@ Most submission-driven forms have three categories of fields:
   "type": "field",
   "name": "Status",
   "label": "Status",
+  "key": "f10",
   "renderType": "text",
   "dataType": "string",
   "required": false,
@@ -142,6 +182,12 @@ Most submission-driven forms have three categories of fields:
   "visible": true,
   "defaultValue": "New",
   "defaultDataSource": "none",
+  "defaultResourceName": null,
+  "requiredMessage": null,
+  "omitWhenHidden": null,
+  "pattern": null,
+  "constraints": [],
+  "events": [],
   "rows": 1,
   "renderAttributes": {}
 }
