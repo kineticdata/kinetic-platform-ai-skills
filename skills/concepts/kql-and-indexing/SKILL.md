@@ -129,6 +129,52 @@ Valid job types: `"Build Index"`, `"Cleanup Index"`, `"Populate Index"`, `"Reind
 
 Poll the form's `indexDefinitions` until all statuses change from `"New"` to `"Built"`. With 1000 records this takes ~5 seconds.
 
+## Kapp-Level Indexes (Cross-Form Search)
+
+Index definitions exist at **two levels**:
+
+1. **Form-level indexes** — search within a single form: `GET /kapps/{kapp}/forms/{form}/submissions?q=...`
+2. **Kapp-level indexes** — search across ALL forms in a kapp: `GET /kapps/{kapp}/submissions?q=...`
+
+Kapp-level indexes enable cross-form queries. If multiple forms share a field name (e.g., "Status", "Requested By"), the kapp-level index covers submissions from ALL forms that have that field.
+
+### Viewing Kapp-Level Indexes
+
+```
+GET /kapps/{kapp}?include=indexDefinitions
+```
+
+### Common Kapp-Level Index Pattern
+
+```json
+{
+  "indexDefinitions": [
+    {"parts": ["type", "coreState", "values[Requested By]"]},
+    {"parts": ["type", "coreState", "submittedBy"]},
+    {"parts": ["type", "createdBy"]}
+  ]
+}
+```
+
+The `type` part refers to the form's `type` property (e.g., "Service", "Approval", "Task"). Combined with `coreState`, this lets you query: "show me all Service submissions in Submitted state where Requested By = john.doe" — across every form in the kapp.
+
+### Cross-Form Search
+
+```bash
+# Search across ALL forms in the services kapp
+GET /kapps/services/submissions?include=details,values&q=type="Service" AND coreState="Submitted" AND values[Requested By]="john.doe"
+```
+
+This is how portals build unified request lists, approval inboxes, and dashboard views that span multiple forms.
+
+### When to Use Kapp vs Form Indexes
+
+- **Form-level**: most queries — filtering within a single form
+- **Kapp-level**: unified views — "My Requests" across all form types, admin dashboards, reporting
+- Kapp-level indexes have the same compound index rules as form-level
+
+---
+
 ## KQL + Client Filter Strategy
 
 Only combine fields in KQL `AND` if a compound index exists. Extra filters become client-side filters on the 25 returned items:
