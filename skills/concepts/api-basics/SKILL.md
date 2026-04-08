@@ -237,10 +237,28 @@ Content-Type: application/json
 
 ## Query Parameters
 
-- `include` - Comma-separated list of additional properties to return (e.g., `details`, `values`, `form`, `form.attributes`)
-  - `values` returns form field values but **not** system fields like `createdAt`
-  - `details` returns system fields (`createdAt`, `updatedAt`, `closedAt`, etc.)
-  - Use `details,values` when you need both
+- `include` - Comma-separated list of additional properties to return. Supports **dot notation** for nested includes:
+  - `values` — form field values (but NOT system timestamps like `createdAt`)
+  - `details` — system fields (`createdAt`, `updatedAt`, `createdBy`, `updatedBy`, etc.)
+  - `details,values` — both timestamps and field values
+  - `form` — embed the parent form definition inside each submission
+  - `form.fields` — embed form definition WITH fields (avoids a separate API call)
+  - `form.attributes` — embed form with attributes
+  - `forms` — embed all forms when fetching a kapp
+  - `forms.fields` — embed forms WITH their fields (one call gets kapp → forms → fields)
+  - `forms.details` — embed forms with timestamps (required alongside `forms.fields` to get form metadata)
+  - `forms.indexDefinitions` — embed forms with their index definitions
+  
+  **Performance tip:** Use nested includes to build UIs with a single API call instead of N+1:
+  ```
+  # One call to get a kapp with ALL forms, their fields, and index definitions:
+  GET /kapps/{slug}?include=details,attributes,forms.details,forms.fields,forms.indexDefinitions
+  
+  # One call to get submissions with their parent form's fields:
+  GET /kapps/{slug}/forms/{form}/submissions?include=details,values,form.fields,form.attributes
+  ```
+  
+  **Gotcha:** Using a nested include like `forms.fields` WITHOUT `forms.details` returns forms with ONLY the nested data — no form name, slug, status, etc. Always pair with `forms.details` when you need form metadata.
 - `limit` - Max results to return (see the Pagination skill for details)
 - `pageToken` - For pagination (Core API) — see the Pagination skill
 - `offset` - For pagination (Task API)
@@ -374,6 +392,10 @@ When creating many submissions programmatically:
 - **`/me` response is flat** — properties are at top level (`me.username`), NOT nested under `me.user`
 - **Seed data values may differ from plan labels** — always verify actual field values (e.g., "Prod" vs "Production") before hardcoding dropdown options or CSS class names
 - **`POST /submissions/{id}/submit` does NOT exist** — returns 404. To submit a Draft, use `PUT /submissions/{id}` with `{ "coreState": "Submitted" }`
+- **Team slugs are auto-generated hashes** — the `slug` field you provide in team creation is IGNORED. The API generates its own hash slug. Always read the slug from the create response.
+- **Dropdown fields need `choicesRunIf: null`** — and do NOT support the `rows` property. Each renderType has its own required property set.
+- **New kapp has 0 indexes** — kapp-level indexes must be explicitly created. System indexes (closedBy, createdBy, etc.) only appear on forms.
+- **PUT on submission doesn't return values** — add `?include=values` to the PUT URL to see updated values in the response
 
 ## Finding Workflows for a Kapp/Form
 
