@@ -37,7 +37,7 @@ GET /app/api/v1/kapps/{kappSlug}/forms/{formSlug}/submissions?include=values
 GET /app/api/v1/kapps/{kappSlug}/forms/{formSlug}/submissions?include=details,values
 ```
 
-**Gotcha:** `include=values` does NOT return `createdAt` or `id`. Use `include=details` or `include=details,values` when you need timestamps or identifiers.
+**Gotcha:** `include=values` does NOT return `createdAt` or `updatedAt`. The `id` field IS always present regardless of include. Use `include=details` or `include=details,values` when you need timestamps (`createdAt`, `updatedAt`, `createdBy`, `updatedBy`).
 
 ### Task API Include Behavior
 
@@ -63,15 +63,37 @@ GET /app/components/task/app/api/v2/runs?include=details
 }
 ```
 
-### Collection
+### Collection (Core API)
+Core API collections include a `messages` array alongside the entity key:
 ```json
 {
+  "messages": [],
   "forms": [
     { "slug": "form-1", "name": "Form 1" },
     { "slug": "form-2", "name": "Form 2" }
   ],
   "nextPageToken": "..."
 }
+```
+
+### Collection (Task API)
+Task API uses `count`/`limit`/`offset` pagination (not `nextPageToken`):
+```json
+{
+  "count": 42,
+  "limit": 25,
+  "offset": 0,
+  "runs": [...]
+}
+```
+
+### Collection (Integrator API)
+The Integrator API returns **bare arrays** — not wrapped in an object:
+```json
+[
+  { "name": "ServiceNow Production", "id": "..." },
+  { "name": "Jira", "id": "..." }
+]
 ```
 
 ### Error Response
