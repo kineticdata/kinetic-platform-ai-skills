@@ -453,21 +453,45 @@ The API calls in both workflows (update submission, create submission) should us
 
 Executes a Connection/Operation pair. **This is the preferred handler for all API calls in workflows** — both to external systems and to the Kinetic Platform itself.
 
-| Parameter ID | Name | Required | Description |
-|-------------|------|----------|-------------|
-| `connection` | Connection | Yes | Connection UUID from the Integrator |
-| `operation` | Operation | Yes | Operation UUID from the Integrator |
+**Static parameters (always required):**
 
-The connection and operation are implementation-specific — you create them based on what your workflows need (e.g., an operation to update a submission, an operation to call an external REST API). The handler executes the operation and returns results based on the operation's output mapping.
+| Parameter ID | Description |
+|-------------|-------------|
+| `connection` | Connection UUID |
+| `operation` | Operation UUID |
+
+**Dynamic parameters — `parameters.<Input Name>`:**
+
+Each operation defines inputs (path variables, body fields, query params). These become additional node parameters with the `parameters.` prefix. The parameter ID is `parameters.<name>` where `<name>` matches the operation's input name exactly.
+
+Example — an "Update Submission" operation with path `/submissions/{{Submission Id*}}` and body inputs:
+
+```json
+{
+  "parameters": [
+    {"id": "connection", "value": "<connection-uuid>"},
+    {"id": "operation", "value": "<operation-uuid>"},
+    {"id": "parameters.Submission Id*", "value": "<%= @submission['Id'] %>"},
+    {"id": "parameters.Values [Object]", "value": "{\"Status\": \"Pending Approval\"}"},
+    {"id": "parameters.Core State", "value": "Closed"}
+  ]
+}
+```
+
+ERB expressions work in parameter values — use them to inject workflow context (`@submission`, `@values`, `@results`, `@task`).
+
+**Results:** Depend on the operation's output mapping. Common outputs: `Id`, `_Error`, `_Status Code`.
 
 **Approach:**
 1. Create a Connection in the Integrator (defines the target system, auth, base URL)
-2. Create Operations on the connection (each defines an HTTP method, path, body template, input/output mappings)
-3. Reference the connection and operation UUIDs in the workflow node's parameters
+2. Create Operations on the connection (each defines method, path with `{{param}}` placeholders, body template, input/output mappings)
+3. In the workflow node: set `connection` and `operation` UUIDs, then add `parameters.<name>` entries for each operation input
+
+The connections, operations, and their UUIDs are implementation-specific — you create them based on what your workflows need. The Integrator admin console or API (`/app/integrator/api/connections/{id}/operations`) manages them.
 
 **Why this over direct API handlers:**
 - Operations are reusable across workflows — define once, use everywhere
-- Input/output mappings configured in the operation, not hardcoded per-node
+- Dynamic inputs are named and typed (not raw method/path/body)
 - Authentication managed by the connection (OAuth, API keys, Basic Auth)
 - Visible and manageable in the admin console
 - Changing an API endpoint updates all workflows using that operation
