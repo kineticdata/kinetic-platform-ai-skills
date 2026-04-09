@@ -114,6 +114,8 @@ This metadata can be useful for confirming the token's identity and permissions 
 
 **Gotcha — secrets are always null in responses:** The API redacts secret values. `"secrets": {"Open API Key": null}` means a secret named "Open API Key" exists but its value is hidden. You must set secrets via POST/PUT, and they will never be readable back.
 
+**NEVER modify connection auth credentials via API.** Connection passwords (especially for the built-in "Kinetic Platform" connection) are set when the system is provisioned and should not be changed. The GET response masks passwords as `null` — if you PUT back `password: null` or a different password, you will **permanently break the connection** with no way to recover the original credentials. Only modify non-auth fields (name, description, operations) via API. Auth changes should only be done through the admin console by someone who knows the current credentials.
+
 **Output mapping expression syntax:**
 - `body.teams` — access response body JSON properties
 - `body.teams?.length ?? 0` — null-safe access with default values (JavaScript-style)
