@@ -1,12 +1,14 @@
 ---
 name: workflow-xml
-description: Kinetic workflow XML schema, tree title format, task nodes, flow control, ERB context variables, handler definition IDs, error handling patterns, and triggers API reference.
+description: "Workflow handler reference — handler definition IDs, parameters, loops, deferrals, system_integration_v1 pattern, run debugging API, and common gotchas."
 ---
 
-# Kinetic Workflow XML & API Quick Reference
+# Kinetic Workflow XML & Handler Reference
 
-Quick reference for programmatically working with Kinetic Platform workflows
-via the Task API and understanding the exported XML schema.
+Reference for the Kinetic workflow XML schema, handler definition IDs, node configuration,
+and debugging workflow runs via the Task API.
+
+For creating and managing workflows (tree creation, treeJson upload, sources), see `concepts/workflow-creation`.
 
 ---
 
@@ -38,46 +40,7 @@ The `/trees` endpoint returns all workflows. To find a specific workflow:
 2. Search the JSON array by `name` field (the human-readable name)
 3. Use the `title` field for export (it's the full qualified name)
 
-**Important:** The `title` field differs between Trees and Global Routines (see below).
-
-### Export Response Format
-
-The export endpoint returns JSON with a single `tree` key containing an XML string:
-```json
-{"tree": "<tree schema_version=\"1.0\">...</tree>"}
-```
-Parse the XML string from the `tree` field — it is **not** raw XML.
-
----
-
-## Tree Title Format
-
-### Global Routines
-Title = just the name:
-```
-User Create
-Email Template Notification Send
-Handler Failure Error Process
-```
-
-### Trees (Event-Triggered Workflows)
-Title = `{sourceName} :: {sourceGroup} :: {eventName}`:
-```
-Kinetic Request CE :: bee52c65-dbae-4959-894e-b659e59eaba1 :: User Created
-Kinetic Request CE :: 3d440511-d011-4167-9de4-244a6fc19974 :: Team Updated
-```
-
-Where:
-- **sourceName** = The system generating events (usually `Kinetic Request CE`)
-- **sourceGroup** = UUID of the form/entity, or a named group (`Space`, `WebApis`, etc.)
-- **eventName** = The trigger event (`Submitted`, `Created`, `User Created`, etc.)
-
-### Special Tree Sources
-- `Kinetic Task :: Run Error :: Notify on Run Error` — Task engine errors
-- `Kinops :: System Alert :: Created` — System alerts
-- `Kinetic Request CE :: Space :: Created` — Space-level events
-- `Kinetic Request CE :: WebApis :: sample` — Web API trees
-- `Kinetic Request CE :: WebApis > services :: jdstest` — Nested Web API trees
+**Important:** The `title` field differs between Trees and Global Routines (see `concepts/workflow-creation` for title format).
 
 ---
 
@@ -355,7 +318,7 @@ Loops iterate over data using paired **Loop Head** and **Loop Tail** nodes.
 1. To the loop **body** (the nodes that execute per iteration)
 2. Directly to the **loop_tail** (so the engine knows where the loop ends)
 
-The loop body nodes also connect to the loop_tail. This means the loop_tail receives connectors from BOTH the loop_head AND the last body node. Without the direct `loop_head → loop_tail` connector, the engine cannot properly track loop completion.
+The loop body nodes also connect to the loop_tail. This means the loop_tail receives connectors from BOTH the loop_head AND the last body node. Without the direct `loop_head -> loop_tail` connector, the engine cannot properly track loop completion.
 
 ```
 loop_head ──→ body_node ──→ loop_tail
@@ -786,76 +749,7 @@ The `originator` field on triggers indicates what initiated the activation:
 
 ---
 
-## Creating Trees via API
-
-### POST to Create
-
-```
-POST /app/components/task/app/api/v2/trees
-{
-  "sourceName": "Kinetic Request CE",
-  "sourceGroup": "WebApis > my-kapp",
-  "name": "my-tree",
-  "type": "Tree",
-  "status": "Active",
-  "treeXml": "<taskTree>...</taskTree>"
-}
-```
-
-**Gotcha:** POST creates the tree metadata AND saves the `treeXml` in the same call.
-
-### PUT to Update
-
-```
-PUT /app/components/task/app/api/v2/trees/{url-encoded-title}
-{
-  "treeJson": { ... },
-  "versionId": "0"
-}
-```
-
-**Use `treeJson` for updates** — it's more reliable than `treeXml` for round-trips and properly handles connector logic.
-
-### Handlers API
-
-**`GET /handlers` only returns handlers assigned to a handler category.** Handlers without a category are invisible in the list but still exist and work in trees. You can always fetch a specific handler directly by definition ID: `GET /handlers/{definitionId}?include=parameters,results`.
-
-**Common unlisted handlers** (exist but not categorized by default):
-- `utilities_create_trigger_v1` — complete/update deferred nodes
-- `utilities_defer_v1` — immediately defer and return a token
-- `utilities_echo_v1` — echo input to output (debugging)
-- `system_integration_v1` — execute a Connection/Operation from workflow
-- `system_submission_create_v1` — create a submission from workflow
-
-System handlers (`system_start_v1`, `system_tree_return_v1`, etc.) are built into the engine and cannot be fetched via the handlers API at all — they have no handler record.
-
-To discover ALL handlers on a server (including uncategorized), inspect the `definitionId` values in existing tree definitions via `GET /trees?include=treeJson`, then fetch each handler individually.
-
-**Handler categories** are managed via the Task API:
-```
-GET /categories                          # List handler categories
-```
-Categories have `name`, `description`, and `type` (`"Integrated"` for system, `"Stored"` for user-installed). A handler must be assigned to at least one category to appear in `GET /handlers`.
-
-Handler properties (connection credentials, etc.) are available via `include=properties`:
-```
-GET /handlers/{definitionId}?include=properties
-```
-
-### Sources API
-
-The sources endpoint returns `sourceRoots` (not `sources`):
-```json
-{
-  "count": 3,
-  "sourceRoots": [
-    {"name": "Kinetic Request CE", "status": "Active", "type": "Kinetic Request CE"},
-    {"name": "Kinetic Task", "status": "Active", "type": "Kinetic Task"}
-  ]
-}
-```
-
-### Runs API
+## Runs API
 
 Run IDs are **integers**, not UUIDs. The response includes:
 - `source` — the source that triggered the run

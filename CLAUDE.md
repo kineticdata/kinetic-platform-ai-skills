@@ -30,16 +30,19 @@ When you discover new patterns, corrections, or undocumented behavior, update th
 | Skill | Path | Read when you need to... |
 |-------|------|--------------------------|
 | API Basics | `skills/concepts/api-basics/SKILL.md` | Make any REST API call — endpoints, auth, query params, response shapes, submission CRUD. **Start here for API work.** |
-| Form Engine | `skills/concepts/form-engine/SKILL.md` | Understand form JSON structure, field types and their required properties, events, expressions, K() API. **Start here for form work.** |
+| Form Engine | `skills/concepts/form-engine/SKILL.md` | Understand form JSON schema, field types and their required properties, choices, content, buttons. **Start here for form structure.** |
+| Form Events & Expressions | `skills/concepts/form-events-expressions/SKILL.md` | Form events (load/submit/change/click), K() JavaScript API, expression syntax, bundle.config overrides, form-level integrations |
 | KQL & Indexing | `skills/concepts/kql-and-indexing/SKILL.md` | Write search queries, create indexes, filter submissions. Read when you get KQL errors or need to search. |
 | Pagination | `skills/concepts/pagination/SKILL.md` | Page through results — pageToken, 1000-record cap workarounds, keyset pagination |
 | Workflow Engine | `skills/concepts/workflow-engine/SKILL.md` | Understand workflow concepts (trees, nodes, events, runs), create/manage workflows via Core API, workflow filters |
-| Workflow XML | `skills/concepts/workflow-xml/SKILL.md` | Build workflows programmatically — treeJson format, handler IDs, loops, deferrals, `system_integration_v1` parameters, debugging runs |
+| Workflow XML | `skills/concepts/workflow-xml/SKILL.md` | Handler reference — handler definition IDs, parameters, loops, deferrals, `system_integration_v1` pattern, run debugging API, gotchas |
+| Workflow Creation | `skills/concepts/workflow-creation/SKILL.md` | Create and manage workflows — tree creation via Task API, treeJson upload, title format, handler discovery, sources |
 | Integrations | `skills/concepts/integrations/SKILL.md` | Set up Connections/Operations (preferred), Bridges, or Handlers. Read when wiring up external system calls. |
 | Decision Frameworks | `skills/concepts/decision-frameworks/SKILL.md` | Choose between approaches — which integration type, where to store data, workflow vs real-time |
 | Architectural Patterns | `skills/concepts/architectural-patterns/SKILL.md` | Implement approvals, deferrals, fulfillment queues, SLA tracking, external system sync |
 | WebAPIs & Webhooks | `skills/concepts/webapis-and-webhooks/SKILL.md` | Create custom REST endpoints (WebAPIs) or event-driven triggers (webhooks) |
-| Users, Teams & Security | `skills/concepts/users-teams-security/SKILL.md` | Manage users/teams, write KSL security expressions, define access policies |
+| Users & Teams | `skills/concepts/users-teams-security/SKILL.md` | Manage users/teams — CRUD, memberships, management patterns |
+| Security Policies | `skills/concepts/security-policies/SKILL.md` | KSL security expressions, policy definitions, binding functions, attribute definitions, activities, access control |
 | Models (Data Views) | `skills/concepts/models/SKILL.md` | Query external data from forms via bridge models and bridged resources |
 | Ruby SDK | `skills/concepts/ruby-sdk/SKILL.md` | Script admin operations, bulk imports, migrations using the `kinetic_sdk` gem |
 | Template Provisioning | `skills/concepts/template-provisioning/SKILL.md` | Export/import entire spaces, write install.rb provisioning scripts |
