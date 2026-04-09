@@ -236,6 +236,11 @@ Most submission-driven forms have three categories of fields:
 
 ### Dropdown with Static Choices
 
+**Critical dropdown properties:**
+- **`choicesRunIf: null`** — required, even when not using conditional choices
+- **`choicesResourceName: null`** — required, even for static choices
+- **Do NOT include `rows`** — the `rows` property is not supported on dropdown fields and causes a 400 error
+
 ```json
 {
   "type": "field",
@@ -249,13 +254,14 @@ Most submission-driven forms have three categories of fields:
   "defaultValue": null,
   "defaultDataSource": "none",
   "choicesDataSource": "custom",
+  "choicesRunIf": null,
+  "choicesResourceName": null,
   "choices": [
     { "label": "Plumbing", "value": "Plumbing" },
     { "label": "Electrical", "value": "Electrical" },
     { "label": "HVAC", "value": "HVAC" },
     { "label": "Other", "value": "Other" }
   ],
-  "rows": 1,
   "renderAttributes": {}
 }
 ```
@@ -330,13 +336,14 @@ Most submission-driven forms have three categories of fields:
               "defaultValue": null,
               "defaultDataSource": "none",
               "choicesDataSource": "custom",
+              "choicesRunIf": null,
+              "choicesResourceName": null,
               "choices": [
                 { "label": "Plumbing", "value": "Plumbing" },
                 { "label": "Electrical", "value": "Electrical" },
                 { "label": "HVAC", "value": "HVAC" },
                 { "label": "Other", "value": "Other" }
               ],
-              "rows": 1,
               "renderAttributes": {}
             },
             {
@@ -469,7 +476,8 @@ Most submission-driven forms have three categories of fields:
           "name": "Submit Button",
           "label": "Submit",
           "visible": true,
-          "enabled": true
+          "enabled": true,
+          "renderAttributes": {}
         }
       ]
     }

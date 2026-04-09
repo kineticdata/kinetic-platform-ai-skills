@@ -5,6 +5,39 @@ description: KineticLib setup, CoreForm prerequisites, App auth state machine, V
 
 # Portal Bootstrap and App Context
 
+## Installation
+
+`@kineticdata/react` is published on **public npm**:
+
+```bash
+npm install @kineticdata/react
+```
+
+For new portals, the [momentum-portal](https://github.com/kineticdata/momentum-portal) is the reference project with everything pre-configured.
+
+### What to use from the package
+
+The package exports 150+ components, but most are for Kinetic's internal admin consoles. **For portal development, use:**
+
+| Export | Purpose |
+|--------|---------|
+| `KineticLib` | Wraps the app — manages auth, provides render props |
+| `CoreForm` | Renders Kinetic forms (the primary UI component) |
+| `fetchSpace`, `fetchKapp`, `fetchProfile`, etc. | API fetch functions for reading data |
+| `searchSubmissions`, `fetchSubmission` | Submission queries |
+| `createSubmission`, `updateSubmission`, `deleteSubmission` | Submission mutations |
+| `saveSubmissionMultipart` | File upload with submissions |
+| `getCsrfToken` | CSRF token for custom fetch calls |
+| `bundle` | Access to `bundle.apiLocation()`, `bundle.kappSlug()`, etc. |
+| `generateKey` | Unique key generation |
+| `defineKqlQuery`, `defineFilter` | Fluent query builders |
+| `I18n`, `I18nProvider` | Internationalization |
+| `Table`, `SimpleForm` | Optional — reusable data table and simple form components |
+
+Components like `TreeBuilder`, `HandlerTable`, `EngineSettingsForm`, `SystemForm`, etc. are **admin-console-only** — not intended for customer portal use.
+
+The SDK wraps the platform APIs so that if the underlying API changes, customers only need to bump to the latest SDK version rather than rewrite API calls.
+
 ## Mandatory API Client Rule
 
 Use `@kineticdata/react` as the API client for all Kinetic interactions in portal code. Bootstrap patterns must start with `KineticLib` and data access should use library primitives (`fetch*`, `searchSubmissions`). Only fall back to `bundle.apiLocation()` + `getCsrfToken()` if an endpoint has no exported helper.
@@ -21,27 +54,33 @@ This causes `_unmounted` to be permanently `true` after the first unmount cycle.
 
 **Fix: never wrap a Kinetic portal in `<React.StrictMode>`.**
 
-```jsx
-// main.jsx — CORRECT
-ReactDOM.createRoot(document.getElementById("root")).render(
-  <HashRouter>
-    <KineticLib globals={globals} locale="en">
-      {kineticProps => <App {...kineticProps} />}
-    </KineticLib>
-  </HashRouter>,
-);
+## Entry Point Ordering
 
-// WRONG — CoreForm will never render in dev mode
-ReactDOM.createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <HashRouter>
-      <KineticLib ...>
-        {kineticProps => <App {...kineticProps} />}
-      </KineticLib>
-    </HashRouter>
-  </React.StrictMode>,
+The momentum-portal uses **Provider > KineticLib > HashRouter > App**, but the ordering depends on your implementation. The key constraint is that `KineticLib` must wrap any component that uses `CoreForm` or Kinetic fetch helpers:
+
+```jsx
+// index.jsx — CORRECT (matches momentum-portal)
+import { KineticLib } from '@kineticdata/react';
+import { HashRouter } from 'react-router-dom';
+import { Provider } from 'react-redux';
+import { store } from './redux.js';
+
+const globals = import('./components/kinetic-form/globals.jsx');
+
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <Provider store={store}>
+    <KineticLib globals={globals} locale="en">
+      {kineticProps => (
+        <HashRouter>
+          <App {...kineticProps} />
+        </HashRouter>
+      )}
+    </KineticLib>
+  </Provider>,
 );
 ```
+
+**Key constraint:** `KineticLib` must wrap any component using `CoreForm` or Kinetic fetch helpers. Beyond that, the ordering of `Provider`, `HashRouter`, etc. is up to your implementation. The only hard rule is no `<React.StrictMode>` (see above).
 
 ---
 
@@ -553,3 +592,53 @@ Use `HashRouter` (not `BrowserRouter`) for Vite-proxied portals. With `BrowserRo
   </KineticLib>
 </HashRouter>
 ```
+
+---
+
+## Reference Implementation: momentum-portal
+
+The [momentum-portal](https://github.com/kineticdata/momentum-portal) is the canonical reference for building Kinetic Platform React portals. Key architectural patterns:
+
+### Tech Stack
+- `@kineticdata/react` ^6.1.1, React 18, React Router v6 (HashRouter)
+- `@reduxjs/toolkit` with dynamic slice injection via `regRedux()`
+- Tailwind CSS v4 + DaisyUI v5 + custom CSS variables for theming
+- Ark UI headless components (Popover, Combobox, Toast, Portal)
+- Vite build with proxy to Kinetic server
+
+### Key Patterns
+
+**Kapp slug from space attribute:** The portal kapp slug comes from the space attribute `"Service Portal Kapp Slug"`, defaulting to `"service-portal"`.
+
+**Dynamic Redux slices:** `regRedux(name, initialState, reducers)` creates a Redux Toolkit slice, injects it into the root reducer, and returns pre-bound action dispatchers (no `dispatch()` needed):
+```jsx
+const appActions = regRedux('app', { space: null, profile: null }, {
+  setSpace: (state, action) => { state.space = action.payload; },
+});
+appActions.setSpace(data); // dispatches automatically
+```
+
+**Responsive design via Redux:** A `view` slice tracks `{ width, size, mobile, tablet, desktop }` via resize listener, consumed with `useSelector(s => s.view.mobile)`.
+
+**Portal-based layout:** Header/footer render into placeholder DOM elements via Ark UI `<Portal>`:
+```html
+<header id="app-header" />
+<main id="app-main"><!-- React renders here --></main>
+<footer id="app-footer" />
+```
+
+**Theme system:** Theme config stored as JSON in a kapp attribute `"Theme"`, parsed at runtime, converted to CSS variables, and applied via `document.adoptedStyleSheets`.
+
+**Widget system:** Standalone React mini-apps rendered inside CoreForm fields via `bundle.widgets.Search(...)`. Widgets: Markdown, Search, Signature, Subform, Table.
+
+**Form lifecycle callbacks:**
+- `created` → navigate to submission route + toast
+- `updated` → toast "save successful"
+- `completed` → navigate away
+- `loaded` → capture form reference
+
+**URL → field values:** `valuesFromQueryParams(searchParams)` parses `?values[Field Name]=value` from URL into `{ "Field Name": "value" }` for pre-filling forms.
+
+**Confirmation modal:** Global `ConfirmationModal` at root, triggered via `openConfirm({ title, description, accept, cancel })` from anywhere.
+
+**Toast system:** Ark UI `createToaster` wrapper with `toastSuccess({ title })` / `toastError({...})` helpers.

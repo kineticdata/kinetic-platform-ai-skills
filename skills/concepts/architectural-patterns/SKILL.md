@@ -115,7 +115,9 @@ This routine contains the deferral step, creates the approval submission, waits,
 }
 ```
 
-The workflow reads the `Notification Template Name - Create` attribute to determine which email template to send when the approval is created. This allows different forms to use different notification templates without changing the workflow.
+The workflow reads this attribute to determine which email template to send. This allows different forms to use different notification templates without changing the workflow.
+
+**Important:** The `smtp_email_send` handler is a **built-in handler** that can be configured with SMTP credentials to send emails. However, there is no built-in email **templating** system. Email templates are an **implementation-specific pattern** — typically built by storing templates as form submissions (in a datastore form), with a workflow routine that fetches the template and does string replacement for variables before passing the result to `smtp_email_send`.
 
 ---
 

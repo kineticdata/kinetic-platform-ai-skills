@@ -129,11 +129,17 @@ DELETE /app/api/v1/models/{name}# Delete model
 
 ### Activity Metrics
 
-Returns submission counts by kapp for the space:
+Returns submission counts by kapp for the space. The response includes two arrays:
+- `submissionBreakdown` — total submission counts per kapp (uses kapp `name` as `category`)
+- `submissionVolume` — time-series data with per-kapp submission counts by date
 
 ```bash
 GET /app/api/v1/activity
-# Response: { "submissionBreakdown": [{ "category": "Services", "value": 1000 }, ...] }
+# Response:
+# {
+#   "submissionBreakdown": [{ "category": "Services", "value": 1000 }, ...],
+#   "submissionVolume": [{ "category": "2026-03-10", "series": "Services", "value": 42 }, ...]
+# }
 ```
 
 ### Platform Version
@@ -238,9 +244,17 @@ Content-Type: application/json
 ## Query Parameters
 
 - `include` - Comma-separated list of additional properties to return. Supports **dot notation** for nested includes:
-  - `values` — form field values (but NOT system timestamps like `createdAt`)
+  - `values` — form field values (also returns `closedAt`, `closedBy`, `submittedAt`, `submittedBy`, `type` but NOT `createdAt`)
   - `details` — system fields (`createdAt`, `updatedAt`, `createdBy`, `updatedBy`, etc.)
   - `details,values` — both timestamps and field values
+  - `values.raw` — field values keyed by field key (not name), with metadata: `isMalformed`, `isUnexpected`, `name`, `rawValue`, `value`. Useful for debugging, accessing orphaned field values after field deletion, and troubleshooting type mismatches
+  - `values[Field Name]` — selective include of specific field values (see below)
+  - `activities` — submission activity records
+  - `children` — child submissions (for parent-child relationships)
+  - `descendants` — all descendant submissions (children, grandchildren, etc.)
+  - `origin` — the originating submission (if this is a child)
+  - `parent` — the direct parent submission
+  - `authorization` — permission check: `{"Access": true, "Modification": true, "Support": true}`
   - `form` — embed the parent form definition inside each submission
   - `form.fields` — embed form definition WITH fields (avoids a separate API call)
   - `form.attributes` — embed form with attributes
@@ -278,7 +292,7 @@ Content-Type: application/json
 
 ### Query Parameters That Do NOT Exist
 
-The Core API submission endpoints do **not** support `timeline` or `direction` parameters. Passing these will cause a **400 error**. Submissions are returned in `createdAt` descending order by default. There is no way to change the sort order except via `orderBy` (which is only valid with range queries).
+The `direction` parameter controls sort order: `ASC` or `DESC` (default). Submissions are returned in `createdAt` descending order by default. The `direction` parameter works alongside `orderBy` to control sorting.
 
 ## Response Format
 
@@ -357,12 +371,35 @@ API.displayName = me.displayName || me.username || me.user?.displayName || me.us
 
 ## Submission Update
 
-Two approaches for updating field values:
+Use `PUT /submissions/{id}` with `{ "values": { "Field": "NewValue" } }` to update field values. Can also update `coreState` and other submission-level properties in the same call.
 
-- **`PUT /submissions/{id}/values`** with `{ "Field": "NewValue" }` — updates only the specified field values. Body is a flat key-value object (NOT wrapped in `{ "values": ... }`). This is the preferred approach for partial field updates.
-- **`PUT /submissions/{id}`** with `{ "values": { "Field": "NewValue" } }` — full submission update. Body wraps values under a `values` key. Can also update `coreState` and other submission-level properties.
+Updates are **partial** — only included fields change; omitted fields are untouched.
 
-Both are partial — only included fields change; omitted fields are untouched.
+**Note:** `PUT /submissions/{id}/values` does **NOT** exist (returns 404). Always use the main submission PUT endpoint with a `values` wrapper.
+
+### Core State Transitions
+
+The `coreState` follows a **one-way state machine**: `Draft` → `Submitted` → `Closed`
+
+| Transition | Allowed | Notes |
+|------------|---------|-------|
+| Draft → Submitted | Yes | Enforces field validation (required, constraints) |
+| Draft → Closed | Yes | Skips Submitted state |
+| Submitted → Closed | Yes | |
+| Closed → Submitted | **No** | Error: "Unable to put a closed submission in the 'Submitted' core state" |
+| Closed → Draft | **No** | Same error |
+| Submitted → Draft | **No** | Cannot go backwards |
+| Create as Draft | Yes | Bypasses ALL validation (required, constraints) |
+| Create as Submitted | Yes | Enforces validation |
+| Create as Closed | Yes | Skips intermediate states |
+
+Only three valid coreState values: `"Draft"`, `"Submitted"`, `"Closed"`. Custom statuses (Active, Pending, etc.) must be stored in a custom `values[Status]` field, not in `coreState`.
+
+**Why Draft exists:** Draft lets workflows create submissions programmatically without triggering validation. Example: an approval workflow creates a submission with `coreState: "Draft"` pre-filled with the approver and request details. The "Decision" field is required, but since the record is a Draft, validation is skipped. When the approver opens the form and submits their decision, the coreState transitions to "Submitted" and validation fires — ensuring the Decision field is filled in.
+
+Once Submitted, a submission can never return to Draft (only a space admin can do this via PATCH). **Closed** is typically set by workflow to mark a submission as done. Its usage is implementation-specific — some customers archive closed submissions after a retention period.
+
+A space admin can use `PATCH /submissions/{id}` to force any state transition (including backwards), bypassing all validation and state rules. PATCH is the escape hatch for data corrections.
 
 ## Form and Submission Gotchas
 
@@ -392,7 +429,8 @@ When creating many submissions programmatically:
 - Tree names/titles are used as identifiers in URLs, not slugs
 - Submission search via POST exists for when query strings get too long
 - The `include` parameter is important — without it, responses may be minimal
-- **Do NOT pass `timeline` or `direction` query parameters** — they don't exist in the Core API and will cause 400 errors
+- **`direction` parameter** — `ASC` or `DESC` (default) on submission search endpoints. Works with `orderBy`.
+- **`timeline` parameter** — only valid on the Task API triggers endpoint, NOT on Core API submission endpoints
 - **Never table-scan large forms** — always use KQL `values[Field] = "value"` or `IN ()` queries; forms may have millions of records
 - **Submitting values for undefined fields returns 500** — verify field names first
 - **Bulk submission creation triggers active workflows** — plan for this if trees are bound to submission events
@@ -400,9 +438,15 @@ When creating many submissions programmatically:
 - **Seed data values may differ from plan labels** — always verify actual field values (e.g., "Prod" vs "Production") before hardcoding dropdown options or CSS class names
 - **`POST /submissions/{id}/submit` does NOT exist** — returns 404. To submit a Draft, use `PUT /submissions/{id}` with `{ "coreState": "Submitted" }`
 - **Team slugs are auto-generated hashes** — the `slug` field you provide in team creation is IGNORED. The API generates its own hash slug. Always read the slug from the create response.
-- **Dropdown fields need `choicesRunIf: null`** — and do NOT support the `rows` property. Each renderType has its own required property set.
+- **Dropdown fields need `choicesRunIf: null` AND `choicesResourceName: null`** — and do NOT support the `rows` property. Each renderType has its own required property set.
+- **Button elements need `renderAttributes: {}`** — omitting this on submit buttons causes a 400 error
 - **New kapp has 0 indexes** — kapp-level indexes must be explicitly created. System indexes (closedBy, createdBy, etc.) only appear on forms.
+- **Kapp-level `values[FieldName]` indexes CANNOT be created via REST API** — they return "field was not found" for ANY form field. These only exist on kapps set up via template import. Use system field indexes (`coreState`, `submittedBy`, `type`) for cross-form search via REST API.
+- **Kapp `formTypes` must be registered for `type` KQL** — `PUT /kapps/{kapp}` with `{"formTypes": [{"name": "Service"}]}` before `type` indexes return results
 - **PUT on submission doesn't return values** — add `?include=values` to the PUT URL to see updated values in the response
+- **Form type "Service" is a dependency placeholder** — if submission creation returns `"The 'Service' definition is a dependency placeholder"`, the form type definition is incomplete. Register formTypes on the kapp.
+- **Task API sources endpoint returns `sourceRoots`** — not `sources`. The response key is `sourceRoots`, not `sources`.
+- **WebAPI invocation URL differs from admin API** — invoke at `/app/kapps/{kapp}/webApis/{slug}`, NOT at `/app/api/v1/kapps/{kapp}/webApis/{slug}`. Pass `?timeout=N` for synchronous response.
 
 ## Finding Workflows for a Kapp/Form
 

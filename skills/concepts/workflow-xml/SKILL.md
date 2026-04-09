@@ -284,13 +284,18 @@ Results are accessed by **task name**, then **result key**:
 |---------------|---------|----------------|
 | `system_start_v1` | Entry point — always `id="start"` | None |
 | `system_tree_return_v1` | Return node — params vary by tree type (see below) | Varies |
-| `system_wait_v1` | Deferred wait | `Time to wait` (required), `Time unit` (menu: Second,Minute,Hour,Day,Week) |
-| `system_noop_v1` | No-op passthrough (merge/gate node). Safely ignores unknown parameters — can be used as comment/annotation nodes | None |
-| `system_join_v1` | Coordinates multiple incoming connectors | `type` (menu: All/Any/Some), `number` |
-| `system_junction_v1` | Looks backward through branches to common parent | None |
-| `system_loop_head_v1` | Loop entry. Iterations execute in parallel | `data_source` (required), `loop_path` (required), `var_name` |
-| `system_loop_tail_v1` | Loop exit | `type` (menu: All/Any/Some), `number` |
-| `system_tree_call` | Handler used by `<taskDefinition>` | None |
+| `system_wait_v1` | Deferred wait — pauses workflow for a duration | `Time to wait` (required), `Time unit` (menu: Second,Minute,Hour,Day,Week) |
+| `system_noop_v1` | No-op passthrough (merge/gate node) | None |
+| `system_join_v1` | Waits for immediate incoming connectors | `type` (menu: All/Any/Some), `number` |
+| `system_junction_v1` | Waits for entire branches back to common parent | None |
+| `system_loop_head_v1` | Loop entry — iterations execute **in parallel** | `data_source` (required), `loop_path` (required), `var_name` |
+| `system_loop_tail_v1` | Loop exit — determines when loop is done | `type` (menu: All/Any/Some), `number` |
+| `system_tree_call` | Handler used by `<taskDefinition>` for routines | None |
+| `utilities_create_trigger_v1` | Completes or updates a deferred node | `action_type` (required), `deferral_token` (required), `deferred_variables`, `message` |
+| `utilities_defer_v1` | Immediately returns deferral token then defers | `deferral_value` (optional initial value) |
+| `utilities_echo_v1` | Returns its input unchanged (useful for debugging) | `input` (required) |
+| `system_integration_v1` | Executes a Connection/Operation | `connection` (required, ID), `operation` (required, ID) |
+| `system_submission_create_v1` | Creates a submission from workflow | `kappSlug`, `formSlug`, `coreState`, `currentPage`, `origin`, `parent` |
 
 ### Return Node Parameter Rules (CRITICAL)
 
@@ -303,23 +308,162 @@ Results are accessed by **task name**, then **result key**:
 | `response_code` | yes | HTTP status code, e.g. `200` |
 | `headers_json` | no | Extra response headers as JSON |
 
-**Event-triggered trees** (non-WebAPI) — Return node uses:
-
-| Parameter | Description |
-|-----------|-------------|
-| `status` | Completion status string (e.g., `Complete`) |
-| `description` | Description/summary of the result |
-
 **Routine trees** — Return node uses custom output parameter IDs matching the routine's declared outputs.
+
+**Event-triggered form trees — DO NOT use `system_tree_return_v1`!** Regular form-triggered workflows (e.g., "Submission Submitted") do NOT need a Return node. The workflow completes naturally when all nodes finish. Adding `system_tree_return_v1` to a form workflow causes `ENGINE Run Error` because it expects `headers_json` (WebAPI context) or routine output parameters. Just let the tree end after the last node.
 
 `system_tree_return_v1` has **dynamic configuration** — it adapts expected parameters based on tree type. Using wrong parameter IDs causes `ENGINE Run Error` — the Return node stays at status "New", and WebAPI invocations return `{"errorKey":"run_results_error"}`.
 
 **Note:** `system_return_v1` is NOT a valid handler — it causes `Missing Handler Error` at runtime.
 
-### API Handlers
-| Definition ID | Purpose |
-|---------------|---------|
-| `kinetic_core_api_v1` | Make REST API calls to Kinetic Core |
+### Joins vs Junctions
+
+Both reconverge parallel branches, but with different logic:
+
+**`system_join_v1`** — evaluates only **immediate incoming connectors**:
+- `type: "All"` — waits for every connector to arrive
+- `type: "Any"` — proceeds as soon as one connector arrives
+- `type: "Some"` — proceeds after `number` connectors arrive (set `number` parameter)
+
+**`system_junction_v1`** — traces back through **entire branches to a common parent node**:
+- No parameters — evaluates whether each branch is "complete as possible"
+- A branch is complete when: no deferred nodes are waiting, and all evaluable connectors have been evaluated
+- Branches that evaluate to false (never reach the junction) still count as complete
+- **Caution:** Junctions wait for deferred nodes indefinitely. Be careful about placing deferrable nodes on branches leading to a junction.
+
+Use **Join** when you have a fixed number of parallel paths. Use **Junction** when branches may conditionally execute and you want to proceed once all possible work is done.
+
+### Loops
+
+Loops iterate over data using paired **Loop Head** and **Loop Tail** nodes.
+
+**`system_loop_head_v1`** parameters:
+- `data_source` (required) — the data to iterate over. Can be:
+  - Output from a previous node: `<%= @results['Fetch Users']['Response Body'] %>`
+  - Submission values (for arrays like checkbox fields): `<%= @values["Selected Users"] %>`
+  - XML constructed inline: `<items><%= ... %></items>`
+- `loop_path` (required) — XPath for XML (`//user/id`) or JSONPath for JSON (`$[*]`) identifying records. **Note:** JSONPath uses `$[*]` (no dot after `$`), or `$[*].property` for nested extraction.
+- `var_name` (optional) — variable name for current iteration value
+
+**`system_loop_tail_v1`** parameters:
+- `type` (menu: All/Any/Some) — when the loop completes
+- `number` — for "Some" type, how many iterations must complete
+
+**Critical:** Loop iterations execute **in parallel**, not sequentially. There is no `for` loop or `do while` concept. For sequential processing, use recursive routines instead.
+
+**Critical: Loop connector pattern.** The loop_head MUST have **two outgoing Complete connectors**:
+1. To the loop **body** (the nodes that execute per iteration)
+2. Directly to the **loop_tail** (so the engine knows where the loop ends)
+
+The loop body nodes also connect to the loop_tail. This means the loop_tail receives connectors from BOTH the loop_head AND the last body node. Without the direct `loop_head → loop_tail` connector, the engine cannot properly track loop completion.
+
+```
+loop_head ──→ body_node ──→ loop_tail
+    │                           ↑
+    └───────────────────────────┘  (direct connector)
+```
+
+**Loop head results:**
+- `data` — the parsed data in internal format
+- `mode` — number of iterations  
+- `size` — number of items found
+- `variable_name` — the var_name parameter value
+
+**Per-iteration results (accessed within the loop):**
+- `Index` — zero-based iteration index
+- `Value` — the current item's value (extracted by loop_path)
+
+**Accessing loop values:**
+- Inside the loop: `<%= @results['Loop Head Node Name']['Value'] %>` returns the current iteration's value
+- Outside the loop: results become a Ruby hash indexed by iteration: `<%= @results['Echo Node'][0]["output"] %>` for first iteration's output
+
+**Verified working example** — looping over checkbox field values:
+```json
+{
+  "nodes": [
+    {"name": "Loop Users", "definitionId": "system_loop_head_v1",
+     "parameters": [
+       {"id": "data_source", "value": "<%= @values[\"Selected Users\"] %>"},
+       {"id": "loop_path", "value": "$[*]"},
+       {"id": "var_name", "value": "username"}
+     ],
+     "dependents": {"task": [
+       {"type": "Complete", "content": "echo_node_id"},
+       {"type": "Complete", "content": "loop_tail_id"}
+     ]}},
+    {"name": "Echo Name", "definitionId": "utilities_echo_v1",
+     "parameters": [
+       {"id": "input", "value": "User: <%= @results[\"Loop Users\"][\"Value\"] %>"}
+     ],
+     "dependents": {"task": [
+       {"type": "Complete", "content": "loop_tail_id"}
+     ]}},
+    {"name": "End Loop", "definitionId": "system_loop_tail_v1",
+     "parameters": [
+       {"id": "type", "value": "All"}
+     ]}
+  ]
+}
+```
+
+### Deferrals
+
+Deferrals pause a workflow node and wait for an external signal to resume.
+
+**Making a node deferrable:** Set `defers: true` and `deferrable: true` on the node. The node executes its action, then enters a waiting state.
+
+**Connector types on deferrable nodes:**
+- **Create** (dotted line) — fires immediately when the node enters deferral
+- **Update** (dashed line) — fires each time an Update action is received
+- **Complete** (solid line) — fires when the node is completed
+
+**Resuming a deferred node** — use `utilities_create_trigger_v1`:
+
+| Parameter ID | Name | Required | Description |
+|-------------|------|----------|-------------|
+| `action_type` | Action Type | Yes | `"Complete"` or `"Update"` |
+| `deferral_token` | Deferral Token | Yes | Token identifying the deferred node (typically stored in a submission field) |
+| `deferred_variables` | Deferred Results | No | XML results: `<results><result name="Key">Value</result></results>` |
+| `message` | Message | No | Plain text message |
+
+**Results:** `trigger_id`, `run_id`
+
+**Accessing the deferral token:** Within a workflow, use `<%= @task['Deferral Token'] %>` to get the current node's token. Typically this is written to a submission field (e.g., `values[Deferral Token]`) so that a separate workflow can later complete the deferral.
+
+**Common pattern:** An approval workflow creates a submission in Draft with the deferral token stored in a field. When the approver submits their decision, a "Submission Submitted" tree reads the token and calls `utilities_create_trigger_v1` with `action_type: "Complete"` to resume the original workflow.
+
+### API Handler — `kinetic_core_api_v1` (Legacy)
+
+Makes REST API calls to Kinetic Core. **Prefer Connections/Operations for new workflows** — this handler is a legacy approach. It's still useful for one-off API calls where building a full operation isn't worth the effort, but Connections/Operations should be the default.
+
+Configured with `api_username`, `api_password`, `api_location` properties.
+
+| Parameter ID | Name | Required | Menu | Description |
+|-------------|------|----------|------|-------------|
+| `error_handling` | Error Handling | Yes | `Error Message,Raise Error` | How to handle errors |
+| `method` | Method | Yes | `GET,POST,PUT,PATCH,DELETE` | HTTP method (defaults to GET) |
+| `path` | Path | Yes | — | API path (e.g., `/kapps/:kappSlug/forms/:formSlug`) |
+| `body` | Body | No | — | JSON body for POST/PUT/PATCH |
+
+**Results:** `Response Body`, `Response Code`, `Handler Error Message`
+
+### Email Handler — `smtp_email_send_v1`
+
+Sends emails via SMTP. Configured with `server`, `port`, `tls`, `username`, `password` properties.
+
+| Parameter ID | Name | Required | Description |
+|-------------|------|----------|-------------|
+| `error_handling` | Error Handling | Yes | `Error Message` or `Raise Error` |
+| `from` | From (Email Address) | Yes | Sender email address |
+| `to` | To (Email Address) | Yes | Recipient email address |
+| `bcc` | Bcc (Email Address) | No | BCC recipient |
+| `subject` | Subject | No | Email subject line |
+| `htmlbody` | HTML Body | No | Rich HTML email body |
+| `textbody` | Alternate (text) Body | No | Plaintext fallback for non-HTML clients |
+
+**Results:** `Handler Error Message`, `Message Id`
+
+**Tip:** Use `include=parameters,results` on the handlers API to discover parameters for any handler: `GET /handlers/{definitionId}?include=parameters,results`
 
 ### Routine Calls (subroutines)
 Routine definition IDs follow the pattern: `routine_kinetic_{entity}_{action}_v1`
@@ -576,6 +720,135 @@ The `originator` field on triggers indicates what initiated the activation:
 
 ---
 
+## Creating Trees via API
+
+### POST to Create
+
+```
+POST /app/components/task/app/api/v2/trees
+{
+  "sourceName": "Kinetic Request CE",
+  "sourceGroup": "WebApis > my-kapp",
+  "name": "my-tree",
+  "type": "Tree",
+  "status": "Active",
+  "treeXml": "<taskTree>...</taskTree>"
+}
+```
+
+**Gotcha:** POST creates the tree metadata AND saves the `treeXml` in the same call.
+
+### PUT to Update
+
+```
+PUT /app/components/task/app/api/v2/trees/{url-encoded-title}
+{
+  "treeJson": { ... },
+  "versionId": "0"
+}
+```
+
+**Use `treeJson` for updates** — it's more reliable than `treeXml` for round-trips and properly handles connector logic.
+
+### Handlers API
+
+**`GET /handlers` only returns handlers assigned to a handler category.** Handlers without a category are invisible in the list but still exist and work in trees. You can always fetch a specific handler directly by definition ID: `GET /handlers/{definitionId}?include=parameters,results`.
+
+**Common unlisted handlers** (exist but not categorized by default):
+- `utilities_create_trigger_v1` — complete/update deferred nodes
+- `utilities_defer_v1` — immediately defer and return a token
+- `utilities_echo_v1` — echo input to output (debugging)
+- `system_integration_v1` — execute a Connection/Operation from workflow
+- `system_submission_create_v1` — create a submission from workflow
+
+System handlers (`system_start_v1`, `system_tree_return_v1`, etc.) are built into the engine and cannot be fetched via the handlers API at all — they have no handler record.
+
+To discover ALL handlers on a server (including uncategorized), inspect the `definitionId` values in existing tree definitions via `GET /trees?include=treeJson`, then fetch each handler individually.
+
+**Handler categories** are managed via the Task API:
+```
+GET /categories                          # List handler categories
+```
+Categories have `name`, `description`, and `type` (`"Integrated"` for system, `"Stored"` for user-installed). A handler must be assigned to at least one category to appear in `GET /handlers`.
+
+Handler properties (connection credentials, etc.) are available via `include=properties`:
+```
+GET /handlers/{definitionId}?include=properties
+```
+
+### Sources API
+
+The sources endpoint returns `sourceRoots` (not `sources`):
+```json
+{
+  "count": 3,
+  "sourceRoots": [
+    {"name": "Kinetic Request CE", "status": "Active", "type": "Kinetic Request CE"},
+    {"name": "Kinetic Task", "status": "Active", "type": "Kinetic Task"}
+  ]
+}
+```
+
+### Runs API
+
+Run IDs are **integers**, not UUIDs. The response includes:
+- `source` — the source that triggered the run
+- `sourceId` — the submission UUID that triggered it (for form-triggered trees)
+- `tree` — embedded tree metadata
+- `status` — `Started`, `Completed`, `Failed`
+
+**Note:** Creating submissions on forms that have active workflow trees will automatically generate runs. Plan for this during bulk data creation.
+
+**Note:** Form-triggered workflows (non-WebAPI, non-routine) that have no `system_tree_return_v1` will remain in `Started` status permanently. This is normal — the workflow ran to completion, but the engine only sets `Completed` when a tree_return node executes.
+
+### Debugging Workflow Runs
+
+Use the detailed include parameters on the runs API to diagnose failures:
+
+```
+GET /runs/{runId}?include=details,triggers,triggers.details,tasks,tasks.details,exceptions,exceptions.details,exceptions.text,exceptions.messages,sourceData,inputs,outputs,tree.inputs,audits.details
+```
+
+**Key include options:**
+
+| Include | Returns |
+|---------|---------|
+| `tasks` | All node executions with status, nodeId, nodeName, loopIndex |
+| `tasks.details` | Adds timestamps, task IDs |
+| `triggers` | All triggers (Root, loop iterations, failures) with status |
+| `triggers.details` | Adds engineIdentification, originator |
+| `exceptions` | Handler errors with summary |
+| `exceptions.text` | Full stack traces and root cause analysis |
+| `exceptions.messages` | Associated messages |
+| `sourceData` | Complete JSON payload that triggered the run (event, form, kapp, space, submission, values) |
+| `inputs` | Tree input values |
+| `outputs` | Tree output values (for routines/WebAPIs) |
+| `audits.details` | Manual modifications to run data |
+
+**Task statuses:** `New` (not yet executed), `Closed` (completed), `Deferred` (waiting for external signal)
+
+**Trigger statuses:** `Closed` (success), `Failed` (error — check exceptions), `New` (not yet processed)
+
+**Loop iteration tracking:** Tasks within a loop have a `loopIndex` field. Root-level tasks show `/`, while loop iterations show `/N#I` (e.g., `/2#0` = node 2, iteration 0).
+
+**Diagnosing failures:**
+1. Check `exceptions` — the `summary` field gives a one-line error description
+2. Check `exceptions.text` — includes `PROBLEM`, `ROOT CAUSE`, and `STACK TRACE` sections
+3. Check `tasks` — look for tasks with `status: "New"` (never executed) to find where the workflow stopped
+4. Check `triggers` — look for `status: "Failed"` triggers with `originator: "ENGINE Run Error"`
+
+**Common errors:**
+- `No elements match the xpath query '//results/result[@name='X']'` — handler expects a parameter/result that wasn't provided (e.g., `headers_json` on tree_return)
+- `Unable to retrieve hash value for key 'X'` — referencing an unexecuted or missing node name in `@results`
+- `nil:NilClass` — null value where a value was expected (check ERB expressions)
+
+**Run management actions (via console):**
+- **Run Again** — re-run with same inputs (creates new run)
+- **Create Manual Trigger** — restart a failed branch
+- **Retry Task** or **Skip Task** — for individual node failures
+
+---
+
 ## Tips & Gotchas
 
 - **URL encoding:** Tree titles with spaces and `::` must be URL-encoded for API calls
@@ -590,3 +863,9 @@ The `originator` field on triggers indicates what initiated the activation:
 - **`treeJson` is more reliable than XML for round-trips** — use `include=treeJson` on GET and `treeJson` in PUT body. The `/export` endpoint may return incorrect XML on some servers.
 - **Optimistic locking on tree PUT** — `versionId` is enforced. Always GET the tree first to retrieve current `versionId`. Must be a **string** in the PUT body. Stale values return HTTP 400 `stale_record`.
 - **Both Core API and Task API return HTTP 400 (not 409) for duplicate names** — error body: `{"errorKey":"uniqueness_violation"}`
+- **System handlers are invisible in the handlers API** — `system_start_v1`, `system_tree_return_v1`, `system_noop_v1`, etc. don't appear in `GET /handlers` but work in tree definitions
+- **Handler export endpoint does not exist** — `GET /handlers/{id}/export` returns 404. Handlers are imported via ZIP files through the Ruby SDK, not exported via REST API.
+- **WebAPI Return node requires `headers_json`** — omitting this parameter causes RuntimeError at runtime even though it appears optional
+- **Do NOT add `system_tree_return_v1` to form-triggered workflows** — tree_return is ONLY for: (1) WebAPIs that need to return a response, (2) Routines where the parent workflow awaits results. Form-triggered trees complete naturally when all nodes finish. Adding tree_return causes `ENGINE Run Error` because it expects WebAPI/routine context.
+- **Loop head must connect to BOTH body AND tail** — the `system_loop_head_v1` node needs two outgoing Complete connectors: one to the loop body and one directly to `system_loop_tail_v1`. Without the direct connector to the tail, the engine cannot track loop completion.
+- **JSONPath uses `$[*]` not `$.[*]`** — no dot between `$` and `[`. For nested extraction: `$[*].user.username`

@@ -362,6 +362,16 @@ Available adapters discoverable via `GET /meta/sourceAdapters`.
 - **Form-level:** `POST /kapps/{kapp}/forms/{form}/workflows` — fires only for that form
 - Both share the same tree infrastructure in the Task API
 
+### Architecture: Core vs Task
+
+The Workflow Engine (Task) is a **separate web app** that runs independently from Core (the forms engine). However, the Task API is proxied through Core at `/app/components/task/app/api/v2/...` — this is the recommended way to access Task because Core applies permissions. Never call the Task engine host directly in production.
+
+**CRUD pattern:**
+1. **Create** workflow via Core: `POST /app/api/v1/kapps/{kapp}/forms/{form}/workflows` — this creates the tree AND registers it with the form
+2. **Update** workflow (including uploading tree definition) via Core: `PUT /app/api/v1/workflows/{id}` — use `treeXml` or `treeJson` in the body
+3. **Read** tree details, triggers, runs via Core-proxied Task API: `/app/components/task/app/api/v2/trees/{title}`, `/runs`, `/triggers`
+4. **Delete** workflow via Core: `DELETE /app/api/v1/workflows/{id}`
+
 ### Why NOT Task API for Workflow Creation
 
 - `PUT /trees/{title}` with XML content returns HTTP 200 and bumps `versionId` but does NOT persist the XML
@@ -370,7 +380,49 @@ Available adapters discoverable via `GET /meta/sourceAdapters`.
 
 ### Supported Events
 
-`Submission Created`, `Submission Submitted`, `Submission Updated`, `Submission Closed`
+**Warning:** The API accepts ANY string as the event name without validation. Invalid event names (like typos) are silently accepted but the workflow will never fire. Always use one of the exact names below.
+
+| Category | Valid Event Names |
+|----------|------------------|
+| **Space** | `Space Login Failure` |
+| **User** | `User Login`, `User Logout`, `User Created`, `User Updated`, `User Deleted`, `User Membership Change` |
+| **Submission** | `Submission Created`, `Submission Submitted`, `Submission Updated`, `Submission Saved`, `Submission Closed`, `Submission Deleted` |
+| **Form** | `Form Created`, `Form Updated`, `Form Deleted`, `Form Restored` |
+| **Team** | `Team Created`, `Team Updated`, `Team Deleted`, `Team Restored`, `Team Membership Change` |
+
+**Scope determines which events are available:**
+- **Form-level workflows** — Submission events only
+- **Kapp-level workflows** — Submission + Form events (fires for all forms in the kapp)
+- **Space-level workflows** — All events (Space, User, Team, plus Submission/Form across all kapps)
+
+Note: `Submission Saved` fires on every save (including Draft saves), while `Submission Submitted` only fires on the transition to `coreState: "Submitted"`. `Form Restored` and `Team Restored` fire when a soft-deleted entity is restored.
+
+### Workflow Response Shape
+
+```json
+{
+  "id": "a03b7bb6-4766-486a-9944-ccbd40121241",
+  "name": "On Submit",
+  "event": "Submission Submitted",
+  "filter": "",
+  "sourceGroup": "a03b7bb6-4766-486a-9944-ccbd40121241",
+  "type": "Tree",
+  "status": "Active",
+  "platformItemType": "Form",
+  "platformItemId": "230bacf6-32f5-11f1-98c0-6599b94dbb50",
+  "ownerEmail": null,
+  "notes": null,
+  "versionId": "0",
+  "createdAt": "2026-04-08T02:49:17.340Z",
+  "createdBy": "james.davies@kineticdata.com",
+  "updatedAt": "2026-04-08T02:49:17.340Z",
+  "updatedBy": "james.davies@kineticdata.com"
+}
+```
+
+The `filter` field accepts KSL expressions for conditional triggering (e.g., `values["Status"] != ""`).
+
+The GET response also includes diagnostic arrays: `{ "migratable": [], "missing": [], "orphaned": [], "workflows": [...] }`
 
 ---
 

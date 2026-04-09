@@ -45,18 +45,30 @@ Connections are created and managed in the Space console under Plugins > Connect
 
 **Important:** The Integrator API returns **bare arrays** for list endpoints (not wrapped in an object like Core API). Example: `GET /connections` returns `[{...}, {...}]`, not `{"connections": [...]}`.
 
+**OAuth token response details:** The redirect Location header fragment contains additional metadata beyond the access token:
+- `scope=full_access`
+- `spaceSlug=demo`
+- `displayName=...`
+- `spaceAdmin=true/false`
+- `email=...`
+- `username=...`
+
+This metadata can be useful for confirming the token's identity and permissions without a separate API call.
+
 **Connection response shape:**
 ```json
 {
   "id": "a2ffa6fa-...",
   "name": "ServiceNow Production",
   "type": "http",
-  "config": { "configType": "http", "baseUrl": "https://instance.service-now.com", "auth": null },
-  "status": { "healthy": true, "events": [...] },
+  "config": { "configType": "http", "baseUrl": "https://instance.service-now.com", "auth": null, "caCert": null, "testPath": "" },
+  "status": { "healthy": true, "events": [{"message": "Started", "timestamp": "...", "kind": "normal"}] },
   "secrets": {},
   "description": "",
+  "documentationLink": "",
   "insertedAt": "2024-12-19T17:44:32Z",
-  "lockVersion": 2
+  "lockVersion": 2,
+  "updatedAt": "2024-12-19T17:44:32Z"
 }
 ```
 
@@ -64,13 +76,50 @@ Connections are created and managed in the Space console under Plugins > Connect
 ```json
 {
   "id": "f865d438-...",
-  "name": "Create Ticket",
+  "name": "Fetch Incident",
   "connectionId": "a2ffa6fa-...",
-  "config": { ... },
-  "outputs": [...],
-  "notes": ""
+  "config": {
+    "configType": "http",
+    "method": "GET",
+    "path": "/tables/{{table_name}}",
+    "params": {},
+    "headers": {},
+    "body": {"form": {}, "bodyType": "www_form_urlencoded"},
+    "includeEmptyParams": false,
+    "followRedirect": false,
+    "streamResponse": false
+  },
+  "outputs": {
+    "Assignee": {"value": ""},
+    "Description": {"value": ""},
+    "Incident Number": {"value": ""}
+  },
+  "notes": "",
+  "documentationLink": "",
+  "insertedAt": "...",
+  "lockVersion": 3,
+  "updatedAt": "..."
 }
 ```
+
+**Note:** Operation `outputs` is an **object** (keyed by output name), not an array. Each output has a `value` field for mapping expressions. The `config.path` supports `{{variable}}` template syntax for dynamic paths (`{{Param*}}` marks required params).
+
+**Connection auth types (observed from live API):**
+
+| `config.auth.authType` | Fields | Use For |
+|------------------------|--------|---------|
+| `null` (no auth object) | `auth: null` | APIs using header-based auth via secrets, or no auth |
+| `"basic"` | `username`, `password` (password always null in responses) | Basic Auth APIs |
+| `"raw_bearer_token"` | `header`, `prefix`, `token` (token always null in responses) | Bearer token APIs (e.g., OpenAI) |
+
+**Gotcha — secrets are always null in responses:** The API redacts secret values. `"secrets": {"Open API Key": null}` means a secret named "Open API Key" exists but its value is hidden. You must set secrets via POST/PUT, and they will never be readable back.
+
+**Output mapping expression syntax:**
+- `body.teams` — access response body JSON properties
+- `body.teams?.length ?? 0` — null-safe access with default values (JavaScript-style)
+- `current.name` — iterate over array items (used inside `children` maps for list outputs)
+- `statusCode` — HTTP response status code
+- Convention: outputs prefixed with `_` (like `_Error`, `_Status Code`, `_Count`, `_Exists`) are metadata outputs, not business data
 
 ### Operations
 

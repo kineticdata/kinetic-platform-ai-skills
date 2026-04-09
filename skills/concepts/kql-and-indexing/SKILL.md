@@ -46,6 +46,20 @@ q=values[Status] IN ("New", "Open")
 
 **Warning:** `!=` looks like equality but is classified as a **range operator** by Kinetic. It requires `orderBy` and disrupts `pageToken` pagination. For "not equal" filters in paginated UIs, omit it from KQL and filter client-side.
 
+### Querying Null Values
+
+Use the literal `null` (unquoted) to match fields with no value:
+
+```
+# Find unassigned submissions:
+q=values[Assigned To] = null
+
+# Combine with other filters:
+q=values[Status] = "Open" AND values[Assigned To] = null
+```
+
+`null` is a first-class expression symbol in KQL — it is not a string. This requires an index that covers the field being tested.
+
 ## Form Index Definitions (Critical for KQL)
 
 **KQL queries will NOT work without index definitions** on the form. Even simple equality queries like `values[Status] = "Active"` return a 400 error if the field lacks an index. The error message is explicit: `"The query requires one of the following index definitions to exist: values[Status]"`.
@@ -167,10 +181,38 @@ GET /kapps/services/submissions?include=details,values&q=type="Service" AND core
 
 This is how portals build unified request lists, approval inboxes, and dashboard views that span multiple forms.
 
+### Kapp-Level Index Gotchas (Critical)
+
+**`values[FieldName]` indexes cannot be created via REST API PUT.** Attempting to add kapp-level indexes with `values[FieldName]` parts returns `"The 'FieldName' field was not found"` — even when ALL forms in the kapp have that field defined and built at the form level. This affects ALL field names, not just specific ones.
+
+These indexes CAN exist on kapps (the `services` and `queue` kapps have them), but they were created via **template provisioning/import** (Ruby SDK `import_space`), not via individual REST API calls. This is a platform limitation of the REST API for kapp-level index management.
+
+**Workarounds:**
+1. Use **system field indexes** at the kapp level — `coreState`, `submittedBy`, `createdBy`, `type` all work via REST API PUT
+2. Use **form-level `values[FieldName]` indexes** + individual form queries instead of cross-form queries
+3. Use the **Ruby SDK** `import_space` / template provisioning to set up kapp-level value indexes
+
+**`type` field in KQL requires `formTypes` registration.** Even if `type` is indexed and "Built" at the kapp level, KQL queries like `type="Service"` return 0 results unless the kapp has `formTypes` registered:
+
+```json
+PUT /kapps/{kapp}
+{
+  "formTypes": [
+    {"name": "Service"},
+    {"name": "Approval"},
+    {"name": "Task"}
+  ]
+}
+```
+
+After adding `formTypes`, rebuild the `type` index. Only then will `type` KQL queries work.
+
+**Cross-form search without KQL always works.** `GET /kapps/{kapp}/submissions?include=details,values` returns submissions from all forms regardless of indexes — just without KQL filtering.
+
 ### When to Use Kapp vs Form Indexes
 
-- **Form-level**: most queries — filtering within a single form
-- **Kapp-level**: unified views — "My Requests" across all form types, admin dashboards, reporting
+- **Form-level**: most queries — filtering within a single form; supports `values[FieldName]` via REST API
+- **Kapp-level**: unified views — "My Requests" across all form types; limited to system fields via REST API unless provisioned via template import
 - Kapp-level indexes have the same compound index rules as form-level
 
 ---
@@ -191,6 +233,24 @@ function buildAlertKql() {
   }
 }
 ```
+
+## KQL Searchable Properties
+
+Beyond `values[Field Name]`, these submission properties can be used in KQL queries:
+
+| Property | Description | Example |
+|----------|-------------|---------|
+| `values[Field]` | Any form field (requires index) | `values[Status] = "Open"` |
+| `closedBy` | Username that closed | `closedBy = "admin"` |
+| `coreState` | Draft, Submitted, or Closed | `coreState = "Submitted"` |
+| `createdBy` | Username that created | `createdBy = "john.doe"` |
+| `handle` | Nearly-unique submission identifier | `handle = "617570"` |
+| `sessionToken` | Anonymous submission token | `sessionToken = "abc123"` |
+| `submittedBy` | Username that submitted | `submittedBy = "jane.doe"` |
+| `type` | Form type (requires kapp formTypes) | `type = "Service"` |
+| `updatedBy` | Username that last updated | `updatedBy = "admin"` |
+
+System properties (`closedBy`, `createdBy`, `submittedBy`, `updatedBy`, `handle`) have built-in indexes on every form. Custom `values[Field]` properties require explicit index definitions.
 
 ## KQL Operators to Avoid in Paged UI
 - `!=` is a **range operator** requiring `orderBy` — use client-side filter instead

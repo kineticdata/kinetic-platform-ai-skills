@@ -278,9 +278,8 @@ const params = {
     q: defineKqlQuery()...,
     include: ['details', 'values', 'form', 'form.attributesMap'],
     limit: 25,          // default 25, max 1000 per page
-    // Note: orderBy and direction are handled by @kineticdata/react internally.
-    // The raw Core API does NOT support 'direction' as a query parameter.
-    // Only use orderBy with KQL range operators (see KQL and Indexing skill).
+    // orderBy and direction are supported on Core API submission search.
+    // direction: 'ASC' or 'DESC' (default). Use with orderBy for sort control.
   },
   // pageToken is injected by usePaginatedData automatically
 };

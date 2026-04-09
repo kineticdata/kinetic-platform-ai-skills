@@ -17,7 +17,8 @@ This project uses the Kinetic Platform. Apply the rules below when writing or su
 - `!=` is a **range operator** (not equality) — requires `orderBy`, avoid in paginated UIs
 - Multi-field `AND` queries require a **compound (multi-part) index** — single-field indexes are not sufficient
 - `OR` across different fields is unreliable — use separate queries or client-side filtering
-- Do NOT pass `timeline` or `direction` params to Core API submission endpoints — they return 400 errors
+- Do NOT pass `timeline` param to Core API submission endpoints — it returns 400 errors
+- `direction` param IS supported on submission search — `ASC` or `DESC` (default), use with `orderBy`
 
 ## Pagination
 

@@ -238,10 +238,33 @@ Use raw `CoreForm` when you need full control (datastore admin, review mode, pub
 | `values` | `{ 'Field Name': value }` map to pre-populate fields |
 | `public` | `true` to load without authentication |
 | `review` | `true` to render in read-only review mode |
-| `created` | Callback after submission created; receives `{ submission }` |
-| `updated` | Callback after submission updated; receives `{ submission }` |
-| `completed` | Callback after submission submitted |
+| `created` | Fires when the submission gets an ID — regardless of coreState (Draft or Submitted). Use for navigation: `created={({ submission }) => navigate(submission.id)}` |
+| `updated` | Fires after a save on an existing submission (e.g., saving a Draft). Use for toast: `updated={() => toastSuccess({ title: 'Saved' })}` |
+| `completed` | Fires when the submission successfully transitions to `coreState: "Submitted"`. This is the final submit — server validates required fields, constraints, etc. Use for redirect: `completed={() => navigate('/requests')}` |
 | `components` | Object overriding `{ Layout, Pending, ReviewPaginationControl }` |
+
+### Submission Locking (Concurrent Edit Prevention)
+
+CoreForm supports optional submission locking to prevent two users from editing the same Draft simultaneously. To enable it, add two fields to your form:
+
+- `Locked By` (text) — stores the username of the current editor
+- `Locked Until` (text) — stores an ISO timestamp for lock expiry
+
+When CoreForm opens a Draft submission on a form with these fields, it automatically writes the current user and an expiry time. On unmount, it clears the lock. If another user has the lock, CoreForm renders in read-only review mode.
+
+Helper functions from `@kineticdata/react`:
+
+| Function | Purpose |
+|----------|---------|
+| `isLockable(submission)` | True if submission is Draft and form has lock fields |
+| `isLocked(submission)` | True if lock hasn't expired |
+| `isLockedByMe(submission)` | True if current user holds the lock |
+| `getLockedBy(submission)` | Returns the locking user's username |
+| `getTimeLeft(submission)` | Milliseconds until lock expires |
+| `lockSubmission({ id })` | Acquires the lock |
+| `unlockSubmission({ id })` | Releases the lock |
+
+Field names are customizable via options: `{ lockedByField: 'My Lock Field', lockedUntilField: 'My Expiry Field' }`.
 
 ---
 

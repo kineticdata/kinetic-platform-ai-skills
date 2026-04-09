@@ -35,7 +35,7 @@ A service portal has six main concerns:
 
 ### 1.1 Create the Kapp
 
-Create a kapp to hold service request forms. See `skills/platform/api-basics/SKILL.md` for endpoint details.
+Create a kapp to hold service request forms. See `skills/concepts/api-basics/SKILL.md` for endpoint details.
 
 ```
 POST /app/api/v1/kapps
@@ -76,7 +76,7 @@ Best-practice form setup for a service catalog:
 | Form attribute `Description` | Short description shown in the catalog tile |
 | Form attribute `Category` | Category name for grouping (alternative to kapp categories) |
 
-Define indexes for any field used in KQL filters — at minimum `values[Status]`. See `skills/platform/kql-and-indexing/SKILL.md`.
+Define indexes for any field used in KQL filters — at minimum `values[Status]`. See `skills/concepts/kql-and-indexing/SKILL.md`.
 
 ### 1.3 Assign Forms to Categories
 
@@ -86,7 +86,7 @@ Alternatively, store a `Category` attribute on each form and group client-side �
 
 ### 1.4 Workflow
 
-Attach a workflow tree to each service form to handle submission processing, approvals, and notifications. See `skills/platform/workflow-engine/SKILL.md` and `skills/platform/architectural-patterns/SKILL.md` for approval and fulfillment patterns.
+Attach a workflow tree to each service form to handle submission processing, approvals, and notifications. See `skills/concepts/workflow-engine/SKILL.md` and `skills/concepts/architectural-patterns/SKILL.md` for approval and fulfillment patterns.
 
 ---
 
@@ -596,7 +596,7 @@ export function Requests() {
 
 **KQL notes:**
 - `createdBy` is a system field — it does not require an `indexDefinitions` entry
-- To filter by a form value field (e.g. `values[Status]`), the form must have an index for that field. See `skills/platform/kql-and-indexing/SKILL.md`
+- To filter by a form value field (e.g. `values[Status]`), the form must have an index for that field. See `skills/concepts/kql-and-indexing/SKILL.md`
 - `usePaginatedData` injects `pageToken` automatically on each page change — do not add it to `params` manually
 
 For a full paginated list recipe including filtering and sorting, see `skills/recipes/build-paginated-list/SKILL.md` (if available).
@@ -804,8 +804,8 @@ portal/
 - `skills/front-end/data-fetching/SKILL.md` — full `useData` and `usePaginatedData` implementations, `usePoller`, `defineKqlQuery`
 - `skills/front-end/mutations/SKILL.md` — `executeIntegration`, `deleteSubmission`, `updateProfile`
 - `skills/front-end/state/SKILL.md` — `regRedux`, `appActions`, toast system, confirmation modal, `getAttributeValue`
-- `skills/platform/kql-and-indexing/SKILL.md` — KQL operators, index definitions, compound indexes
-- `skills/platform/workflow-engine/SKILL.md` — workflow trees, deferrals, approval patterns
-- `skills/platform/architectural-patterns/SKILL.md` — approval loops, SLA tracking, fulfillment patterns
+- `skills/concepts/kql-and-indexing/SKILL.md` — KQL operators, index definitions, compound indexes
+- `skills/concepts/workflow-engine/SKILL.md` — workflow trees, deferrals, approval patterns
+- `skills/concepts/architectural-patterns/SKILL.md` — approval loops, SLA tracking, fulfillment patterns
 - `skills/recipes/create-submission-form/SKILL.md` — step-by-step form creation with fields and indexes
 - [momentum-portal](https://github.com/kineticdata/momentum-portal) — production reference implementation

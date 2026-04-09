@@ -15,6 +15,12 @@ The Kinetic Platform has three API surfaces, all proxied through the Core server
 | Task API v2 | HTTP Basic Auth | Workflow runs, nodes, trees, handlers, engine operations |
 | Integrator API | OAuth 2.0 Bearer Token | Connections, operations, agents |
 
+## SAML SSO
+
+The platform supports SAML SSO for enterprise authentication. SSO is configured via a `security.space-slug.properties` file on hosted environments — **this cannot be done via the API**; customers must contact Kinetic Support with their SAML identity provider details. See [docs.kineticdata.com](https://docs.kineticdata.com/docs/how-to-configure-saml-authentication-for-a-hosted-environment).
+
+**Basic Auth is always available** — SSO does not disable it. API integrations can continue to use Basic Auth even when SSO is enabled for browser users.
+
 ## Core API & Task API — HTTP Basic Auth
 
 Both Core and Task APIs use HTTP Basic Authentication.
@@ -74,8 +80,41 @@ curl -u "admin:password" \
 
 The server responds with a `302 redirect` containing the token in the URL fragment:
 ```
-Location: ...#access_token=<TOKEN>&token_type=bearer&expires_in=43200
+Location: https://myspace.kinops.io/app/oauth/callback#access_token=<JWT>&token_type=bearer&expires_in=43200&scope=full_access&spaceSlug=demo&displayName=...&iss=kinetic-data&spaceAdmin=true&email=...&username=...
 ```
+
+**Fragment parameters returned:**
+
+| Parameter | Example Value | Description |
+|-----------|---------------|-------------|
+| `access_token` | JWT token (~350 chars) | The Bearer token for API calls |
+| `token_type` | `bearer` | Always `bearer` |
+| `expires_in` | `43200` | Token TTL in seconds (12 hours) |
+| `scope` | `full_access` | Granted scope |
+| `spaceSlug` | `demo` | Space the token is scoped to |
+| `displayName` | `James Davies` | User's display name |
+| `iss` | `kinetic-data` | JWT issuer |
+| `spaceAdmin` | `true` | Whether user is space admin |
+| `email` | `user@example.com` | User's email |
+| `username` | `user@example.com` | Authenticated username |
+
+**The token is a HS256 JWT** with this payload structure:
+```json
+{
+  "clientId": "system",
+  "displayName": "James Davies",
+  "email": "user@example.com",
+  "exp": 1775658800,
+  "iss": "kinetic-data",
+  "spaceAdmin": true,
+  "spaceSlug": "demo",
+  "username": "user@example.com"
+}
+```
+
+**Gotcha — `client_id` validation:** Using an invalid `client_id` (anything other than `system` or `kinetic-bundle`) returns HTTP 401. The `system` client is always available.
+
+**Gotcha — Basic Auth rejected:** The Integrator API rejects Basic Auth with `{"message": "Authorization header must contain a bearer token"}`. OAuth Bearer tokens are mandatory.
 
 ### Using the Token
 
@@ -88,6 +127,7 @@ curl -H "Authorization: Bearer <TOKEN>" \
 - Default expiry: 43,200 seconds (12 hours)
 - Cache the token and check expiry before each request
 - Re-acquire when expired (subtract 30 seconds as a safety buffer)
+- The JWT `exp` claim contains the expiry as a Unix timestamp
 
 ## Base URL Patterns
 
