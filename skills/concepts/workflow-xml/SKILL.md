@@ -447,9 +447,28 @@ Deferrals pause a workflow node and wait for an external signal to resume.
 
 **Deferred results access:** After the Complete trigger fires, subsequent nodes can access deferred results via `@results['Node Name']`. The results are the handler's original results merged with the deferred_variables XML.
 
-### API Handler — `kinetic_core_api_v1` (Legacy)
+### Integration Handler — `system_integration_v1` (Preferred)
 
-Makes REST API calls to Kinetic Core. **Prefer Connections/Operations for new workflows** — this handler is a legacy approach. It's still useful for one-off API calls where building a full operation isn't worth the effort, but Connections/Operations should be the default.
+Executes a Connection/Operation pair. **This is the preferred handler for all external and internal API calls in workflows.** It replaces the legacy `kinetic_core_api_v1` handler.
+
+| Parameter ID | Name | Required | Description |
+|-------------|------|----------|-------------|
+| `connection` | Connection | Yes | Connection UUID from the Integrator |
+| `operation` | Operation | Yes | Operation UUID from the Integrator |
+
+Operations define the HTTP method, path, body template, input/output mappings, and authentication. The handler executes the operation and returns its output as results.
+
+**Results:** Depend on the operation's output mapping configuration.
+
+**Advantages over `kinetic_core_api_v1`:**
+- Operations are reusable across workflows
+- Input/output mappings are configured once in the operation, not per-node
+- Authentication is managed by the connection (supports OAuth, API keys, etc.)
+- Operations are visible and manageable in the admin console
+
+### API Handler — `kinetic_core_api_v1` (Legacy — Avoid)
+
+Makes REST API calls to Kinetic Core. **Do NOT use for new workflows.** Use `system_integration_v1` with Connections/Operations instead. This handler is being retired. Only use it as a temporary stopgap when no operation exists yet for the API call you need.
 
 Configured with `api_username`, `api_password`, `api_location` properties.
 
