@@ -423,10 +423,14 @@ Note: `Submission Saved` fires on every save (including Draft saves), while `Sub
 The `filter` field accepts KSL expressions for conditional triggering. **Critical: use function-call syntax** `values('Field')`, NOT bracket syntax `values["Field"]`.
 
 ```
-// CORRECT — workflow fires when condition is true
+// CORRECT — KSL function syntax with double-quoted string literals
+"filter": "values('Status') == \"Open\""
+"filter": "form('name') == \"Approval\""
+
+// ALSO WORKS — single-quoted string literals
 "filter": "values('Status') == 'Open'"
 
-// WRONG — silently fails, workflow never fires
+// WRONG — bracket syntax silently fails, workflow never fires
 "filter": "values[\"Status\"] == \"Open\""
 ```
 
