@@ -180,21 +180,124 @@ const result = await saveSubmissionMultipart({
 
 When **updating** a submission with new files while keeping existing ones, pass the existing attachment objects (with `link` property stripped) in `values` and new files in `files`.
 
-### Render Type Property Rules (Critical for API Form Creation)
+### Complete Field Property Reference (from Kitchen Sink Form)
 
-Each renderType has specific property requirements. Using wrong properties causes `400 Invalid Form`:
+Every field in a form API payload requires ALL properties for its type. Missing any property causes `400 Invalid Form`. Below is the canonical reference derived from the official Kitchen Sink Form.
+
+#### Base Properties (ALL field types)
+
+```json
+{
+  "type": "field",
+  "name": "Field Name",
+  "key": "f1",
+  "label": "Display Label",
+  "renderType": "text",
+  "dataType": "string",
+  "enabled": true,
+  "visible": true,
+  "required": false,
+  "requiredMessage": null,
+  "defaultValue": null,
+  "defaultDataSource": "none",
+  "defaultResourceName": null,
+  "pattern": null,
+  "constraints": [],
+  "events": [],
+  "omitWhenHidden": null,
+  "renderAttributes": {}
+}
+```
+
+#### Type-Specific Properties
 
 | Property | `text` | `dropdown` | `radio` | `checkbox` | `date`/`datetime`/`time` | `attachment` |
 |----------|--------|-----------|---------|-----------|------------------------|-------------|
-| `rows` | Yes (1 = single, >1 = textarea) | **NO** (causes 400) | **NO** | **NO** | **NO** | **NO** |
-| `choicesDataSource` | No | Yes (`"custom"` or `"integration"`) | Yes | Yes | No | No |
-| `choicesRunIf` | No | Yes (null for static) | Yes | Yes | No | No |
-| `choicesResourceName` | No | **Yes** (null for static, integration name for dynamic) | Yes | Yes | No | No |
-| `choicesResourceProperty` | No | Yes (null for static, output property for integration) | Yes | Yes | No | No |
-| `choices` | No | Yes (array for static, object for integration) | Yes | Yes | No | No |
-| `allowMultiple` | No | No | No | No | No | **Yes** (boolean) |
+| `rows` | **Required** (1=single, 3+=textarea) | NO | NO | NO | NO | NO |
+| `choices` | — | **Required** (array) | **Required** | **Required** | — | — |
+| `choicesDataSource` | — | **Required** (`"custom"`) | **Required** | **Required** | — | — |
+| `choicesRunIf` | — | **Required** (`null`) | **Required** | **Required** | — | — |
+| `choicesResourceName` | — | **Required** (`null`) | **Required** | **Required** | — | — |
+| `choicesResourceProperty` | — | Optional (`null`) | Optional | Optional | — | — |
+| `allowMultiple` | — | — | — | — | — | **Required** (boolean) |
+| `dataType` | `"string"` | `"string"` | `"string"` | `"json"` | `"string"` | `"file"` |
 
-**Button elements** also require `renderAttributes: {}` — omitting it causes a 400 error.
+**"Required"** means the property must be present in the JSON — even if the value is `null`. **"NO"** means including it causes a 400 error. **"—"** means not applicable (omit entirely).
+
+#### Static Choices Example (dropdown/radio/checkbox)
+
+```json
+{
+  "choicesDataSource": "custom",
+  "choicesRunIf": null,
+  "choicesResourceName": null,
+  "choices": [
+    {"label": "Option A", "value": "Option A"},
+    {"label": "Option B", "value": "Option B"}
+  ]
+}
+```
+
+#### Content Elements
+
+```json
+{"type": "content", "renderType": "html", "name": "Help Text", "text": "<span>...</span>", "visible": true, "renderAttributes": {}}
+{"type": "content", "renderType": "text", "name": "Plain Text", "text": "Just plain text", "visible": true, "renderAttributes": {}}
+```
+
+#### Button Elements
+
+```json
+{"type": "button", "name": "Submit", "label": "Submit", "visible": true, "enabled": true, "renderType": "submit-page", "renderAttributes": {}}
+```
+
+Button `renderType` values: `"submit-page"`, `"save"`, `"previous-page"`, `"custom"`. Custom buttons also need `"events": []`.
+
+**`renderAttributes: {}` is required on buttons** — omitting it causes a 400 error.
+
+#### Section Elements
+
+```json
+{"type": "section", "renderType": null, "name": "Section Name", "title": "Display Title", "visible": true, "omitWhenHidden": null, "renderAttributes": {}, "elements": [...]}
+```
+
+#### Page Elements
+
+```json
+{"type": "page", "name": "Page 1", "renderType": "submittable", "advanceCondition": null, "displayCondition": null, "displayPage": null, "events": [], "elements": [...]}
+```
+
+#### renderAttributes (Platform-Level)
+
+`renderAttributes` is a key-value object passed through to the rendered HTML. The platform's built-in form renderer recognizes these:
+
+| Attribute | Where | Effect |
+|-----------|-------|--------|
+| `"placeholder": "..."` | text fields | HTML placeholder text |
+| `"aria-describedby": "id"` | any field | Accessibility link to a content element |
+
+**Note:** CSS classes like `"class": "cols-2"`, `"class": "vertical"`, etc. are passed to the HTML but require front-end CSS to take effect. The specific class names depend on your implementation's stylesheet. The platform stores and passes them through — it doesn't define their visual behavior.
+
+#### Hidden Fields with `omitWhenHidden`
+
+Use a hidden section with `omitWhenHidden: false` to store fields whose values should always be submitted, even when not visible. This is commonly used for system/metadata fields with expression-based defaults:
+
+```json
+{
+  "type": "section", "name": "System Fields",
+  "visible": false, "omitWhenHidden": false,
+  "renderAttributes": {},
+  "elements": [
+    {"name": "Submitter", "renderType": "text", "defaultValue": "${identity('username')}", "rows": 1, ...}
+  ]
+}
+```
+
+**`omitWhenHidden: false`** = values are still submitted even when the section/field is hidden. Critical for auto-populated fields.
+**`omitWhenHidden: null`** = default behavior (values omitted when hidden).
+**`omitWhenHidden: true`** = explicitly omit values when hidden (same as default).
+
+The specific field names you put in hidden sections are implementation-specific — the platform pattern is the technique of `visible: false` + `omitWhenHidden: false` + expression `defaultValue`.
 
 ### Pattern Validation
 
