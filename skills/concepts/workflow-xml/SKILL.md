@@ -432,16 +432,18 @@ Deferrals pause a workflow node and wait for an external signal to resume.
 
 **Common pattern:** An approval workflow creates a submission in Draft with the deferral token stored in a field. When the approver submits their decision, a "Submission Submitted" tree reads the token and calls `utilities_create_trigger_v1` with `action_type: "Complete"` to resume the original workflow.
 
-**Verified end-to-end deferral/approval pattern** (tested on demo.kinops.io):
+**Verified deferral/approval pattern:**
 
 1. **Request form workflow** (on Submission Submitted, with filter `values('Status') == "Open"`):
-   - Set Status Pending: `PUT /submissions/<%= @submission['Id'] %>` → `{"values":{"Status":"Pending Approval"}}`
-   - Create Approval (`defers: true, deferrable: true`): `POST /kapps/{kapp}/forms/approval/submissions` with `{values: {Approver, 'Original Submission Id': @submission['Id'], 'Deferral Token': @task['Deferral Token']}, coreState: 'Draft'}`
-   - After deferral completes → Set Final Status: `PUT /submissions/<%= @submission['Id'] %>` → `{"values":{"Status":"<%= deferred result %>"}}`
+   - **Update submission status** to "Pending Approval" (via Connection/Operation for submission update)
+   - **Create approval submission** (`defers: true, deferrable: true`) — creates a Draft on an approval form with the deferral token (`<%= @task['Deferral Token'] %>`) stored in a field. The node pauses here.
+   - **After deferral completes** → update the original submission status based on the decision from deferred results
 
 2. **Approval form workflow** (on Submission Submitted):
-   - Complete Deferral: `utilities_create_trigger_v1` with `action_type: "Complete"`, `deferral_token: @values['Deferral Token']`, `deferred_variables: <results><result name="Decision"><%= @values['Decision'] %></result></results>`
-   - Close Approval: `PUT /submissions/<%= @submission['Id'] %>` → `{"coreState":"Closed"}` (best practice — don't leave approvals in Submitted forever)
+   - **Complete the deferral** via `utilities_create_trigger_v1` — reads the token from `@values['Deferral Token']` and passes the decision as deferred variables
+   - **Close the approval submission** (transition to `coreState: "Closed"`) — best practice, don't leave approvals in Submitted forever
+
+The API calls in both workflows (update submission, create submission) should use `system_integration_v1` with Connection/Operation pairs. The specific operations are implementation-specific — create them on your Kinetic Platform connection as needed for your use case.
 
 **Deferred task status:** Shows as `"Work In Progress"` in the runs API (not `"Deferred"`). The presence of a `token` on the task confirms deferral. After completion, status changes to `"Closed"`.
 
@@ -449,26 +451,32 @@ Deferrals pause a workflow node and wait for an external signal to resume.
 
 ### Integration Handler — `system_integration_v1` (Preferred)
 
-Executes a Connection/Operation pair. **This is the preferred handler for all external and internal API calls in workflows.** It replaces the legacy `kinetic_core_api_v1` handler.
+Executes a Connection/Operation pair. **This is the preferred handler for all API calls in workflows** — both to external systems and to the Kinetic Platform itself.
 
 | Parameter ID | Name | Required | Description |
 |-------------|------|----------|-------------|
 | `connection` | Connection | Yes | Connection UUID from the Integrator |
 | `operation` | Operation | Yes | Operation UUID from the Integrator |
 
-Operations define the HTTP method, path, body template, input/output mappings, and authentication. The handler executes the operation and returns its output as results.
+The connection and operation are implementation-specific — you create them based on what your workflows need (e.g., an operation to update a submission, an operation to call an external REST API). The handler executes the operation and returns results based on the operation's output mapping.
 
-**Results:** Depend on the operation's output mapping configuration.
+**Approach:**
+1. Create a Connection in the Integrator (defines the target system, auth, base URL)
+2. Create Operations on the connection (each defines an HTTP method, path, body template, input/output mappings)
+3. Reference the connection and operation UUIDs in the workflow node's parameters
 
-**Advantages over `kinetic_core_api_v1`:**
-- Operations are reusable across workflows
-- Input/output mappings are configured once in the operation, not per-node
-- Authentication is managed by the connection (supports OAuth, API keys, etc.)
-- Operations are visible and manageable in the admin console
+**Why this over direct API handlers:**
+- Operations are reusable across workflows — define once, use everywhere
+- Input/output mappings configured in the operation, not hardcoded per-node
+- Authentication managed by the connection (OAuth, API keys, Basic Auth)
+- Visible and manageable in the admin console
+- Changing an API endpoint updates all workflows using that operation
+
+See the Integrations concept skill (`concepts/integrations`) for Connection/Operation setup.
 
 ### API Handler — `kinetic_core_api_v1` (Legacy — Avoid)
 
-Makes REST API calls to Kinetic Core. **Do NOT use for new workflows.** Use `system_integration_v1` with Connections/Operations instead. This handler is being retired. Only use it as a temporary stopgap when no operation exists yet for the API call you need.
+Makes REST API calls to Kinetic Core. **Do NOT use for new workflows.** Use `system_integration_v1` with Connections/Operations instead. This handler is being retired.
 
 Configured with `api_username`, `api_password`, `api_location` properties.
 
