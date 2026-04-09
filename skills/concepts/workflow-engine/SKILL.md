@@ -420,7 +420,22 @@ Note: `Submission Saved` fires on every save (including Draft saves), while `Sub
 }
 ```
 
-The `filter` field accepts KSL expressions for conditional triggering (e.g., `values["Status"] != ""`).
+The `filter` field accepts KSL expressions for conditional triggering. **Critical: use function-call syntax** `values('Field')`, NOT bracket syntax `values["Field"]`.
+
+```
+// CORRECT — workflow fires when condition is true
+"filter": "values('Status') == 'Open'"
+
+// WRONG — silently fails, workflow never fires
+"filter": "values[\"Status\"] == \"Open\""
+```
+
+**Filter scope depends on workflow level:**
+- **Form-level workflows** (Submission events) — filter can use `values('Field')`, `identity('username')`, `form('slug')`, `kapp('slug')`, `submission('property')`
+- **Kapp-level workflows** (Form events) — filter can use `form('slug')`, `kapp('slug')` but NOT `values()` (no submission context)
+- **Space-level workflows** (User/Team events) — filter can use `identity()`, `space('slug')` but NOT `values()`, `form()`, or `kapp()` (no form/kapp context)
+
+The filter is evaluated by the Core API before triggering the Task engine. If the filter returns false, the workflow is silently skipped — no run is created.
 
 The GET response also includes diagnostic arrays: `{ "migratable": [], "missing": [], "orphaned": [], "workflows": [...] }`
 
