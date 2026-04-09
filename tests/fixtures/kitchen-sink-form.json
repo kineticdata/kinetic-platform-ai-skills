@@ -1,0 +1,2071 @@
+{
+    "form": {
+        "anonymous": false,
+        "attributes": [
+            {
+                "name": "Icon",
+                "values": [
+                    "flask"
+                ]
+            },
+            {
+                "name": "Owning Team",
+                "values": [
+                    "Default"
+                ]
+            }
+        ],
+        "bridgedResources": [
+            {
+                "model": "Users",
+                "name": "All Users",
+                "order": [],
+                "parameters": [],
+                "qualification": "All",
+                "status": "Active"
+            }
+        ],
+        "description": "Comprehensive test form covering every platform field type, property, and behavior pattern",
+        "indexDefinitions": [
+            {
+                "name": "closedBy",
+                "parts": [
+                    "closedBy"
+                ],
+                "status": "Built",
+                "unique": false
+            },
+            {
+                "name": "createdBy",
+                "parts": [
+                    "createdBy"
+                ],
+                "status": "Built",
+                "unique": false
+            },
+            {
+                "name": "handle",
+                "parts": [
+                    "handle"
+                ],
+                "status": "Built",
+                "unique": false
+            },
+            {
+                "name": "submittedBy",
+                "parts": [
+                    "submittedBy"
+                ],
+                "status": "Built",
+                "unique": false
+            },
+            {
+                "name": "updatedBy",
+                "parts": [
+                    "updatedBy"
+                ],
+                "status": "Built",
+                "unique": false
+            },
+            {
+                "name": "values[Checkbox Required]",
+                "parts": [
+                    "values[Checkbox Required]"
+                ],
+                "status": "Built",
+                "unique": false
+            },
+            {
+                "name": "values[Date Required]",
+                "parts": [
+                    "values[Date Required]"
+                ],
+                "status": "Built",
+                "unique": false
+            },
+            {
+                "name": "values[Dropdown Required]",
+                "parts": [
+                    "values[Dropdown Required]"
+                ],
+                "status": "Built",
+                "unique": false
+            },
+            {
+                "name": "values[Dropdown Required],values[Text Required]",
+                "parts": [
+                    "values[Dropdown Required]",
+                    "values[Text Required]"
+                ],
+                "status": "Built",
+                "unique": false
+            },
+            {
+                "name": "values[Text Required]",
+                "parts": [
+                    "values[Text Required]"
+                ],
+                "status": "Built",
+                "unique": false
+            }
+        ],
+        "integrations": [
+            {
+                "connectionId": "52676b52-01db-4149-928a-d977d96befb3",
+                "inputMappings": {},
+                "name": "List Users",
+                "operationId": "bf892f6f-ad27-409d-a013-f69113555aa7"
+            }
+        ],
+        "name": "Kitchen Sink",
+        "pages": [
+            {
+                "advanceCondition": null,
+                "displayCondition": null,
+                "displayPage": null,
+                "elements": [
+                    {
+                        "type": "section",
+                        "renderType": null,
+                        "name": "Text Fields",
+                        "title": "Text Fields",
+                        "visible": true,
+                        "omitWhenHidden": null,
+                        "renderAttributes": {},
+                        "elements": [
+                            {
+                                "type": "field",
+                                "renderType": "text",
+                                "dataType": "string",
+                                "name": "Text Optional",
+                                "key": "f1",
+                                "label": "Text Optional",
+                                "enabled": true,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "rows": 1
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "text",
+                                "dataType": "string",
+                                "name": "Text Required",
+                                "key": "f2",
+                                "label": "Text Required",
+                                "enabled": true,
+                                "visible": true,
+                                "required": true,
+                                "requiredMessage": "Please enter text",
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "rows": 1
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "text",
+                                "dataType": "string",
+                                "name": "Text Uneditable",
+                                "key": "f3",
+                                "label": "Text Uneditable",
+                                "enabled": false,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": "Read only value",
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "rows": 1
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "text",
+                                "dataType": "string",
+                                "name": "Text Multiline Optional",
+                                "key": "f4",
+                                "label": "Text Multiline Optional",
+                                "enabled": true,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "rows": 3
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "text",
+                                "dataType": "string",
+                                "name": "Text Multiline Required",
+                                "key": "f5",
+                                "label": "Text Multiline Required",
+                                "enabled": true,
+                                "visible": true,
+                                "required": true,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "rows": 3
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "text",
+                                "dataType": "string",
+                                "name": "Text Multiline Uneditable",
+                                "key": "f6",
+                                "label": "Text Multiline Uneditable",
+                                "enabled": false,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "rows": 3
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "text",
+                                "dataType": "string",
+                                "name": "Text With Placeholder",
+                                "key": "f7",
+                                "label": "Text With Placeholder",
+                                "enabled": true,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {
+                                    "placeholder": "Enter value..."
+                                },
+                                "rows": 1
+                            }
+                        ]
+                    },
+                    {
+                        "type": "section",
+                        "renderType": null,
+                        "name": "Dropdown Fields",
+                        "title": "Dropdown Fields",
+                        "visible": true,
+                        "omitWhenHidden": null,
+                        "renderAttributes": {},
+                        "elements": [
+                            {
+                                "type": "field",
+                                "renderType": "dropdown",
+                                "dataType": "string",
+                                "name": "Dropdown Optional",
+                                "key": "f8",
+                                "label": "Dropdown Optional",
+                                "enabled": true,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "choicesDataSource": "custom",
+                                "choicesRunIf": null,
+                                "choicesResourceName": null,
+                                "choices": [
+                                    {
+                                        "label": "Option A",
+                                        "value": "Option A"
+                                    },
+                                    {
+                                        "label": "Option B",
+                                        "value": "Option B"
+                                    },
+                                    {
+                                        "label": "Option C",
+                                        "value": "Option C"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "dropdown",
+                                "dataType": "string",
+                                "name": "Dropdown Required",
+                                "key": "f9",
+                                "label": "Dropdown Required",
+                                "enabled": true,
+                                "visible": true,
+                                "required": true,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "choicesDataSource": "custom",
+                                "choicesRunIf": null,
+                                "choicesResourceName": null,
+                                "choices": [
+                                    {
+                                        "label": "Option A",
+                                        "value": "Option A"
+                                    },
+                                    {
+                                        "label": "Option B",
+                                        "value": "Option B"
+                                    },
+                                    {
+                                        "label": "Option C",
+                                        "value": "Option C"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "dropdown",
+                                "dataType": "string",
+                                "name": "Dropdown Uneditable",
+                                "key": "f10",
+                                "label": "Dropdown Uneditable",
+                                "enabled": false,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "choicesDataSource": "custom",
+                                "choicesRunIf": null,
+                                "choicesResourceName": null,
+                                "choices": [
+                                    {
+                                        "label": "Option A",
+                                        "value": "Option A"
+                                    },
+                                    {
+                                        "label": "Option B",
+                                        "value": "Option B"
+                                    },
+                                    {
+                                        "label": "Option C",
+                                        "value": "Option C"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "section",
+                        "renderType": null,
+                        "name": "Radio Fields",
+                        "title": "Radio Fields",
+                        "visible": true,
+                        "omitWhenHidden": null,
+                        "renderAttributes": {},
+                        "elements": [
+                            {
+                                "type": "field",
+                                "renderType": "radio",
+                                "dataType": "string",
+                                "name": "Radio Optional",
+                                "key": "f11",
+                                "label": "Radio Optional",
+                                "enabled": true,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "choicesDataSource": "custom",
+                                "choicesRunIf": null,
+                                "choicesResourceName": null,
+                                "choices": [
+                                    {
+                                        "label": "Option A",
+                                        "value": "Option A"
+                                    },
+                                    {
+                                        "label": "Option B",
+                                        "value": "Option B"
+                                    },
+                                    {
+                                        "label": "Option C",
+                                        "value": "Option C"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "radio",
+                                "dataType": "string",
+                                "name": "Radio Required",
+                                "key": "f12",
+                                "label": "Radio Required",
+                                "enabled": true,
+                                "visible": true,
+                                "required": true,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "choicesDataSource": "custom",
+                                "choicesRunIf": null,
+                                "choicesResourceName": null,
+                                "choices": [
+                                    {
+                                        "label": "Option A",
+                                        "value": "Option A"
+                                    },
+                                    {
+                                        "label": "Option B",
+                                        "value": "Option B"
+                                    },
+                                    {
+                                        "label": "Option C",
+                                        "value": "Option C"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "radio",
+                                "dataType": "string",
+                                "name": "Radio Uneditable",
+                                "key": "f13",
+                                "label": "Radio Uneditable",
+                                "enabled": false,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "choicesDataSource": "custom",
+                                "choicesRunIf": null,
+                                "choicesResourceName": null,
+                                "choices": [
+                                    {
+                                        "label": "Option A",
+                                        "value": "Option A"
+                                    },
+                                    {
+                                        "label": "Option B",
+                                        "value": "Option B"
+                                    },
+                                    {
+                                        "label": "Option C",
+                                        "value": "Option C"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "section",
+                        "renderType": null,
+                        "name": "Checkbox Fields",
+                        "title": "Checkbox Fields",
+                        "visible": true,
+                        "omitWhenHidden": null,
+                        "renderAttributes": {},
+                        "elements": [
+                            {
+                                "type": "field",
+                                "renderType": "checkbox",
+                                "dataType": "json",
+                                "name": "Checkbox Optional",
+                                "key": "f14",
+                                "label": "Checkbox Optional",
+                                "enabled": true,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "choicesDataSource": "custom",
+                                "choicesRunIf": null,
+                                "choicesResourceName": null,
+                                "choices": [
+                                    {
+                                        "label": "Option A",
+                                        "value": "Option A"
+                                    },
+                                    {
+                                        "label": "Option B",
+                                        "value": "Option B"
+                                    },
+                                    {
+                                        "label": "Option C",
+                                        "value": "Option C"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "checkbox",
+                                "dataType": "json",
+                                "name": "Checkbox Required",
+                                "key": "f15",
+                                "label": "Checkbox Required",
+                                "enabled": true,
+                                "visible": true,
+                                "required": true,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "choicesDataSource": "custom",
+                                "choicesRunIf": null,
+                                "choicesResourceName": null,
+                                "choices": [
+                                    {
+                                        "label": "Option A",
+                                        "value": "Option A"
+                                    },
+                                    {
+                                        "label": "Option B",
+                                        "value": "Option B"
+                                    },
+                                    {
+                                        "label": "Option C",
+                                        "value": "Option C"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "checkbox",
+                                "dataType": "json",
+                                "name": "Checkbox Uneditable",
+                                "key": "f16",
+                                "label": "Checkbox Uneditable",
+                                "enabled": false,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "choicesDataSource": "custom",
+                                "choicesRunIf": null,
+                                "choicesResourceName": null,
+                                "choices": [
+                                    {
+                                        "label": "Option A",
+                                        "value": "Option A"
+                                    },
+                                    {
+                                        "label": "Option B",
+                                        "value": "Option B"
+                                    },
+                                    {
+                                        "label": "Option C",
+                                        "value": "Option C"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "checkbox",
+                                "dataType": "json",
+                                "name": "Checkbox Vertical",
+                                "key": "f17",
+                                "label": "Checkbox Vertical",
+                                "enabled": true,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {
+                                    "class": "vertical"
+                                },
+                                "choicesDataSource": "custom",
+                                "choicesRunIf": null,
+                                "choicesResourceName": null,
+                                "choices": [
+                                    {
+                                        "label": "Option A",
+                                        "value": "Option A"
+                                    },
+                                    {
+                                        "label": "Option B",
+                                        "value": "Option B"
+                                    },
+                                    {
+                                        "label": "Option C",
+                                        "value": "Option C"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "checkbox",
+                                "dataType": "json",
+                                "name": "Checkbox Columns",
+                                "key": "f18",
+                                "label": "Checkbox Columns",
+                                "enabled": true,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {
+                                    "class": "cols-2"
+                                },
+                                "choicesDataSource": "custom",
+                                "choicesRunIf": null,
+                                "choicesResourceName": null,
+                                "choices": [
+                                    {
+                                        "label": "Option A",
+                                        "value": "Option A"
+                                    },
+                                    {
+                                        "label": "Option B",
+                                        "value": "Option B"
+                                    },
+                                    {
+                                        "label": "Option C",
+                                        "value": "Option C"
+                                    },
+                                    {
+                                        "label": "Option D",
+                                        "value": "Option D"
+                                    },
+                                    {
+                                        "label": "Option E",
+                                        "value": "Option E"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "checkbox",
+                                "dataType": "json",
+                                "name": "Agree To Terms",
+                                "key": "f19",
+                                "label": "",
+                                "enabled": true,
+                                "visible": true,
+                                "required": true,
+                                "requiredMessage": "You must agree to the terms",
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "choicesDataSource": "custom",
+                                "choicesRunIf": null,
+                                "choicesResourceName": null,
+                                "choices": [
+                                    {
+                                        "label": "I Agree to the Terms and Conditions",
+                                        "value": "I Agree"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "section",
+                        "renderType": null,
+                        "name": "Date Time Fields",
+                        "title": "Date / DateTime / Time Fields",
+                        "visible": true,
+                        "omitWhenHidden": null,
+                        "renderAttributes": {},
+                        "elements": [
+                            {
+                                "type": "field",
+                                "renderType": "date",
+                                "dataType": "string",
+                                "name": "Date Optional",
+                                "key": "f20",
+                                "label": "Date Optional",
+                                "enabled": true,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {}
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "date",
+                                "dataType": "string",
+                                "name": "Date Required",
+                                "key": "f21",
+                                "label": "Date Required",
+                                "enabled": true,
+                                "visible": true,
+                                "required": true,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {}
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "date",
+                                "dataType": "string",
+                                "name": "Date Uneditable",
+                                "key": "f22",
+                                "label": "Date Uneditable",
+                                "enabled": false,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {}
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "datetime",
+                                "dataType": "string",
+                                "name": "DateTime Optional",
+                                "key": "f23",
+                                "label": "DateTime Optional",
+                                "enabled": true,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {}
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "datetime",
+                                "dataType": "string",
+                                "name": "DateTime Required",
+                                "key": "f24",
+                                "label": "DateTime Required",
+                                "enabled": true,
+                                "visible": true,
+                                "required": true,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {}
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "datetime",
+                                "dataType": "string",
+                                "name": "DateTime Uneditable",
+                                "key": "f25",
+                                "label": "DateTime Uneditable",
+                                "enabled": false,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {}
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "time",
+                                "dataType": "string",
+                                "name": "Time Optional",
+                                "key": "f26",
+                                "label": "Time Optional",
+                                "enabled": true,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {}
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "time",
+                                "dataType": "string",
+                                "name": "Time Required",
+                                "key": "f27",
+                                "label": "Time Required",
+                                "enabled": true,
+                                "visible": true,
+                                "required": true,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {}
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "time",
+                                "dataType": "string",
+                                "name": "Time Uneditable",
+                                "key": "f28",
+                                "label": "Time Uneditable",
+                                "enabled": false,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {}
+                            }
+                        ]
+                    },
+                    {
+                        "type": "section",
+                        "renderType": null,
+                        "name": "Attachment Fields",
+                        "title": "Attachment Fields",
+                        "visible": true,
+                        "omitWhenHidden": null,
+                        "renderAttributes": {},
+                        "elements": [
+                            {
+                                "type": "field",
+                                "renderType": "attachment",
+                                "dataType": "file",
+                                "name": "Attachment Optional",
+                                "key": "f29",
+                                "label": "Attachment Optional",
+                                "enabled": true,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "allowMultiple": false
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "attachment",
+                                "dataType": "file",
+                                "name": "Attachment Required",
+                                "key": "f30",
+                                "label": "Attachment Required",
+                                "enabled": true,
+                                "visible": true,
+                                "required": true,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "allowMultiple": false
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "attachment",
+                                "dataType": "file",
+                                "name": "Attachment Multiple",
+                                "key": "f31",
+                                "label": "Attachment Multiple",
+                                "enabled": true,
+                                "visible": true,
+                                "required": true,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "allowMultiple": true
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "attachment",
+                                "dataType": "file",
+                                "name": "Attachment Uneditable",
+                                "key": "f32",
+                                "label": "Attachment Uneditable",
+                                "enabled": false,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "allowMultiple": false
+                            }
+                        ]
+                    },
+                    {
+                        "type": "section",
+                        "renderType": null,
+                        "name": "Page 1 Footer",
+                        "title": null,
+                        "visible": true,
+                        "omitWhenHidden": null,
+                        "renderAttributes": {},
+                        "elements": [
+                            {
+                                "type": "button",
+                                "renderType": "save",
+                                "name": "Save",
+                                "label": "Save",
+                                "visible": true,
+                                "enabled": true,
+                                "renderAttributes": {}
+                            },
+                            {
+                                "type": "button",
+                                "renderType": "submit-page",
+                                "name": "Next Page",
+                                "label": "Next",
+                                "visible": true,
+                                "enabled": true,
+                                "renderAttributes": {}
+                            }
+                        ]
+                    }
+                ],
+                "events": [],
+                "name": "Field Types",
+                "renderType": "submittable",
+                "type": "page"
+            },
+            {
+                "advanceCondition": null,
+                "displayCondition": null,
+                "displayPage": null,
+                "elements": [
+                    {
+                        "type": "section",
+                        "renderType": null,
+                        "name": "Integration Driven Choices",
+                        "title": "Integration-Driven Choices",
+                        "visible": true,
+                        "omitWhenHidden": null,
+                        "renderAttributes": {},
+                        "elements": [
+                            {
+                                "type": "field",
+                                "renderType": "dropdown",
+                                "dataType": "string",
+                                "name": "User Dropdown",
+                                "key": "f33",
+                                "label": "User Dropdown (from Integration)",
+                                "enabled": true,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "choicesDataSource": "integration",
+                                "choicesRunIf": null,
+                                "choicesResourceName": "List Users",
+                                "choicesResourceProperty": "Users",
+                                "choices": {
+                                    "label": "${integration('Display Name')} (${integration('Username')})",
+                                    "value": "${integration('Username')}"
+                                }
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "checkbox",
+                                "dataType": "json",
+                                "name": "Team Checkboxes",
+                                "key": "f34",
+                                "label": "Team Checkboxes (from Integration)",
+                                "enabled": true,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "choicesDataSource": "integration",
+                                "choicesRunIf": null,
+                                "choicesResourceName": "List Users",
+                                "choicesResourceProperty": "Users",
+                                "choices": {
+                                    "label": "${integration('Display Name')}",
+                                    "value": "${integration('Username')}"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "type": "section",
+                        "renderType": null,
+                        "name": "Cascading Choices",
+                        "title": "Cascading Choices",
+                        "visible": true,
+                        "omitWhenHidden": null,
+                        "renderAttributes": {},
+                        "elements": [
+                            {
+                                "type": "field",
+                                "renderType": "dropdown",
+                                "dataType": "string",
+                                "name": "Category",
+                                "key": "f35",
+                                "label": "Category",
+                                "enabled": true,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [
+                                    {
+                                        "name": "Category Change",
+                                        "type": "Change",
+                                        "runIf": null,
+                                        "action": "Set Fields",
+                                        "mappings": [
+                                            {
+                                                "field": "Subcategory",
+                                                "value": ""
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "choicesDataSource": "custom",
+                                "choicesRunIf": null,
+                                "choicesResourceName": null,
+                                "choices": [
+                                    {
+                                        "label": "Hardware",
+                                        "value": "Hardware"
+                                    },
+                                    {
+                                        "label": "Software",
+                                        "value": "Software"
+                                    },
+                                    {
+                                        "label": "Other",
+                                        "value": "Other"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "dropdown",
+                                "dataType": "string",
+                                "name": "Subcategory",
+                                "key": "f36",
+                                "label": "Subcategory",
+                                "enabled": true,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "choicesDataSource": "custom",
+                                "choicesRunIf": null,
+                                "choicesResourceName": null,
+                                "choices": [
+                                    {
+                                        "label": "Laptop",
+                                        "value": "Laptop"
+                                    },
+                                    {
+                                        "label": "Monitor",
+                                        "value": "Monitor"
+                                    },
+                                    {
+                                        "label": "IDE",
+                                        "value": "IDE"
+                                    },
+                                    {
+                                        "label": "License",
+                                        "value": "License"
+                                    },
+                                    {
+                                        "label": "Misc",
+                                        "value": "Misc"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "section",
+                        "renderType": null,
+                        "name": "Page 2 Footer",
+                        "title": null,
+                        "visible": true,
+                        "omitWhenHidden": null,
+                        "renderAttributes": {},
+                        "elements": [
+                            {
+                                "type": "button",
+                                "renderType": "previous-page",
+                                "name": "Previous",
+                                "label": "Previous",
+                                "visible": true,
+                                "enabled": true,
+                                "renderAttributes": {}
+                            },
+                            {
+                                "type": "button",
+                                "renderType": "save",
+                                "name": "Save 2",
+                                "label": "Save",
+                                "visible": true,
+                                "enabled": true,
+                                "renderAttributes": {}
+                            },
+                            {
+                                "type": "button",
+                                "renderType": "submit-page",
+                                "name": "Next Page 2",
+                                "label": "Next",
+                                "visible": true,
+                                "enabled": true,
+                                "renderAttributes": {}
+                            }
+                        ]
+                    }
+                ],
+                "events": [],
+                "name": "Choices and Integrations",
+                "renderType": "submittable",
+                "type": "page"
+            },
+            {
+                "advanceCondition": null,
+                "displayCondition": null,
+                "displayPage": null,
+                "elements": [
+                    {
+                        "type": "section",
+                        "renderType": null,
+                        "name": "Constraints",
+                        "title": "Constraints",
+                        "visible": true,
+                        "omitWhenHidden": null,
+                        "renderAttributes": {},
+                        "elements": [
+                            {
+                                "type": "field",
+                                "renderType": "text",
+                                "dataType": "string",
+                                "name": "Min Length Field",
+                                "key": "f37",
+                                "label": "Min Length Field (5+ chars)",
+                                "enabled": true,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [
+                                    {
+                                        "type": "custom",
+                                        "content": "values('Min Length Field') === '' || values('Min Length Field').length >= 5",
+                                        "message": "Must be at least 5 characters"
+                                    }
+                                ],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "rows": 1
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "text",
+                                "dataType": "string",
+                                "name": "Multi Constraint Field",
+                                "key": "f38",
+                                "label": "Multi Constraint Field (0-100)",
+                                "enabled": true,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [
+                                    {
+                                        "type": "custom",
+                                        "content": "values('Multi Constraint Field') === '' || Number(values('Multi Constraint Field')) >= 0",
+                                        "message": "Must be zero or positive"
+                                    },
+                                    {
+                                        "type": "custom",
+                                        "content": "values('Multi Constraint Field') === '' || Number(values('Multi Constraint Field')) <= 100",
+                                        "message": "Must be 100 or less"
+                                    }
+                                ],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "rows": 1
+                            }
+                        ]
+                    },
+                    {
+                        "type": "section",
+                        "renderType": null,
+                        "name": "Pattern Validation",
+                        "title": "Pattern Validation",
+                        "visible": true,
+                        "omitWhenHidden": null,
+                        "renderAttributes": {},
+                        "elements": [
+                            {
+                                "type": "field",
+                                "renderType": "text",
+                                "dataType": "string",
+                                "name": "Phone Number",
+                                "key": "f39",
+                                "label": "Phone Number (555-123-4567)",
+                                "enabled": true,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "rows": 1
+                            }
+                        ]
+                    },
+                    {
+                        "type": "section",
+                        "renderType": null,
+                        "name": "Conditional Visibility",
+                        "title": "Conditional Visibility",
+                        "visible": true,
+                        "omitWhenHidden": null,
+                        "renderAttributes": {},
+                        "elements": [
+                            {
+                                "type": "field",
+                                "renderType": "radio",
+                                "dataType": "string",
+                                "name": "Show Details",
+                                "key": "f40",
+                                "label": "Show Details?",
+                                "enabled": true,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": "No",
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "choicesDataSource": "custom",
+                                "choicesRunIf": null,
+                                "choicesResourceName": null,
+                                "choices": [
+                                    {
+                                        "label": "Yes",
+                                        "value": "Yes"
+                                    },
+                                    {
+                                        "label": "No",
+                                        "value": "No"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "text",
+                                "dataType": "string",
+                                "name": "Detail Text",
+                                "key": "f41",
+                                "label": "Detail Text (shown when Yes)",
+                                "enabled": true,
+                                "visible": "values('Show Details') === 'Yes'",
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "rows": 3
+                            }
+                        ]
+                    },
+                    {
+                        "type": "section",
+                        "renderType": null,
+                        "name": "Conditional Required",
+                        "title": "Conditional Required",
+                        "visible": true,
+                        "omitWhenHidden": null,
+                        "renderAttributes": {},
+                        "elements": [
+                            {
+                                "type": "field",
+                                "renderType": "checkbox",
+                                "dataType": "json",
+                                "name": "Require Explanation",
+                                "key": "f42",
+                                "label": "",
+                                "enabled": true,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "choicesDataSource": "custom",
+                                "choicesRunIf": null,
+                                "choicesResourceName": null,
+                                "choices": [
+                                    {
+                                        "label": "Require an explanation",
+                                        "value": "Yes"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "text",
+                                "dataType": "string",
+                                "name": "Explanation",
+                                "key": "f43",
+                                "label": "Explanation",
+                                "enabled": true,
+                                "visible": true,
+                                "required": "values('Require Explanation') !== null && values('Require Explanation').indexOf('Yes') > -1",
+                                "requiredMessage": "Explanation is required when checkbox is checked",
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "rows": 3
+                            }
+                        ]
+                    },
+                    {
+                        "type": "section",
+                        "renderType": null,
+                        "name": "Expression Defaults",
+                        "title": "Expression Defaults",
+                        "visible": true,
+                        "omitWhenHidden": null,
+                        "renderAttributes": {},
+                        "elements": [
+                            {
+                                "type": "field",
+                                "renderType": "text",
+                                "dataType": "string",
+                                "name": "Current User",
+                                "key": "f44",
+                                "label": "Current User (identity)",
+                                "enabled": false,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": "${identity('username')}",
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "rows": 1
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "text",
+                                "dataType": "string",
+                                "name": "Form Name",
+                                "key": "f45",
+                                "label": "Form Name (form binding)",
+                                "enabled": false,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": "${form('name')}",
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "rows": 1
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "text",
+                                "dataType": "string",
+                                "name": "Kapp Slug",
+                                "key": "f46",
+                                "label": "Kapp Slug (kapp binding)",
+                                "enabled": false,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": "${kapp('slug')}",
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "rows": 1
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "text",
+                                "dataType": "string",
+                                "name": "Space Name",
+                                "key": "f47",
+                                "label": "Space Name (space binding)",
+                                "enabled": false,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": "${space('name')}",
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "rows": 1
+                            }
+                        ]
+                    },
+                    {
+                        "type": "section",
+                        "renderType": null,
+                        "name": "Events",
+                        "title": "Events",
+                        "visible": true,
+                        "omitWhenHidden": null,
+                        "renderAttributes": {},
+                        "elements": [
+                            {
+                                "type": "button",
+                                "renderType": "custom",
+                                "name": "Set Value Button",
+                                "label": "Click to Set Value",
+                                "visible": true,
+                                "enabled": true,
+                                "renderAttributes": {},
+                                "events": [
+                                    {
+                                        "name": "Set Event Target",
+                                        "type": "Click",
+                                        "runIf": null,
+                                        "action": "Set Fields",
+                                        "mappings": [
+                                            {
+                                                "field": "Event Target",
+                                                "value": "Button was clicked"
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "text",
+                                "dataType": "string",
+                                "name": "Event Target",
+                                "key": "f48",
+                                "label": "Event Target (set by button)",
+                                "enabled": true,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "rows": 1
+                            }
+                        ]
+                    },
+                    {
+                        "type": "section",
+                        "renderType": null,
+                        "name": "Hidden System Fields",
+                        "title": "Hidden System Fields",
+                        "visible": false,
+                        "omitWhenHidden": false,
+                        "renderAttributes": {},
+                        "elements": [
+                            {
+                                "type": "field",
+                                "renderType": "text",
+                                "dataType": "string",
+                                "name": "Submitted By",
+                                "key": "f49",
+                                "label": "Submitted By",
+                                "enabled": true,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": "${identity('username')}",
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "rows": 1
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "text",
+                                "dataType": "string",
+                                "name": "Status",
+                                "key": "f50",
+                                "label": "Status",
+                                "enabled": true,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": "Open",
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "rows": 1
+                            }
+                        ]
+                    },
+                    {
+                        "type": "section",
+                        "renderType": null,
+                        "name": "Page 3 Footer",
+                        "title": null,
+                        "visible": true,
+                        "omitWhenHidden": null,
+                        "renderAttributes": {},
+                        "elements": [
+                            {
+                                "type": "button",
+                                "renderType": "previous-page",
+                                "name": "Previous 3",
+                                "label": "Previous",
+                                "visible": true,
+                                "enabled": true,
+                                "renderAttributes": {}
+                            },
+                            {
+                                "type": "button",
+                                "renderType": "save",
+                                "name": "Save 3",
+                                "label": "Save",
+                                "visible": true,
+                                "enabled": true,
+                                "renderAttributes": {}
+                            },
+                            {
+                                "type": "button",
+                                "renderType": "submit-page",
+                                "name": "Next Page 3",
+                                "label": "Next",
+                                "visible": true,
+                                "enabled": true,
+                                "renderAttributes": {}
+                            }
+                        ]
+                    }
+                ],
+                "events": [],
+                "name": "Behavior and Expressions",
+                "renderType": "submittable",
+                "type": "page"
+            },
+            {
+                "advanceCondition": null,
+                "displayCondition": null,
+                "displayPage": null,
+                "elements": [
+                    {
+                        "type": "section",
+                        "renderType": null,
+                        "name": "Content Elements",
+                        "title": "Content Elements",
+                        "visible": true,
+                        "omitWhenHidden": null,
+                        "renderAttributes": {},
+                        "elements": [
+                            {
+                                "type": "content",
+                                "renderType": "text",
+                                "name": "Plain Text",
+                                "text": "This is a plain text content element. It renders as simple text without HTML formatting.",
+                                "visible": true,
+                                "renderAttributes": {}
+                            },
+                            {
+                                "type": "content",
+                                "renderType": "html",
+                                "name": "HTML Content",
+                                "text": "<p><strong>Bold text</strong>, <em>italic text</em>, and a <a href=\"#\">link</a>. HTML content supports full markup.</p>",
+                                "visible": true,
+                                "renderAttributes": {}
+                            },
+                            {
+                                "type": "content",
+                                "renderType": "html",
+                                "name": "Help Text",
+                                "text": "<span class=\"form-text\" id=\"help-text-anchor\">This is a help text content element with an ID for aria-describedby linking.</span>",
+                                "visible": true,
+                                "renderAttributes": {
+                                    "id": "help-text-anchor"
+                                }
+                            }
+                        ]
+                    },
+                    {
+                        "type": "section",
+                        "renderType": null,
+                        "name": "Nested Outer",
+                        "title": "Nested Sections (Outer)",
+                        "visible": true,
+                        "omitWhenHidden": null,
+                        "renderAttributes": {},
+                        "elements": [
+                            {
+                                "type": "section",
+                                "renderType": null,
+                                "name": "Nested Inner A",
+                                "title": "Inner Section A",
+                                "visible": true,
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "elements": [
+                                    {
+                                        "type": "field",
+                                        "renderType": "text",
+                                        "dataType": "string",
+                                        "name": "Nested Field A",
+                                        "key": "f51",
+                                        "label": "Nested Field A",
+                                        "enabled": true,
+                                        "visible": true,
+                                        "required": false,
+                                        "requiredMessage": null,
+                                        "defaultValue": null,
+                                        "defaultDataSource": "none",
+                                        "defaultResourceName": null,
+                                        "pattern": null,
+                                        "constraints": [],
+                                        "events": [],
+                                        "omitWhenHidden": null,
+                                        "renderAttributes": {},
+                                        "rows": 1
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "section",
+                                "renderType": null,
+                                "name": "Nested Inner B",
+                                "title": "Inner Section B",
+                                "visible": true,
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "elements": [
+                                    {
+                                        "type": "field",
+                                        "renderType": "text",
+                                        "dataType": "string",
+                                        "name": "Nested Field B",
+                                        "key": "f52",
+                                        "label": "Nested Field B",
+                                        "enabled": true,
+                                        "visible": true,
+                                        "required": false,
+                                        "requiredMessage": null,
+                                        "defaultValue": null,
+                                        "defaultDataSource": "none",
+                                        "defaultResourceName": null,
+                                        "pattern": null,
+                                        "constraints": [],
+                                        "events": [],
+                                        "omitWhenHidden": null,
+                                        "renderAttributes": {},
+                                        "rows": 1
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "section",
+                        "renderType": null,
+                        "name": "Two Columns",
+                        "title": "Two Column Layout",
+                        "visible": true,
+                        "omitWhenHidden": null,
+                        "renderAttributes": {
+                            "class": "cols-2"
+                        },
+                        "elements": [
+                            {
+                                "type": "content",
+                                "renderType": "html",
+                                "name": "Left Column",
+                                "text": "<p>This is the left column content in a two-column layout.</p>",
+                                "visible": true,
+                                "renderAttributes": {}
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "text",
+                                "dataType": "string",
+                                "name": "Right Column Field",
+                                "key": "f53",
+                                "label": "Right Column Field",
+                                "enabled": true,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "rows": 1
+                            }
+                        ]
+                    },
+                    {
+                        "type": "section",
+                        "renderType": null,
+                        "name": "Three Columns",
+                        "title": "Three Column Layout",
+                        "visible": true,
+                        "omitWhenHidden": null,
+                        "renderAttributes": {
+                            "class": "cols-3"
+                        },
+                        "elements": [
+                            {
+                                "type": "content",
+                                "renderType": "html",
+                                "name": "Col 1",
+                                "text": "<p>Column one content.</p>",
+                                "visible": true,
+                                "renderAttributes": {}
+                            },
+                            {
+                                "type": "content",
+                                "renderType": "html",
+                                "name": "Col 2",
+                                "text": "<p>Column two content.</p>",
+                                "visible": true,
+                                "renderAttributes": {}
+                            },
+                            {
+                                "type": "content",
+                                "renderType": "html",
+                                "name": "Col 3",
+                                "text": "<p>Column three content.</p>",
+                                "visible": true,
+                                "renderAttributes": {}
+                            }
+                        ]
+                    },
+                    {
+                        "type": "section",
+                        "renderType": null,
+                        "name": "Page 4 Footer",
+                        "title": null,
+                        "visible": true,
+                        "omitWhenHidden": null,
+                        "renderAttributes": {},
+                        "elements": [
+                            {
+                                "type": "button",
+                                "renderType": "previous-page",
+                                "name": "Previous 4",
+                                "label": "Previous",
+                                "visible": true,
+                                "enabled": true,
+                                "renderAttributes": {}
+                            },
+                            {
+                                "type": "button",
+                                "renderType": "custom",
+                                "name": "Custom Button",
+                                "label": "Custom Action",
+                                "visible": true,
+                                "enabled": true,
+                                "renderAttributes": {},
+                                "events": []
+                            },
+                            {
+                                "type": "button",
+                                "renderType": "save",
+                                "name": "Save 4",
+                                "label": "Save",
+                                "visible": true,
+                                "enabled": true,
+                                "renderAttributes": {}
+                            },
+                            {
+                                "type": "button",
+                                "renderType": "submit-page",
+                                "name": "Submit Final",
+                                "label": "Submit",
+                                "visible": true,
+                                "enabled": true,
+                                "renderAttributes": {}
+                            }
+                        ]
+                    }
+                ],
+                "events": [],
+                "name": "Layout and Content",
+                "renderType": "submittable",
+                "type": "page"
+            },
+            {
+                "advanceCondition": null,
+                "displayCondition": null,
+                "displayPage": null,
+                "elements": [
+                    {
+                        "type": "content",
+                        "renderType": "html",
+                        "name": "Confirmation Message",
+                        "text": "<h2>Thank You</h2><p>Your submission has been received. A workflow is now processing your request.</p>",
+                        "visible": true,
+                        "renderAttributes": {}
+                    }
+                ],
+                "events": [],
+                "name": "Confirmation",
+                "renderType": "confirmation",
+                "type": "page"
+            }
+        ],
+        "securityPolicies": [
+            {
+                "endpoint": "Display",
+                "name": "Authenticated Users"
+            }
+        ],
+        "slug": "kitchen-sink",
+        "status": "Active",
+        "type": "Test"
+    }
+}

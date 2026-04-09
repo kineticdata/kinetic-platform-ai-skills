@@ -825,7 +825,7 @@ GET /runs/{runId}?include=details,triggers,triggers.details,tasks,tasks.details,
 | `outputs` | Tree output values (for routines/WebAPIs) |
 | `audits.details` | Manual modifications to run data |
 
-**Task statuses:** `New` (not yet executed), `Closed` (completed), `Deferred` (waiting for external signal)
+**Task statuses:** `New` (not yet executed), `Closed` (completed), `Work In Progress` (deferred — waiting for external signal). Note: deferred tasks show as "Work In Progress", not "Deferred". The presence of a deferral `token` on the task confirms it's in a deferral state.
 
 **Trigger statuses:** `Closed` (success), `Failed` (error — check exceptions), `New` (not yet processed)
 

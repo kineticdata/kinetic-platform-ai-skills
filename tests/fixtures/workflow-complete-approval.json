@@ -1,0 +1,207 @@
+{
+    "notes": null,
+    "updatedBy": "james.davies@kineticdata.com",
+    "sourceGroup": "4d0a669e-f830-4cfa-a6f4-5319ee1b1d7f",
+    "bindings": {
+        "Event": {
+            "Action": "<%= @event['Action']%>",
+            "Timestamp": "<%= @event['Timestamp']%>",
+            "Type": "<%= @event['Type']%>"
+        },
+        "Form": {
+            "Description": "<%= @form['Description']%>",
+            "Name": "<%= @form['Name']%>",
+            "Slug": "<%= @form['Slug']%>",
+            "Status": "<%= @form['Status']%>",
+            "Type": "<%= @form['Type']%>"
+        },
+        "Kapp": {
+            "Name": "<%= @kapp['Name']%>",
+            "Slug": "<%= @kapp['Slug']%>"
+        },
+        "Source Information": {
+            "Source Data": "<%=@source['Data']%>",
+            "Source Group": "<%=@source['Group']%>",
+            "Source Id": "<%=@source['Id']%>",
+            "Source Name": "<%=@source['Name']%>"
+        },
+        "Space": {
+            "Name": "<%= @space['Name']%>",
+            "Slug": "<%= @space['Slug']%>"
+        },
+        "Space Attributes": {
+            "Company Name": "<%= @space_attributes['Company Name']%>",
+            "Lifecycle Kapp Slug": "<%= @space_attributes['Lifecycle Kapp Slug']%>",
+            "Outage Mode": "<%= @space_attributes['Outage Mode']%>",
+            "Service Portal Kapp Slug": "<%= @space_attributes['Service Portal Kapp Slug']%>",
+            "Web Server Url": "<%= @space_attributes['Web Server Url']%>"
+        },
+        "Submission": {
+            "Closed At": "<%= @submission['Closed At']%>",
+            "Closed By": "<%= @submission['Closed By']%>",
+            "Core State": "<%= @submission['Core State']%>",
+            "Created At": "<%= @submission['Created At']%>",
+            "Created By": "<%= @submission['Created By']%>",
+            "Handle": "<%= @submission['Handle']%>",
+            "Id": "<%= @submission['Id']%>",
+            "Origin Id": "<%= @submission['Origin Id']%>",
+            "Parent Id": "<%= @submission['Parent Id']%>",
+            "Submitted At": "<%= @submission['Submitted At']%>",
+            "Submitted By": "<%= @submission['Submitted By']%>",
+            "Type": "<%= @submission['Type']%>",
+            "Updated At": "<%= @submission['Updated At']%>",
+            "Updated By": "<%= @submission['Updated By']%>"
+        },
+        "Submission Previous": {
+            "Closed At": "<%= @submission_previous['Closed At']%>",
+            "Closed By": "<%= @submission_previous['Closed By']%>",
+            "Core State": "<%= @submission_previous['Core State']%>",
+            "Created At": "<%= @submission_previous['Created At']%>",
+            "Created By": "<%= @submission_previous['Created By']%>",
+            "Handle": "<%= @submission_previous['Handle']%>",
+            "Id": "<%= @submission_previous['Id']%>",
+            "Origin Id": "<%= @submission_previous['Origin Id']%>",
+            "Parent Id": "<%= @submission_previous['Parent Id']%>",
+            "Submitted At": "<%= @submission_previous['Submitted At']%>",
+            "Submitted By": "<%= @submission_previous['Submitted By']%>",
+            "Type": "<%= @submission_previous['Type']%>",
+            "Updated At": "<%= @submission_previous['Updated At']%>",
+            "Updated By": "<%= @submission_previous['Updated By']%>"
+        },
+        "System": {
+            "Run Id": "<%=@run['Id']%>",
+            "Trigger Message": "<%=@trigger['Message']%>"
+        },
+        "Values": {
+            "Approver": "<%= @values['Approver']%>",
+            "Comments": "<%= @values['Comments']%>",
+            "Decision": "<%= @values['Decision']%>",
+            "Deferral Token": "<%= @values['Deferral Token']%>",
+            "Original Submission Id": "<%= @values['Original Submission Id']%>"
+        },
+        "Values Previous": {
+            "Approver": "<%= @values_previous['Approver']%>",
+            "Comments": "<%= @values_previous['Comments']%>",
+            "Decision": "<%= @values_previous['Decision']%>",
+            "Deferral Token": "<%= @values_previous['Deferral Token']%>",
+            "Original Submission Id": "<%= @values_previous['Original Submission Id']%>"
+        }
+    },
+    "type": "Tree",
+    "ownerEmail": null,
+    "filter": "",
+    "createdAt": "2026-04-09T02:25:52.148Z",
+    "versionId": "1",
+    "createdBy": "james.davies@kineticdata.com",
+    "name": "Complete Approval",
+    "id": "4d0a669e-f830-4cfa-a6f4-5319ee1b1d7f",
+    "event": "Submission Submitted",
+    "treeJson": {
+        "builderVersion": "",
+        "schemaVersion": "1.0",
+        "version": "",
+        "processOwnerEmail": "",
+        "lastId": 2,
+        "name": "Complete Approval",
+        "notes": "Reads deferral token from approval submission and completes the parent workflow deferral",
+        "connectors": [
+            {
+                "from": "start",
+                "to": "utilities_create_trigger_v1_1",
+                "label": "",
+                "value": "",
+                "type": "Complete"
+            }
+        ],
+        "nodes": [
+            {
+                "configured": true,
+                "defers": false,
+                "deferrable": false,
+                "visible": false,
+                "name": "Start",
+                "messages": [],
+                "dependents": {
+                    "task": [
+                        {
+                            "label": "",
+                            "type": "Complete",
+                            "value": "",
+                            "content": "utilities_create_trigger_v1_1"
+                        }
+                    ]
+                },
+                "id": "start",
+                "position": {
+                    "x": 10,
+                    "y": 10
+                },
+                "version": 1,
+                "parameters": [],
+                "definitionId": "system_start_v1"
+            },
+            {
+                "configured": true,
+                "defers": false,
+                "deferrable": false,
+                "visible": true,
+                "name": "Complete Deferral",
+                "messages": [],
+                "dependents": "",
+                "id": "utilities_create_trigger_v1_1",
+                "position": {
+                    "x": 200,
+                    "y": 10
+                },
+                "version": 1,
+                "parameters": [
+                    {
+                        "dependsOnId": "",
+                        "dependsOnValue": "",
+                        "description": "",
+                        "id": "action_type",
+                        "label": "",
+                        "menu": "",
+                        "value": "Complete",
+                        "required": true
+                    },
+                    {
+                        "dependsOnId": "",
+                        "dependsOnValue": "",
+                        "description": "",
+                        "id": "deferral_token",
+                        "label": "",
+                        "menu": "",
+                        "value": "<%= @values['Deferral Token'] %>",
+                        "required": true
+                    },
+                    {
+                        "dependsOnId": "",
+                        "dependsOnValue": "",
+                        "description": "",
+                        "id": "deferred_variables",
+                        "label": "",
+                        "menu": "",
+                        "value": "<results><result name=\"Decision\"><%= @values['Decision'] %></result><result name=\"Comments\"><%= @values['Comments'] %></result></results>",
+                        "required": false
+                    },
+                    {
+                        "dependsOnId": "",
+                        "dependsOnValue": "",
+                        "description": "",
+                        "id": "message",
+                        "label": "",
+                        "menu": "",
+                        "value": "Approval decision: <%= @values['Decision'] %>",
+                        "required": false
+                    }
+                ],
+                "definitionId": "utilities_create_trigger_v1"
+            }
+        ]
+    },
+    "platformItemType": "Form",
+    "platformItemId": "399198f8-33bb-11f1-b3bb-a70da4c2ef20",
+    "status": "Active",
+    "updatedAt": "2026-04-09T02:26:04.766Z"
+}

@@ -1,0 +1,421 @@
+{
+    "notes": null,
+    "updatedBy": "james.davies@kineticdata.com",
+    "sourceGroup": "79a41781-34b5-4fda-8dc2-94c4e6ecee52",
+    "bindings": {
+        "Event": {
+            "Action": "<%= @event['Action']%>",
+            "Timestamp": "<%= @event['Timestamp']%>",
+            "Type": "<%= @event['Type']%>"
+        },
+        "Form": {
+            "Description": "<%= @form['Description']%>",
+            "Name": "<%= @form['Name']%>",
+            "Slug": "<%= @form['Slug']%>",
+            "Status": "<%= @form['Status']%>",
+            "Type": "<%= @form['Type']%>"
+        },
+        "Kapp": {
+            "Name": "<%= @kapp['Name']%>",
+            "Slug": "<%= @kapp['Slug']%>"
+        },
+        "Source Information": {
+            "Source Data": "<%=@source['Data']%>",
+            "Source Group": "<%=@source['Group']%>",
+            "Source Id": "<%=@source['Id']%>",
+            "Source Name": "<%=@source['Name']%>"
+        },
+        "Space": {
+            "Name": "<%= @space['Name']%>",
+            "Slug": "<%= @space['Slug']%>"
+        },
+        "Space Attributes": {
+            "Company Name": "<%= @space_attributes['Company Name']%>",
+            "Lifecycle Kapp Slug": "<%= @space_attributes['Lifecycle Kapp Slug']%>",
+            "Outage Mode": "<%= @space_attributes['Outage Mode']%>",
+            "Service Portal Kapp Slug": "<%= @space_attributes['Service Portal Kapp Slug']%>",
+            "Web Server Url": "<%= @space_attributes['Web Server Url']%>"
+        },
+        "Submission": {
+            "Closed At": "<%= @submission['Closed At']%>",
+            "Closed By": "<%= @submission['Closed By']%>",
+            "Core State": "<%= @submission['Core State']%>",
+            "Created At": "<%= @submission['Created At']%>",
+            "Created By": "<%= @submission['Created By']%>",
+            "Handle": "<%= @submission['Handle']%>",
+            "Id": "<%= @submission['Id']%>",
+            "Origin Id": "<%= @submission['Origin Id']%>",
+            "Parent Id": "<%= @submission['Parent Id']%>",
+            "Submitted At": "<%= @submission['Submitted At']%>",
+            "Submitted By": "<%= @submission['Submitted By']%>",
+            "Type": "<%= @submission['Type']%>",
+            "Updated At": "<%= @submission['Updated At']%>",
+            "Updated By": "<%= @submission['Updated By']%>"
+        },
+        "Submission Previous": {
+            "Closed At": "<%= @submission_previous['Closed At']%>",
+            "Closed By": "<%= @submission_previous['Closed By']%>",
+            "Core State": "<%= @submission_previous['Core State']%>",
+            "Created At": "<%= @submission_previous['Created At']%>",
+            "Created By": "<%= @submission_previous['Created By']%>",
+            "Handle": "<%= @submission_previous['Handle']%>",
+            "Id": "<%= @submission_previous['Id']%>",
+            "Origin Id": "<%= @submission_previous['Origin Id']%>",
+            "Parent Id": "<%= @submission_previous['Parent Id']%>",
+            "Submitted At": "<%= @submission_previous['Submitted At']%>",
+            "Submitted By": "<%= @submission_previous['Submitted By']%>",
+            "Type": "<%= @submission_previous['Type']%>",
+            "Updated At": "<%= @submission_previous['Updated At']%>",
+            "Updated By": "<%= @submission_previous['Updated By']%>"
+        },
+        "System": {
+            "Run Id": "<%=@run['Id']%>",
+            "Trigger Message": "<%=@trigger['Message']%>"
+        },
+        "Values": {
+            "Agree To Terms": "<%= @values['Agree To Terms']%>",
+            "Attachment Multiple": "<%= @values['Attachment Multiple']%>",
+            "Attachment Optional": "<%= @values['Attachment Optional']%>",
+            "Attachment Required": "<%= @values['Attachment Required']%>",
+            "Attachment Uneditable": "<%= @values['Attachment Uneditable']%>",
+            "Category": "<%= @values['Category']%>",
+            "Checkbox Columns": "<%= @values['Checkbox Columns']%>",
+            "Checkbox Optional": "<%= @values['Checkbox Optional']%>",
+            "Checkbox Required": "<%= @values['Checkbox Required']%>",
+            "Checkbox Uneditable": "<%= @values['Checkbox Uneditable']%>",
+            "Checkbox Vertical": "<%= @values['Checkbox Vertical']%>",
+            "Current User": "<%= @values['Current User']%>",
+            "Date Optional": "<%= @values['Date Optional']%>",
+            "Date Required": "<%= @values['Date Required']%>",
+            "Date Uneditable": "<%= @values['Date Uneditable']%>",
+            "DateTime Optional": "<%= @values['DateTime Optional']%>",
+            "DateTime Required": "<%= @values['DateTime Required']%>",
+            "DateTime Uneditable": "<%= @values['DateTime Uneditable']%>",
+            "Detail Text": "<%= @values['Detail Text']%>",
+            "Dropdown Optional": "<%= @values['Dropdown Optional']%>",
+            "Dropdown Required": "<%= @values['Dropdown Required']%>",
+            "Dropdown Uneditable": "<%= @values['Dropdown Uneditable']%>",
+            "Event Target": "<%= @values['Event Target']%>",
+            "Explanation": "<%= @values['Explanation']%>",
+            "Form Name": "<%= @values['Form Name']%>",
+            "Kapp Slug": "<%= @values['Kapp Slug']%>",
+            "Min Length Field": "<%= @values['Min Length Field']%>",
+            "Multi Constraint Field": "<%= @values['Multi Constraint Field']%>",
+            "Nested Field A": "<%= @values['Nested Field A']%>",
+            "Nested Field B": "<%= @values['Nested Field B']%>",
+            "Phone Number": "<%= @values['Phone Number']%>",
+            "Radio Optional": "<%= @values['Radio Optional']%>",
+            "Radio Required": "<%= @values['Radio Required']%>",
+            "Radio Uneditable": "<%= @values['Radio Uneditable']%>",
+            "Require Explanation": "<%= @values['Require Explanation']%>",
+            "Right Column Field": "<%= @values['Right Column Field']%>",
+            "Show Details": "<%= @values['Show Details']%>",
+            "Space Name": "<%= @values['Space Name']%>",
+            "Status": "<%= @values['Status']%>",
+            "Subcategory": "<%= @values['Subcategory']%>",
+            "Submitted By": "<%= @values['Submitted By']%>",
+            "Team Checkboxes": "<%= @values['Team Checkboxes']%>",
+            "Text Multiline Optional": "<%= @values['Text Multiline Optional']%>",
+            "Text Multiline Required": "<%= @values['Text Multiline Required']%>",
+            "Text Multiline Uneditable": "<%= @values['Text Multiline Uneditable']%>",
+            "Text Optional": "<%= @values['Text Optional']%>",
+            "Text Required": "<%= @values['Text Required']%>",
+            "Text Uneditable": "<%= @values['Text Uneditable']%>",
+            "Text With Placeholder": "<%= @values['Text With Placeholder']%>",
+            "Time Optional": "<%= @values['Time Optional']%>",
+            "Time Required": "<%= @values['Time Required']%>",
+            "Time Uneditable": "<%= @values['Time Uneditable']%>",
+            "User Dropdown": "<%= @values['User Dropdown']%>"
+        },
+        "Values Previous": {
+            "Agree To Terms": "<%= @values_previous['Agree To Terms']%>",
+            "Attachment Multiple": "<%= @values_previous['Attachment Multiple']%>",
+            "Attachment Optional": "<%= @values_previous['Attachment Optional']%>",
+            "Attachment Required": "<%= @values_previous['Attachment Required']%>",
+            "Attachment Uneditable": "<%= @values_previous['Attachment Uneditable']%>",
+            "Category": "<%= @values_previous['Category']%>",
+            "Checkbox Columns": "<%= @values_previous['Checkbox Columns']%>",
+            "Checkbox Optional": "<%= @values_previous['Checkbox Optional']%>",
+            "Checkbox Required": "<%= @values_previous['Checkbox Required']%>",
+            "Checkbox Uneditable": "<%= @values_previous['Checkbox Uneditable']%>",
+            "Checkbox Vertical": "<%= @values_previous['Checkbox Vertical']%>",
+            "Current User": "<%= @values_previous['Current User']%>",
+            "Date Optional": "<%= @values_previous['Date Optional']%>",
+            "Date Required": "<%= @values_previous['Date Required']%>",
+            "Date Uneditable": "<%= @values_previous['Date Uneditable']%>",
+            "DateTime Optional": "<%= @values_previous['DateTime Optional']%>",
+            "DateTime Required": "<%= @values_previous['DateTime Required']%>",
+            "DateTime Uneditable": "<%= @values_previous['DateTime Uneditable']%>",
+            "Detail Text": "<%= @values_previous['Detail Text']%>",
+            "Dropdown Optional": "<%= @values_previous['Dropdown Optional']%>",
+            "Dropdown Required": "<%= @values_previous['Dropdown Required']%>",
+            "Dropdown Uneditable": "<%= @values_previous['Dropdown Uneditable']%>",
+            "Event Target": "<%= @values_previous['Event Target']%>",
+            "Explanation": "<%= @values_previous['Explanation']%>",
+            "Form Name": "<%= @values_previous['Form Name']%>",
+            "Kapp Slug": "<%= @values_previous['Kapp Slug']%>",
+            "Min Length Field": "<%= @values_previous['Min Length Field']%>",
+            "Multi Constraint Field": "<%= @values_previous['Multi Constraint Field']%>",
+            "Nested Field A": "<%= @values_previous['Nested Field A']%>",
+            "Nested Field B": "<%= @values_previous['Nested Field B']%>",
+            "Phone Number": "<%= @values_previous['Phone Number']%>",
+            "Radio Optional": "<%= @values_previous['Radio Optional']%>",
+            "Radio Required": "<%= @values_previous['Radio Required']%>",
+            "Radio Uneditable": "<%= @values_previous['Radio Uneditable']%>",
+            "Require Explanation": "<%= @values_previous['Require Explanation']%>",
+            "Right Column Field": "<%= @values_previous['Right Column Field']%>",
+            "Show Details": "<%= @values_previous['Show Details']%>",
+            "Space Name": "<%= @values_previous['Space Name']%>",
+            "Status": "<%= @values_previous['Status']%>",
+            "Subcategory": "<%= @values_previous['Subcategory']%>",
+            "Submitted By": "<%= @values_previous['Submitted By']%>",
+            "Team Checkboxes": "<%= @values_previous['Team Checkboxes']%>",
+            "Text Multiline Optional": "<%= @values_previous['Text Multiline Optional']%>",
+            "Text Multiline Required": "<%= @values_previous['Text Multiline Required']%>",
+            "Text Multiline Uneditable": "<%= @values_previous['Text Multiline Uneditable']%>",
+            "Text Optional": "<%= @values_previous['Text Optional']%>",
+            "Text Required": "<%= @values_previous['Text Required']%>",
+            "Text Uneditable": "<%= @values_previous['Text Uneditable']%>",
+            "Text With Placeholder": "<%= @values_previous['Text With Placeholder']%>",
+            "Time Optional": "<%= @values_previous['Time Optional']%>",
+            "Time Required": "<%= @values_previous['Time Required']%>",
+            "Time Uneditable": "<%= @values_previous['Time Uneditable']%>",
+            "User Dropdown": "<%= @values_previous['User Dropdown']%>"
+        }
+    },
+    "type": "Tree",
+    "ownerEmail": null,
+    "filter": "",
+    "createdAt": "2026-04-09T02:25:42.426Z",
+    "versionId": "1",
+    "createdBy": "james.davies@kineticdata.com",
+    "name": "Kitchen Sink Approval",
+    "id": "79a41781-34b5-4fda-8dc2-94c4e6ecee52",
+    "event": "Submission Submitted",
+    "treeJson": {
+        "builderVersion": "",
+        "schemaVersion": "1.0",
+        "version": "",
+        "processOwnerEmail": "",
+        "lastId": 4,
+        "name": "Kitchen Sink Approval",
+        "notes": "Sets status to Pending, creates approval with deferral token, waits, then logs result",
+        "connectors": [
+            {
+                "from": "start",
+                "to": "kinetic_core_api_v1_1",
+                "label": "",
+                "value": "",
+                "type": "Complete"
+            },
+            {
+                "from": "kinetic_core_api_v1_1",
+                "to": "kinetic_core_api_v1_2",
+                "label": "",
+                "value": "",
+                "type": "Complete"
+            },
+            {
+                "from": "kinetic_core_api_v1_2",
+                "to": "utilities_echo_v1_3",
+                "label": "",
+                "value": "",
+                "type": "Complete"
+            }
+        ],
+        "nodes": [
+            {
+                "configured": true,
+                "defers": false,
+                "deferrable": false,
+                "visible": false,
+                "name": "Start",
+                "messages": [],
+                "dependents": {
+                    "task": [
+                        {
+                            "label": "",
+                            "type": "Complete",
+                            "value": "",
+                            "content": "kinetic_core_api_v1_1"
+                        }
+                    ]
+                },
+                "id": "start",
+                "position": {
+                    "x": 10,
+                    "y": 10
+                },
+                "version": 1,
+                "parameters": [],
+                "definitionId": "system_start_v1"
+            },
+            {
+                "configured": true,
+                "defers": false,
+                "deferrable": false,
+                "visible": true,
+                "name": "Set Status Pending",
+                "messages": [],
+                "dependents": {
+                    "task": [
+                        {
+                            "label": "",
+                            "type": "Complete",
+                            "value": "",
+                            "content": "kinetic_core_api_v1_2"
+                        }
+                    ]
+                },
+                "id": "kinetic_core_api_v1_1",
+                "position": {
+                    "x": 200,
+                    "y": 10
+                },
+                "version": 1,
+                "parameters": [
+                    {
+                        "dependsOnId": "",
+                        "dependsOnValue": "",
+                        "description": "",
+                        "id": "error_handling",
+                        "label": "",
+                        "menu": "",
+                        "value": "Error Message",
+                        "required": false
+                    },
+                    {
+                        "dependsOnId": "",
+                        "dependsOnValue": "",
+                        "description": "",
+                        "id": "method",
+                        "label": "",
+                        "menu": "",
+                        "value": "PUT",
+                        "required": false
+                    },
+                    {
+                        "dependsOnId": "",
+                        "dependsOnValue": "",
+                        "description": "",
+                        "id": "path",
+                        "label": "",
+                        "menu": "",
+                        "value": "/submissions/<%= @submission['Id'] %>",
+                        "required": false
+                    },
+                    {
+                        "dependsOnId": "",
+                        "dependsOnValue": "",
+                        "description": "",
+                        "id": "body",
+                        "label": "",
+                        "menu": "",
+                        "value": "{\"values\":{\"Status\":\"Pending Approval\"}}",
+                        "required": false
+                    }
+                ],
+                "definitionId": "kinetic_core_api_v1"
+            },
+            {
+                "configured": true,
+                "defers": true,
+                "deferrable": true,
+                "visible": true,
+                "name": "Create Approval",
+                "messages": [],
+                "dependents": {
+                    "task": [
+                        {
+                            "label": "",
+                            "type": "Complete",
+                            "value": "",
+                            "content": "utilities_echo_v1_3"
+                        }
+                    ]
+                },
+                "id": "kinetic_core_api_v1_2",
+                "position": {
+                    "x": 400,
+                    "y": 10
+                },
+                "version": 1,
+                "parameters": [
+                    {
+                        "dependsOnId": "",
+                        "dependsOnValue": "",
+                        "description": "",
+                        "id": "error_handling",
+                        "label": "",
+                        "menu": "",
+                        "value": "Error Message",
+                        "required": false
+                    },
+                    {
+                        "dependsOnId": "",
+                        "dependsOnValue": "",
+                        "description": "",
+                        "id": "method",
+                        "label": "",
+                        "menu": "",
+                        "value": "POST",
+                        "required": false
+                    },
+                    {
+                        "dependsOnId": "",
+                        "dependsOnValue": "",
+                        "description": "",
+                        "id": "path",
+                        "label": "",
+                        "menu": "",
+                        "value": "/kapps/ai-testing/forms/approval/submissions",
+                        "required": false
+                    },
+                    {
+                        "dependsOnId": "",
+                        "dependsOnValue": "",
+                        "description": "",
+                        "id": "body",
+                        "label": "",
+                        "menu": "",
+                        "value": "<%= {values: {Approver: @submission['Created By'], 'Original Submission Id': @submission['Id'], 'Deferral Token': @task['Deferral Token']}, coreState: 'Draft'}.to_json %>",
+                        "required": false
+                    }
+                ],
+                "definitionId": "kinetic_core_api_v1"
+            },
+            {
+                "configured": true,
+                "defers": false,
+                "deferrable": false,
+                "visible": true,
+                "name": "Log Result",
+                "messages": [],
+                "dependents": "",
+                "id": "utilities_echo_v1_3",
+                "position": {
+                    "x": 600,
+                    "y": 10
+                },
+                "version": 1,
+                "parameters": [
+                    {
+                        "dependsOnId": "",
+                        "dependsOnValue": "",
+                        "description": "",
+                        "id": "input",
+                        "label": "",
+                        "menu": "",
+                        "value": "Approval completed. Deferred results: <%= @results['Create Approval'] %>",
+                        "required": true
+                    }
+                ],
+                "definitionId": "utilities_echo_v1"
+            }
+        ]
+    },
+    "platformItemType": "Form",
+    "platformItemId": "0e3548e8-33bb-11f1-98c0-95427f5412af",
+    "status": "Active",
+    "updatedAt": "2026-04-09T02:26:00.361Z"
+}

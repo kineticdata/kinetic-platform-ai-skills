@@ -1,0 +1,84 @@
+{
+    "kapp": {
+        "afterLogoutPath": null,
+        "bundlePath": null,
+        "createdAt": "2026-04-09T01:28:35.238Z",
+        "createdBy": "james.davies@kineticdata.com",
+        "defaultFormConfirmationPage": null,
+        "defaultFormDisplayPage": null,
+        "defaultSubmissionLabelExpression": null,
+        "displayType": "Display Page",
+        "displayValue": null,
+        "formTypes": [
+            {
+                "name": "Approval"
+            },
+            {
+                "name": "Test"
+            },
+            {
+                "name": "Service"
+            }
+        ],
+        "indexDefinitions": [
+            {
+                "name": "coreState",
+                "parts": [
+                    "coreState"
+                ],
+                "status": "Built",
+                "unique": false
+            },
+            {
+                "name": "createdBy",
+                "parts": [
+                    "createdBy"
+                ],
+                "status": "Built",
+                "unique": false
+            },
+            {
+                "name": "submittedBy",
+                "parts": [
+                    "submittedBy"
+                ],
+                "status": "Built",
+                "unique": false
+            },
+            {
+                "name": "type",
+                "parts": [
+                    "type"
+                ],
+                "status": "Built",
+                "unique": false
+            },
+            {
+                "name": "type,coreState,createdBy",
+                "parts": [
+                    "type",
+                    "coreState",
+                    "createdBy"
+                ],
+                "status": "Built",
+                "unique": false
+            },
+            {
+                "name": "type,coreState,submittedBy",
+                "parts": [
+                    "type",
+                    "coreState",
+                    "submittedBy"
+                ],
+                "status": "Built",
+                "unique": false
+            }
+        ],
+        "loginPage": null,
+        "name": "AI Testing",
+        "resetPasswordPage": null,
+        "slug": "ai-testing",
+        "updatedAt": "2026-04-09T02:30:16.883Z",
+        "updatedBy": "james.davies@kineticdata.com"
+    }
+}

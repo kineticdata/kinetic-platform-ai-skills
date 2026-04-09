@@ -1,0 +1,226 @@
+{
+    "form": {
+        "anonymous": false,
+        "attributes": [],
+        "description": "Approval form for Kitchen Sink deferral workflow test",
+        "indexDefinitions": [
+            {
+                "name": "closedBy",
+                "parts": [
+                    "closedBy"
+                ],
+                "status": "Built",
+                "unique": false
+            },
+            {
+                "name": "createdBy",
+                "parts": [
+                    "createdBy"
+                ],
+                "status": "Built",
+                "unique": false
+            },
+            {
+                "name": "handle",
+                "parts": [
+                    "handle"
+                ],
+                "status": "Built",
+                "unique": false
+            },
+            {
+                "name": "submittedBy",
+                "parts": [
+                    "submittedBy"
+                ],
+                "status": "Built",
+                "unique": false
+            },
+            {
+                "name": "updatedBy",
+                "parts": [
+                    "updatedBy"
+                ],
+                "status": "Built",
+                "unique": false
+            }
+        ],
+        "name": "Approval",
+        "pages": [
+            {
+                "advanceCondition": null,
+                "displayCondition": null,
+                "displayPage": null,
+                "elements": [
+                    {
+                        "type": "section",
+                        "renderType": null,
+                        "name": "Approval Details",
+                        "title": "Approval Details",
+                        "visible": true,
+                        "omitWhenHidden": null,
+                        "renderAttributes": {},
+                        "elements": [
+                            {
+                                "type": "field",
+                                "renderType": "text",
+                                "dataType": "string",
+                                "name": "Approver",
+                                "key": "f1",
+                                "label": "Approver",
+                                "enabled": false,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "rows": 1
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "dropdown",
+                                "dataType": "string",
+                                "name": "Decision",
+                                "key": "f2",
+                                "label": "Decision",
+                                "enabled": true,
+                                "visible": true,
+                                "required": true,
+                                "requiredMessage": "Please select a decision",
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "choicesDataSource": "custom",
+                                "choicesRunIf": null,
+                                "choicesResourceName": null,
+                                "choices": [
+                                    {
+                                        "label": "Approved",
+                                        "value": "Approved"
+                                    },
+                                    {
+                                        "label": "Denied",
+                                        "value": "Denied"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "text",
+                                "dataType": "string",
+                                "name": "Comments",
+                                "key": "f3",
+                                "label": "Comments",
+                                "enabled": true,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "rows": 3
+                            }
+                        ]
+                    },
+                    {
+                        "type": "section",
+                        "renderType": null,
+                        "name": "System Fields",
+                        "title": null,
+                        "visible": false,
+                        "omitWhenHidden": false,
+                        "renderAttributes": {},
+                        "elements": [
+                            {
+                                "type": "field",
+                                "renderType": "text",
+                                "dataType": "string",
+                                "name": "Original Submission Id",
+                                "key": "f4",
+                                "label": "Original Submission Id",
+                                "enabled": true,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "rows": 1
+                            },
+                            {
+                                "type": "field",
+                                "renderType": "text",
+                                "dataType": "string",
+                                "name": "Deferral Token",
+                                "key": "f5",
+                                "label": "Deferral Token",
+                                "enabled": true,
+                                "visible": true,
+                                "required": false,
+                                "requiredMessage": null,
+                                "defaultValue": null,
+                                "defaultDataSource": "none",
+                                "defaultResourceName": null,
+                                "pattern": null,
+                                "constraints": [],
+                                "events": [],
+                                "omitWhenHidden": null,
+                                "renderAttributes": {},
+                                "rows": 1
+                            }
+                        ]
+                    },
+                    {
+                        "type": "section",
+                        "renderType": null,
+                        "name": "Footer",
+                        "title": null,
+                        "visible": true,
+                        "omitWhenHidden": null,
+                        "renderAttributes": {},
+                        "elements": [
+                            {
+                                "type": "button",
+                                "renderType": "submit-page",
+                                "name": "Submit Decision",
+                                "label": "Submit Decision",
+                                "visible": true,
+                                "enabled": true,
+                                "renderAttributes": {}
+                            }
+                        ]
+                    }
+                ],
+                "events": [],
+                "name": "Page 1",
+                "renderType": "submittable",
+                "type": "page"
+            }
+        ],
+        "securityPolicies": [],
+        "slug": "approval",
+        "status": "Active",
+        "type": "Approval"
+    }
+}

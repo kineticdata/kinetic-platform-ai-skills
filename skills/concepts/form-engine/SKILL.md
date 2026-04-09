@@ -894,4 +894,9 @@ Mappings can mix `${identity(...)}` (from current user) and `${integration(...)}
 - **Moment.js required for date manipulation** — must be loaded in globals.
 - **`K.ready()` is reserved** — never call it directly.
 - **Integration expressions use `${...}` syntax** — different from condition expressions which are raw JavaScript.
-- **Draft coreState bypasses ALL validation** — required fields, constraints, and conditional required expressions are all skipped for Draft submissions. Only Submitted and Closed enforce validation.
+- **Draft coreState bypasses ALL validation on creation** — but Draft→Submitted transitions via `PUT` DO enforce required field validation (including attachment fields). To submit a Draft with required attachments, upload files first via `POST /submissions/{id}/files`, then transition.
+- **Event `action` is a string, not an object** — events use `"action": "Set Fields"` (string) with a separate `"mappings"` array, NOT `"action": {"type": "setFields", "fields": [...]}`. Using an object causes `java.util.LinkedHashMap cannot be cast to java.lang.String`.
+- **`pattern` property rejected via REST API** — even as object `{regex, message}` format, the API returns "Pre-defined patterns are not supported yet." The pattern property may only work when set via the form builder UI. Always set to `null` in API payloads and use constraints for validation instead.
+- **Bridged resources require `status: "Active"`** — the `bridgedResources` array entries must include `"status": "Active"` or `"Inactive"`. Omitting it returns `Status must be "Active" or "Inactive"`.
+- **Attachment upload is a 2-step process** — (1) `POST /submissions/{id}/files` with multipart form data (`-F "FieldName=@file"`), (2) PUT the returned metadata as JSON string values on the submission. Attachment values are stored as JSON arrays of `{contentType, link, name, size}` objects.
+- **All active workflows matching source/event fire** — not just form-specific ones. If a kapp-level workflow or a workflow from another source group matches the event, it fires too. Plan for unexpected workflow runs when testing.

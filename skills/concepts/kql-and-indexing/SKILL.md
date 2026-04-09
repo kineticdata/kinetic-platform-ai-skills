@@ -143,6 +143,22 @@ Valid job types: `"Build Index"`, `"Cleanup Index"`, `"Populate Index"`, `"Reind
 
 Poll the form's `indexDefinitions` until all statuses change from `"New"` to `"Built"`. With 1000 records this takes ~5 seconds.
 
+**Kapp-level indexes also need building.** The same backgroundJobs pattern works at the kapp level:
+
+```
+POST /kapps/{kapp}/backgroundJobs
+Content-Type: application/json
+
+{
+  "type": "Build Index",
+  "content": {
+    "indexes": ["type", "coreState", "submittedBy"]
+  }
+}
+```
+
+Kapp-level indexes start as `"New"` and return **400 errors** (not empty results) when queried before building: `"The query requires that one or more of the following index definitions must be built"`. Always build kapp-level indexes after creating them.
+
 ## Kapp-Level Indexes (Cross-Form Search)
 
 Index definitions exist at **two levels**:
@@ -183,9 +199,9 @@ This is how portals build unified request lists, approval inboxes, and dashboard
 
 ### Kapp-Level Index Gotchas (Critical)
 
-**`values[FieldName]` indexes cannot be created via REST API PUT.** Attempting to add kapp-level indexes with `values[FieldName]` parts returns `"The 'FieldName' field was not found"` — even when ALL forms in the kapp have that field defined and built at the form level. This affects ALL field names, not just specific ones.
+**`values[FieldName]` indexes at the kapp level return "field was not found" via REST API PUT.** Attempting to add kapp-level indexes with `values[FieldName]` parts returns `"The 'FieldName' field was not found"` — even when forms in the kapp have that field defined and built at the form level. Tested April 2026 on demo.kinops.io with confirmed-existing fields.
 
-These indexes CAN exist on kapps (the `services` and `queue` kapps have them), but they were created via **template provisioning/import** (Ruby SDK `import_space`), not via individual REST API calls. This is a platform limitation of the REST API for kapp-level index management.
+These indexes CAN exist on kapps (the `services` and `queue` kapps have them), but they were created via **template provisioning/import** (Ruby SDK `import_space`), not via individual REST API calls. This appears to be a platform limitation of the REST API for kapp-level index management. (Note: form-level `values[FieldName]` indexes work perfectly via REST API PUT on individual forms.)
 
 **Workarounds:**
 1. Use **system field indexes** at the kapp level — `coreState`, `submittedBy`, `createdBy`, `type` all work via REST API PUT
