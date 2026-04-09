@@ -312,6 +312,40 @@ All responses are JSON. Resources are wrapped in a key matching the resource typ
 
 **Note:** Core API does NOT provide a total count. You cannot display "Page 1 of N" or "Showing X of Y" — only "Page N" with Next/Previous buttons.
 
+### Submission Object Properties (Always Present)
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | UUID | Unique submission identifier |
+| `handle` | string | Short identifier (last 6 chars of UUID, uppercase). Useful for human-readable references, but NOT guaranteed unique. |
+| `coreState` | string | `"Draft"`, `"Submitted"`, or `"Closed"` |
+| `currentPage` | string | Name of the page the submission is on (tracks UI progress, not data completeness) |
+| `displayedPage` | object | `{index, name, type}` — the page shown to users |
+| `label` | string | Auto-generated label (configured via `submissionLabelExpression` on the form) |
+| `origin` | UUID or null | ID of the "origin" submission (for copied/cloned submissions) |
+| `parent` | UUID or null | ID of the parent submission (for child submissions created by workflows) |
+| `sessionToken` | string or null | Token for anonymous submission sessions |
+| `type` | string | Form type (e.g., `"Service"`, `"Approval"`) |
+
+Timestamps (`closedAt`, `closedBy`, `submittedAt`, `submittedBy`, `createdAt`, `createdBy`, `updatedAt`, `updatedBy`) require `include=details`.
+
+### Error Response Formats
+
+The API returns errors in varying formats depending on the context:
+
+```json
+// Most common — simple string error
+{"error": "Unable to locate the 'X' kapp"}
+
+// With correlation (server errors)
+{"error": "message", "correlationId": "abc-123", "statusCode": 400}
+
+// Uniqueness/validation errors
+{"errorKey": "uniqueness_violation", "error": "Team names must be unique..."}
+```
+
+Always check for `error` (string) first, then optionally `errorKey` for programmatic handling.
+
 ## File Uploads (Multipart Submissions)
 
 To create a submission with file attachments in a single request, use the multipart endpoint:

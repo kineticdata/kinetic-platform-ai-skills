@@ -780,11 +780,15 @@ Mappings can mix `${identity(...)}` (from current user) and `${integration(...)}
 
 ## Gotchas
 
+- **API requires ALL field properties in POST/PUT** — missing properties cause 400 "Invalid Form". When creating forms via API, provide every property for each field (even if `null`). Different field types have different required property sets (see Render Type Property Rules above).
+- **`events: []` is required** — even when empty, the events array must be present on forms, pages, and fields in API payloads.
+- **Section `renderType` must be present** — `null` is valid, but omitting it causes API errors.
+- **Checkbox values: write as JSON string, read as native array** — submitting `"[\"A\",\"B\"]"` (string) reads back as `["A", "B"]` (array). Use `indexOf()` not `===` for membership checks.
 - **`K('field[X]').value(newValue)` triggers Change events** — can create infinite loops if the Change event sets the same field. Guard with `runIf` conditions.
 - **`hide()`/`show()` can conflict with builder conditions** — the form engine self-corrects, overriding programmatic changes.
-- **Checkbox values are JSON arrays** — use `indexOf()` not `===` for membership checks.
 - **`K('submission').value(fieldName)` is cross-page only** — returns values from previous pages, not the current page.
 - **URL field presets require exact field names** — `?values[NonExistentField]=x` causes a 500 error.
 - **Moment.js required for date manipulation** — must be loaded in globals.
 - **`K.ready()` is reserved** — never call it directly.
 - **Integration expressions use `${...}` syntax** — different from condition expressions which are raw JavaScript.
+- **Draft coreState bypasses ALL validation** — required fields, constraints, and conditional required expressions are all skipped for Draft submissions. Only Submitted and Closed enforce validation.
