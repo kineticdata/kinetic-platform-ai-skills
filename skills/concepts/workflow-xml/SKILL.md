@@ -432,6 +432,21 @@ Deferrals pause a workflow node and wait for an external signal to resume.
 
 **Common pattern:** An approval workflow creates a submission in Draft with the deferral token stored in a field. When the approver submits their decision, a "Submission Submitted" tree reads the token and calls `utilities_create_trigger_v1` with `action_type: "Complete"` to resume the original workflow.
 
+**Verified end-to-end deferral/approval pattern** (tested on demo.kinops.io):
+
+1. **Request form workflow** (on Submission Submitted, with filter `values('Status') == "Open"`):
+   - Set Status Pending: `PUT /submissions/<%= @submission['Id'] %>` → `{"values":{"Status":"Pending Approval"}}`
+   - Create Approval (`defers: true, deferrable: true`): `POST /kapps/{kapp}/forms/approval/submissions` with `{values: {Approver, 'Original Submission Id': @submission['Id'], 'Deferral Token': @task['Deferral Token']}, coreState: 'Draft'}`
+   - After deferral completes → Set Final Status: `PUT /submissions/<%= @submission['Id'] %>` → `{"values":{"Status":"<%= deferred result %>"}}`
+
+2. **Approval form workflow** (on Submission Submitted):
+   - Complete Deferral: `utilities_create_trigger_v1` with `action_type: "Complete"`, `deferral_token: @values['Deferral Token']`, `deferred_variables: <results><result name="Decision"><%= @values['Decision'] %></result></results>`
+   - Close Approval: `PUT /submissions/<%= @submission['Id'] %>` → `{"coreState":"Closed"}` (best practice — don't leave approvals in Submitted forever)
+
+**Deferred task status:** Shows as `"Work In Progress"` in the runs API (not `"Deferred"`). The presence of a `token` on the task confirms deferral. After completion, status changes to `"Closed"`.
+
+**Deferred results access:** After the Complete trigger fires, subsequent nodes can access deferred results via `@results['Node Name']`. The results are the handler's original results merged with the deferred_variables XML.
+
 ### API Handler — `kinetic_core_api_v1` (Legacy)
 
 Makes REST API calls to Kinetic Core. **Prefer Connections/Operations for new workflows** — this handler is a legacy approach. It's still useful for one-off API calls where building a full operation isn't worth the effort, but Connections/Operations should be the default.
