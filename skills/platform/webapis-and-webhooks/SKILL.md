@@ -126,9 +126,28 @@ Webhooks can be configured at three levels:
 - **PATCH bypasses webhooks** — `PATCH /submissions` does NOT fire webhooks (use for migrations/backfill)
 - **Multiple trees per event** — multiple trees can be bound to the same event (all fire independently)
 
-### Webhook Configuration
+### Webhook CRUD API
 
-Webhooks are managed in the Kinetic Console:
+Webhooks are **identified by name** (not by id). All CRUD uses the webhook name as the path parameter.
+
+| Operation | Method | Path |
+|-----------|--------|------|
+| List (space) | GET | `/app/api/v1/webhooks` |
+| Create (space) | POST | `/app/api/v1/webhooks` |
+| Delete (space) | DELETE | `/app/api/v1/webhooks/{name}` |
+| List (kapp) | GET | `/app/api/v1/kapps/{kappSlug}/webhooks` |
+| Create (kapp) | POST | `/app/api/v1/kapps/{kappSlug}/webhooks` |
+| Delete (kapp) | DELETE | `/app/api/v1/kapps/{kappSlug}/webhooks/{name}` |
+
+**Create body:** `{ "name": "...", "event": "Submission Submitted", "type": "Submission Submitted", "url": "https://...", "filter": "" }`
+
+**CRITICAL:** The `url` field is **required** — omitting it returns 400 ("URL must not be blank"). The `name` must be unique within scope (space or kapp).
+
+**URL-encode webhook names** containing spaces when used in DELETE paths (e.g., `/webhooks/My%20Webhook`).
+
+### Webhook Configuration (Console)
+
+Webhooks are also managed in the Kinetic Console:
 - **Space Console > Webhooks** for space-level triggers
 - **Kapp Console > Webhooks** for kapp and form-level triggers
 

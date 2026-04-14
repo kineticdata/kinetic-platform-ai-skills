@@ -79,31 +79,79 @@ Each node accepts inputs called parameters. Parameters support:
 - `@variables` — Same as `@results` (alias for accumulated node outputs)
 - `@inputs` — Data passed to routines
 
-**Full ERB context (all instance variables available in workflow expressions):**
+**Full ERB context (verified by debug dump on live engine):**
 
-| Variable | Type | Description |
-|----------|------|-------------|
-| `@request` | Hash | Raw incoming request data: `Body`, `Query` |
-| `@request_body_params` | Hash | Parsed POST/PUT body fields |
-| `@request_headers` | Hash | HTTP headers (e.g., `content-type`) |
-| `@request_query_params` | Hash | Parsed URL query parameters |
-| `@requested_by` | Hash | Caller identity: `email`, `displayName`, `username` |
-| `@results` | Hash | Results from completed upstream tasks (keyed by node name) |
-| `@variables` | Hash | Alias for `@results` |
-| `@inputs` | Hash | Input parameters passed to routines |
-| `@run` | Hash | Current run: `Id` |
-| `@source` | Hash | `Name`, `Group`, `Id`, `Data` (JSON string with full request context) |
-| `@task` | Hash | Current node metadata: `Id`, `Status`, `Name`, `Deferral Token`, `Node Id`, `Tree Id`, `Tree Name`, `Loop Index` |
-| `@trigger` | Hash | Engine trigger metadata: `Id`, `Status`, `Action`, `Execution Type`, `Node Id` |
+Event-triggered workflows (Submission Created/Updated/Submitted):
+
+| Variable | Type | Keys | Description |
+|----------|------|------|-------------|
+| `@submission` | Hash | `Created By`, `Submitted By`, `Updated By`, `Id`, `Core State`, `Handle`, `Created At`, `Submitted At`, `Updated At`, `Closed At`, `Closed By`, `Type`, `Origin Id`, `Parent Id` | The submission that triggered the workflow |
+| `@form` | Hash | `Name`, `Slug`, `Description`, `Status`, `Type`, `Created At`, `Created By`, `Updated At`, `Updated By` | The form the submission belongs to |
+| `@kapp` | Hash | `Name`, `Slug` | The kapp the form belongs to |
+| `@space` | Hash | `Name`, `Slug` | The space |
+| `@event` | Hash | `Action` (Created/Updated), `Type` (Submission), `Timestamp` | What triggered this workflow |
+| `@values` | Hash | All form field names | Current field values |
+| `@values_previous` | Hash | All form field names | Previous field values (empty on Created) |
+| `@values_changes` | Hash | All form field names | Tracks which fields changed |
+| `@submission_previous` | Hash | Same keys as `@submission` | Previous submission state |
+| `@submission_changes` | Hash | Same keys as `@submission` | Tracks which submission properties changed |
+| `@results` | Hash | Keyed by node name | Results from completed upstream tasks |
+| `@variables` | Hash | Same as `@results` | Alias for `@results` |
+| `@run` | Hash | `Id` | Current run |
+| `@source` | Hash | `Name`, `Group`, `Id`, `Data` | Source metadata |
+| `@task` | Hash | `Id`, `Status`, `Name`, `Deferral Token`, `Task Definition Id`, `Node Id`, `Tree Id`, `Tree Name`, `Source`, `Source Id`, `Return Variables`, `Deferred Variables`, `Loop Index`, `Parent Loop Index`, `Visible`, `Execution Duration` | Current node metadata |
+| `@trigger` | Hash | `Id`, `Engine Identification`, `Status`, `Action`, `Execution Type`, `Tree Id`, `Node Id`, `Source`, `Source Id`, `Loop Index`, `Deferral Token`, `Deferred Variables`, `Message`, `Management Action`, `Selection Criterion`, `Flags` | Engine trigger metadata |
+| `@kapp_attributes` | Hash | Kapp attribute names | Kapp-level attributes |
+| `@form_attributes` | Hash | Form attribute names | Form-level attributes |
+| `@space_attributes` | Hash | Space attribute names | Space-level attributes |
+
+WebAPI trees have additional variables: `@request`, `@request_body_params`, `@request_headers`, `@request_query_params`, `@requested_by`.
+
+Common expressions:
+```ruby
+# WHO created/submitted/updated
+<%= @submission['Created By'] %>
+<%= @submission['Submitted By'] %>
+<%= @submission['Updated By'] %>
+
+# WHAT form and kapp
+<%= @form['Slug'] %>        # e.g. "leads"
+<%= @form['Name'] %>        # e.g. "Leads"
+<%= @kapp['Slug'] %>        # e.g. "crm"
+
+# FIELD values
+<%= @values['Status'] %>
+<%= @values['Priority'] %>
+
+# ALL values as string
+<%= @values.map{|k,v| "#{k}=#{v}"}.join(', ') %>
+
+# DETECT field changes (Submission Updated only)
+<%= @values['Status'] != @values_previous['Status'] %>
+```
+
+**Debugging technique — dump all ERB variables:**
+Create an Echo node right after Start with this input to see every variable available:
+```erb
+<% vars = instance_variables.map { |v|
+  name = v.to_s
+  val = instance_variable_get(v)
+  keys = val.respond_to?(:keys) ? val.keys.join(', ') : val.to_s[0..200]
+  "#{name} [#{val.class}] = #{keys}"
+}; %><%= vars.join(' || ') %>
+```
+This dumps variable names, types, and hash keys. Check the Echo node's `output` result in Activity Monitor.
 
 **ERB Hash access pitfall:** In the Task engine ERB context, Ruby Hash `[]` raises `IndexError` for missing keys (unlike standard Ruby which returns `nil`). Always use `.fetch('key', 'default')` for optional parameters:
 ```ruby
-# BAD — raises IndexError if personId not in query string:
+# BAD — raises IndexError if key missing:
 <%= @request_query_params['personId'] %>
 
 # GOOD — returns empty string if missing:
 <%= @request_query_params.fetch('personId', '') %>
 ```
+
+**Note:** `@values['FieldName']` does NOT raise IndexError for missing fields — all form fields are present in `@values` (with empty string for unfilled fields). The `.fetch` pattern is needed for `@request_query_params`, `@request_headers`, and other hashes where keys are not guaranteed.
 
 ### Routines
 
@@ -193,7 +241,30 @@ Uses **Loop Head** and **Loop Tail** system handlers. Loop iterations execute in
 Three strategies:
 1. **Branching on error outputs** — handlers return errors as results for conditional routing
 2. **Retry paths with external input** — wrap handlers in routines with error-handling
-3. **Engine-level retry** — built-in Retry Task / Skip Task options on failed nodes
+3. **Engine-level retry** — built-in resolution actions on failed nodes/connectors
+
+**Error types and valid resolution actions:**
+
+| Error Type | Valid Actions | Description |
+|---|---|---|
+| **Handler Error** | Retry Task, Skip Task, Do Nothing | Handler execution failed |
+| **Node Parameter Error** | Retry Task, Skip Task, Do Nothing | ERB expression in node parameter failed to evaluate |
+| **Connector Error** | Continue Branch, Cancel Branch, Do Nothing | Ruby condition on a connector failed to evaluate |
+| **Missing Handler Error** | Retry Task, Skip Task, Do Nothing | Handler definition not found |
+| **Source Error** | Do Nothing | Source system unavailable |
+| **Tree Error** | Do Nothing | Tree definition problem |
+| **Unidentified Error** | Do Nothing | Engine-level crash (e.g., java.lang.RuntimeException) |
+
+**Connector Error resolution:**
+- **Continue Branch** — treat the connector condition as `true` (proceed down this path)
+- **Cancel Branch** — treat the connector condition as `false` (do not take this path)
+- These are different from handler errors because a connector is not a task — it's a routing decision
+
+**Bulk error resolution API:**
+```
+POST /errors/resolve
+{ "ids": [1, 2, 3], "action": "Do Nothing", "resolution": "Description of fix" }
+```
 
 ---
 

@@ -172,9 +172,14 @@ Content-Type: application/json
 - `coreState` - Filter submissions: `Draft`, `Submitted`, or `Closed`
 - `orderBy` - **Only** needed with KQL range operators (`!=`, `=*`, `>`, `<`, `BETWEEN`). Must reference the same field as the range expression. Equality operators (`=`, `IN`) do NOT need `orderBy`. **Note:** `!=` is a range operator despite looking like equality.
 
+### Sorting
+
+- **`direction`** — `ASC` or `DESC` (default `DESC`). Use with `orderBy` to control sort order: `?orderBy=values[Name]&direction=ASC&q=values[Name] >= ""`
+- Default sort is `createdAt DESC`
+
 ### Query Parameters That Do NOT Exist
 
-The Core API submission endpoints do **not** support `timeline` or `direction` parameters. Passing these will cause a **400 error**. Submissions are returned in `createdAt` descending order by default. There is no way to change the sort order except via `orderBy` (which is only valid with range queries).
+The Core API submission endpoints do **not** support the `timeline` parameter. Passing it will cause a **400 error**.
 
 ## Response Format
 
@@ -253,6 +258,7 @@ Submissions move through three states: **Draft** → **Submitted** → **Closed*
 
 ### Important
 
+- **Only spaceAdmin users can set `coreState` via the API.** Regular users receive `403: "Only space admins can change the core state of a submission"` when passing `coreState` in the request body. Regular users submit through the form page flow, which manages the lifecycle automatically. To create submissions as a regular user, omit `coreState` entirely — just send `{values:{...}}`.
 - **`POST /submissions/{id}/submit` does NOT exist** (404) — use `PUT /submissions/{id}` with `{coreState:"Submitted"}` instead
 - Creating with `coreState:"Submitted"` fires "Submission Created" — NOT "Submission Submitted". The "Submitted" event only fires on the explicit Draft→Submitted transition.
 
@@ -321,7 +327,8 @@ When creating many submissions programmatically:
 - Tree names/titles are used as identifiers in URLs, not slugs
 - Submission search via POST exists for when query strings get too long
 - The `include` parameter is important — without it, responses may be minimal
-- **Do NOT pass `timeline` or `direction` query parameters** — they don't exist in the Core API and will cause 400 errors
+- **Do NOT pass `timeline` query parameter** — it doesn't exist in the Core API and will cause 400 errors
+- **`direction` IS supported** — `ASC` or `DESC`, use with `orderBy` to control sort order
 - **Never table-scan large forms** — always use KQL `values[Field] = "value"` or `IN ()` queries; forms may have millions of records
 - **Submitting values for undefined fields returns 500** — verify field names first
 - **Bulk submission creation triggers active workflows** — plan for this if trees are bound to submission events

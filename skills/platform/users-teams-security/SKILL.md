@@ -78,12 +78,22 @@ Both require **attribute definitions** to be created under Definitions > Attribu
 | Update Team | PUT | `/app/api/v1/teams/{teamSlug}` |
 | Delete Team | DELETE | `/app/api/v1/teams/{teamSlug}` |
 
+### Team Slugs Are Auto-Generated UUIDs
+
+**CRITICAL:** The `slug` field in `POST /teams` body is **ignored**. The platform auto-generates a UUID as the team slug. Always save the returned `slug` from the create response and use it for subsequent operations. Do not assume you can control team slugs.
+
 ### Memberships
 
 | Operation | Method | Path |
 |-----------|--------|------|
-| Add Member | POST | `/app/api/v1/teams/{teamSlug}/memberships` |
-| Remove Member | DELETE | `/app/api/v1/teams/{teamSlug}/memberships/{username}` |
+| Add Member | POST | `/app/api/v1/memberships` |
+| Remove Member | DELETE | `/app/api/v1/memberships/{teamSlug}_{username}` |
+
+**Add member body format:** `{ "team": { "slug": "..." }, "user": { "username": "..." } }`
+
+**Delete identifier:** Concatenate team slug + underscore + username (e.g., `DELETE /memberships/abc123_john.doe`)
+
+**WARNING:** The paths `/teams/{slug}/memberships` (nested under teams) return 404. Always use the top-level `/memberships` endpoint.
 
 ### Naming Conventions
 
