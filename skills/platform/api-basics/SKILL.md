@@ -335,6 +335,7 @@ When creating many submissions programmatically:
 - **`/me` response is flat** — properties are at top level (`me.username`), NOT nested under `me.user`
 - **Seed data values may differ from plan labels** — always verify actual field values (e.g., "Prod" vs "Production") before hardcoding dropdown options or CSS class names
 - **`POST /submissions/{id}/submit` does NOT exist** — returns 404. To submit a Draft, use `PUT /submissions/{id}` with `{ "coreState": "Submitted" }`
+- **Individual submission GET/PUT/DELETE MUST use bare `/submissions/{id}`** — the kapp-scoped path `/kapps/{kapp}/submissions/{id}` and form-scoped path `/kapps/{kapp}/forms/{form}/submissions/{id}` both return 404 for individual submission operations. Only listing/search/create use kapp/form-scoped paths. This is a common mistake that silently breaks detail views and update operations.
 
 ## Finding Workflows for a Kapp/Form
 
