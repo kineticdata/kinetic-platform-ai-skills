@@ -10,6 +10,38 @@ via the Task API and understanding the exported XML schema.
 
 ---
 
+## 🚨 MANDATORY — Workflow Tree Gate Scripts
+
+Before writing, PUTting, or debugging any workflow tree, use the gate scripts in `scripts/` alongside this skill:
+
+| Script | Purpose |
+|---|---|
+| `scripts/validate-workflow.mjs` | Validates a tree XML against all rules documented in this skill. Refuses invalid trees. Cites the rule violated. Run before every PUT. |
+| `scripts/put-workflow.mjs` | Atomic validate + PUT wrapper. The sanctioned way to push a tree to the engine. |
+| `scripts/workflow-debug.mjs` | Inspects a run via `/runs/{id}/tasks` (NOT `/triggers` — non-deferrable handlers execute inline and don't create triggers). |
+| `scripts/hook-check-workflow-put.mjs` | Claude Code `PreToolUse` hook. Install in `~/.claude/settings.json` to block raw Bash PUTs that bypass the validator. |
+
+**Why these exist:** The rules documented below are enforced mechanically so silent failures (node-drop, 404-in-handler, ghost-run-status) can't happen. Every developer who clones this skills repo inherits the same safeguards.
+
+**Hook install (per machine, one-time):**
+```json
+{
+  "hooks": {
+    "PreToolUse": [{
+      "matcher": "Bash",
+      "hooks": [{
+        "type": "command",
+        "command": "node /absolute/path/to/skills/skills/platform/workflow-xml/scripts/hook-check-workflow-put.mjs"
+      }]
+    }]
+  }
+}
+```
+
+Bypass only via `KINETIC_SKIP_VALIDATION=1` for rare intentional cases.
+
+---
+
 ## Task API Endpoints & Authentication
 
 **Base URL pattern:**
