@@ -539,6 +539,7 @@ Constraints are **JavaScript expressions** that validate field values at submiss
 - **Bridged resources require `status: "Active"`** — the `bridgedResources` array entries must include `"status": "Active"` or `"Inactive"`. Omitting it returns `Status must be "Active" or "Inactive"`.
 - **Attachment upload is a 2-step process** — (1) `POST /submissions/{id}/files` with multipart form data (`-F "FieldName=@file"`), (2) PUT the returned metadata as JSON string values on the submission. Attachment values are stored as JSON arrays of `{contentType, link, name, size}` objects.
 - **All active workflows matching source/event fire** — not just form-specific ones. If a kapp-level workflow or a workflow from another source group matches the event, it fires too. Plan for unexpected workflow runs when testing.
+- **Expression defaults (`${identity(...)}`, `${form(...)}`) only evaluate in CoreForm** — when creating submissions via REST API, expression-based `defaultValue` fields are NOT evaluated. The values will be empty/null. Set these fields explicitly in the API POST body when not using CoreForm.
 
 ---
 

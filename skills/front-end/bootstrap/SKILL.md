@@ -10,8 +10,12 @@ description: KineticLib setup, CoreForm prerequisites, App auth state machine, V
 `@kineticdata/react` is published on **public npm**:
 
 ```bash
-npm install @kineticdata/react
+npm install react@18 react-dom@18 @kineticdata/react
 ```
+
+**React 18 is required** — `@kineticdata/react` is not compatible with React 19. Use `react@18` and `react-dom@18`.
+
+**Missing transitive dependency:** You may need to install `isarray` separately (`npm install isarray`) if you get build errors about unresolved imports from `@kineticdata/react/lib/components/table/Table.redux.js`.
 
 For new portals, the [momentum-portal](https://github.com/kineticdata/momentum-portal) is the reference project with everything pre-configured.
 
