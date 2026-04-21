@@ -11,11 +11,9 @@ The Kinetic form engine renders forms from a JSON definition. Forms can be built
 
 ## Form JSON Schema
 
-**`include=pages` vs `include=fields` — Critical distinction:**
-- **`include=pages`** — returns the full nested page/section/field structure with ALL properties (renderType, dataType, choices, constraints, events, etc.). **Use this when you need the complete form definition.**
-- **`include=fields`** — returns a flat list of field names only (no renderType, no choices, no constraints). Useful for quick field name lookups but NOT sufficient for form structure analysis.
-
-Always use `include=pages` when reading a form for duplication, validation, or inspection.
+**`include=pages` vs `include=fields`:**
+- **`include=pages`** — the real form structure. Returns the full nested page/section/field hierarchy with ALL properties (renderType, dataType, choices, constraints, events, visibility, etc.). Use this when you need the complete form definition.
+- **`include=fields`** — a flat list of field names. Useful for dynamically understanding what fields exist (e.g., building table column headers, generating search filters) but does NOT include renderType, choices, or other structural properties. Think of it as metadata about the form's data shape, not the form itself.
 
 A form definition retrieved via `GET /kapps/{kapp}/forms/{form}?include=pages,indexDefinitions,attributesMap` contains:
 
