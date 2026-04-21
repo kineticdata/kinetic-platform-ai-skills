@@ -915,11 +915,18 @@ function uuidV1ToMs(uuid) {
 function matchEntityByUUID(platformItemId, entities) {
   const targetMs = uuidV1ToMs(platformItemId);
   if (!targetMs) return null;
-  for (const e of entities)
-    if (Math.abs(targetMs - new Date(e.createdAt).getTime()) < 1000) return e;
-  return null;
+  let best = null, bestDiff = Infinity;
+  for (const e of entities) {
+    const diff = Math.abs(targetMs - new Date(e.createdAt).getTime());
+    if (diff < bestDiff) { best = e; bestDiff = diff; }
+  }
+  return bestDiff < 1000 ? best : null;
 }
 ```
+
+**Gotcha — first-match vs closest-match:** When many forms are created in rapid succession (e.g., an app install creates four forms in 700ms), multiple entities fall inside the 1000ms tolerance window. A first-match loop returns the wrong entity (whichever appears first in the array); you must return the **closest** match by time diff.
+
+**Stronger fix when possible:** For form-level trees, also fetch each form's `/workflows` endpoint — those entries carry the tree's `id` (which equals tree `sourceGroup`) alongside a known form slug. Build a `treeId → formSlug` map from that and use it as the primary lookup; fall back to `matchEntityByUUID` only when missing. This avoids UUID timestamp fuzz entirely.
 
 ### Algorithm to find trees for a kapp
 
