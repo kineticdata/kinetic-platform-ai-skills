@@ -62,11 +62,13 @@ Any other value returns: `Type must be "Discussion", "File Resource", "Form", "K
 
 | Type | Available Bindings | Used For |
 |------|-------------------|----------|
-| **Space** | `identity()`, `space()` | Space display, user/team CRUD, datastore access, WebAPI execution |
+| **Space** | `identity()`, `space()` | Space display, user/team CRUD, WebAPI execution |
 | **Team** | `identity()`, `space()`, `team()` | Team-specific policies |
 | **User** | `identity()`, `space()`, `user()` | User-specific policies |
-| **Datastore Form** | `identity()`, `space()`, `form()` | Datastore form display/modification |
-| **Datastore Submission** | `identity()`, `space()`, `form()`, `submission()` | Datastore submission access/modification |
+| **Datastore Form** | `identity()`, `space()`, `form()` | Legacy space-level form policies (v5 compatibility) |
+| **Datastore Submission** | `identity()`, `space()`, `form()`, `submission()` | Legacy space-level submission policies (v5 compatibility) |
+
+**Note:** "Datastore Form" and "Datastore Submission" types are legacy from v5 when forms could exist at the space level. In v6+, all forms live within kapps — use Kapp-level Form and Submission types for all new work. The legacy types still exist in the API for backward compatibility.
 
 #### Kapp-Level Types (Kapp > Definitions > Security)
 
@@ -277,7 +279,7 @@ Attribute definitions declare the schema for custom metadata on platform resourc
 | User | `GET/POST /app/api/v1/userAttributeDefinitions` | `GET/PUT/DELETE /app/api/v1/userAttributeDefinitions/{name}` |
 | User Profile | `GET/POST /app/api/v1/userProfileAttributeDefinitions` | `GET/PUT/DELETE /app/api/v1/userProfileAttributeDefinitions/{name}` |
 | Team | `GET/POST /app/api/v1/teamAttributeDefinitions` | `GET/PUT/DELETE /app/api/v1/teamAttributeDefinitions/{name}` |
-| Datastore Form | `GET/POST /app/api/v1/datastoreFormAttributeDefinitions` | `GET/PUT/DELETE /app/api/v1/datastoreFormAttributeDefinitions/{name}` |
+| Datastore Form (legacy) | `GET/POST /app/api/v1/datastoreFormAttributeDefinitions` | `GET/PUT/DELETE /app/api/v1/datastoreFormAttributeDefinitions/{name}` |
 
 #### Kapp-Level Attribute Definitions
 

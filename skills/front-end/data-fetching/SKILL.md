@@ -1,6 +1,6 @@
 ---
 name: data-fetching
-description: useData, usePaginatedData, usePagination, usePoller hooks, defineKqlQuery builder, searchSubmissions patterns, and datastore queries for Kinetic front-end portals.
+description: useData, usePaginatedData, usePagination, usePoller hooks, defineKqlQuery builder, searchSubmissions patterns, and @kineticdata/react portal-relevant exports.
 ---
 
 # Data Fetching
@@ -309,21 +309,9 @@ Note: `include=values` alone does **not** return `createdAt` — use `include=de
 
 ---
 
-## Datastore Queries
+## "Datastore" Forms
 
-Query a datastore (bridge) form directly:
-
-```js
-const params = {
-  kapp: kappSlug,
-  form: datastoreFormSlug,
-  search: { include: ['details', 'values'], limit: 1000 },
-};
-const { response } = useData(searchSubmissions, params);
-const records = response?.submissions || [];
-```
-
-Datastore forms use the same `searchSubmissions` API. The 1000-record cap still applies — use keyset pagination for large datastores.
+"Datastore form" is not a separate platform concept — it's a common term for a form used to store reference data (lookup tables, configuration records, etc.). These are regular forms within a kapp, queried the same way as any other form with `searchSubmissions`. Same API, same indexes, same KQL. The 1000-record cap still applies — use keyset pagination for large datasets.
 
 ---
 
@@ -348,3 +336,26 @@ const error = response?.error;
 - `values` — field values
 - `activities` — activity/comment timeline entries
 - `activities.details` — full activity data (required for work notes content)
+
+---
+
+## `@kineticdata/react` — Portal-Relevant Exports
+
+The package exports 815+ symbols, but most are admin-console components. For portal development, these are the key exports:
+
+**Data Fetching:**
+`fetchSpace`, `fetchKapp`, `fetchForm`, `fetchForms`, `fetchProfile`, `fetchSubmission`, `fetchSubmissionActivities`, `fetchTeam`, `fetchTeams`, `fetchUser`, `fetchUsers`, `fetchCategories`, `fetchBridgedResource`, `searchSubmissions`
+
+**Mutations:**
+`createSubmission`, `updateSubmission`, `deleteSubmission`, `saveSubmissionMultipart`, `cloneSubmission`, `createMembership`, `deleteMembership`, `updateProfile`, `updateKapp`, `updateSpace`, `createSubmissionActivity`, `updateSubmissionActivity`
+
+**Components:**
+`KineticLib`, `CoreForm`, `I18n`, `I18nProvider`, `Table`, `SimpleForm`, `FormState`, `ToastContainer`
+
+**Helpers:**
+`bundle`, `getCsrfToken`, `generateKey`, `defineKqlQuery`, `defineFilter`, `convertMultipleBridgeRecords`, `countBridgedResource`, `isLockable`, `isLocked`, `lockSubmission`, `unlockSubmission`, `showToast`, `clearToasts`
+
+**Auth:**
+`login`, `logout`, `logoutDirect`, `retrieveJwt`, `singleSignOn`
+
+Components like `TreeBuilder`, `HandlerTable`, `EngineSettingsForm`, `SystemForm`, `ConnectionForm`, `OperationForm`, etc. are admin-console-only.

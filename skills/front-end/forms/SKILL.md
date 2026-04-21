@@ -194,12 +194,43 @@ const Layout = generateFormLayout({
 
 ---
 
-## CoreForm — Direct Usage
+## Multi-Page Forms
 
-Use raw `CoreForm` when you need full control (datastore admin, review mode, public forms):
+CoreForm handles multi-page navigation natively — the form engine manages page state, advance conditions, and the submit-page/previous-page/save button renderTypes. **No portal code is needed for basic multi-page behavior.**
+
+For custom page navigation UI, pass a `ReviewPaginationControl` component via the `components` prop:
 
 ```jsx
-// Datastore admin — full CRUD handlers
+const ReviewPaginationControl = ({ index, actions }) => (
+  <div>
+    <button onClick={actions.previousPage} disabled={!actions.previousPage}>Previous</button>
+    <span>Page {index + 1}</span>
+    <button onClick={actions.nextPage} disabled={!actions.nextPage}>Next</button>
+  </div>
+);
+
+<CoreForm
+  kapp={kappSlug}
+  form={formSlug}
+  components={{ ReviewPaginationControl }}
+/>
+```
+
+CoreForm provides `{ index, actions }` to the component:
+- `index` — zero-based current page index
+- `actions.previousPage` — function or `undefined` (page 1)
+- `actions.nextPage` — function or `undefined` (last page)
+
+The form's page structure (defined in the form JSON) controls the number of pages, advance conditions (`advanceCondition`), display conditions (`displayCondition`), and confirmation pages (`renderType: "confirmation"`).
+
+---
+
+## CoreForm — Direct Usage
+
+Use raw `CoreForm` when you need full control (admin tools, review mode, public forms):
+
+```jsx
+// Admin form — full CRUD handlers
 <CoreForm
   kapp={kappSlug}
   form={formSlug}

@@ -71,19 +71,19 @@ Comprehensive audit from three angles: live API testing on demo.kinops.io, `@kin
 
 | # | Gap | Area | Status |
 |---|-----|------|--------|
-| 36 | No list of all `@kineticdata/react` exports | data-fetching | OPEN |
-| 37 | Multi-page form rendering undocumented | forms | OPEN |
-| 38 | Widget API props undocumented | forms | OPEN |
-| 39 | No text search (=*) filter pattern | build-paginated-list | OPEN |
-| 40 | No user search/filter endpoint | users-teams-security | OPEN |
+| 36 | ~~No list of `@kineticdata/react` exports~~ | data-fetching | **FIXED** — portal-relevant exports categorized |
+| 37 | ~~Multi-page form rendering~~ | forms | **FIXED** — CoreForm handles natively, ReviewPaginationControl documented |
+| 38 | Widget API props | forms | SKIPPED — widgets are implementation-specific (each project creates its own) |
+| 39 | ~~No text search (=*) filter pattern~~ | build-paginated-list | **FIXED** — starts-with pattern with debounce |
+| 40 | ~~No user search/filter endpoint~~ | users-teams-security | **FIXED** — q parameter supports KQL |
 | 41 | ~~Webhook event names not enumerated~~ | webapis-and-webhooks | **FIXED** — full list from screenshot |
-| 42 | Combining KQL + keyset pagination | pagination | OPEN |
+| 42 | ~~Combining KQL + keyset pagination~~ | pagination | **FIXED** — AND cursor with filter documented |
 | 43 | ~~`defaultDataSource` valid values unknown~~ | form-engine | **FIXED** — `"none"` and `"integration"` documented |
 | 44 | ~~Field `key` property rules~~ | form-engine | **FIXED** — unique strings, stable identifiers |
-| 45 | `calcViewState()` and theme functions | state | OPEN |
-| 46 | Datastore query `kapp` param ambiguity | data-fetching | OPEN |
+| 45 | `calcViewState()` and theme functions | state | SKIPPED — implementation-specific |
+| 46 | ~~Datastore query `kapp` param ambiguity~~ | data-fetching | **FIXED** — clarified: all forms are in kapps, "datastore" is just a label |
 | 47 | ~~No sorting documentation~~ | build-paginated-list | **FIXED** — `direction` ASC/DESC documented |
-| 48 | Login component never implemented | bootstrap | OPEN |
+| 48 | ~~Login component~~ | bootstrap | **FIXED** — implemented in test portal, loginProps documented in portal-patterns |
 | 49 | ~~Space/kapp configuration properties~~ | api-basics, using-the-api | **FIXED** — documented in using-the-api |
 | 50 | ~~Categories API~~ | api-basics | **DOCUMENTED** — in using-the-api skill |
 
@@ -106,13 +106,8 @@ Comprehensive audit from three angles: live API testing on demo.kinops.io, `@kin
 ## Progress Summary
 
 - **Critical gaps:** 9/10 resolved (90%)
-- **High gaps:** 14/18 resolved (78%)
-- **Medium gaps:** 7/15 resolved (47%)
+- **High gaps:** 18/18 resolved (100%)
+- **Medium gaps:** 13/15 resolved (87%) — 2 skipped as implementation-specific
 - **New gaps found & fixed:** 7/7 (100%)
 
-## Remaining Questions for James
-
-1. What constraint types besides "custom" are valid? Are there built-in types?
-2. Full list of required properties per field type (gap #10)
-3. System handler parameters: `system_create_trigger_v1` action types, `system_loop_head_v1` edge cases, `system_wait_v1` time units
-4. Are there system handlers beyond the 14 we've documented?
+**Remaining open:** #10 (complete required-properties-per-field-type — partial coverage exists), #38 (widget props — implementation-specific, skipped), #45 (calcViewState — implementation-specific, skipped)

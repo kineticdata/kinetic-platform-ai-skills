@@ -63,6 +63,17 @@ Both require **attribute definitions** to be created under Definitions > Attribu
 { "username": "jane.doe", "displayName": "Jane Doe", "email": "jane@example.com", "spaceAdmin": true, "enabled": true }
 ```
 
+### Searching/Filtering Users
+
+The `q` parameter supports KQL on the users endpoint:
+
+```
+GET /users?q=username="james.davies@kineticdata.com"
+GET /users?q=username =* "james"
+```
+
+Searchable fields: `username`, `displayName`, `email`, `enabled`, `spaceAdmin`. The `=*` (starts-with) operator requires `orderBy` on the same field.
+
 ### `include` Parameter
 
 - `attributes` / `attributesMap`

@@ -100,6 +100,23 @@ Window 3:  ?...&limit=500&q=createdAt < "2026-02-12T04:03:21.964Z"  → 214 reco
 - **Use `limit=500`** (not 1000) for the per-page size so `pageToken` works within each window — requesting `limit=1000` returns the full cap in one shot with no token
 - The Task API (`/app/components/task/app/api/v2/`) uses standard `limit`/`offset` pagination and does **not** have this 1000-record cap behavior
 
+### Combining KQL Filters with Keyset Pagination
+
+When paginating a filtered query (e.g., all "Open" tickets), combine the KQL filter with the keyset cursor using `AND`:
+
+```
+# Page 1 — filter only, no cursor
+?q=values[Status]="Open"&orderBy=createdAt&limit=25&include=details,values
+
+# Page 2 — add createdAt cursor from last record of page 1
+?q=values[Status]="Open" AND createdAt < "2026-04-09T12:00:00.000Z"&orderBy=createdAt&limit=25&include=details,values
+```
+
+**Requirements:**
+- The form must have a **compound index** covering both the filter field and `createdAt` (e.g., `[values[Status], createdAt]`), OR separate indexes for each
+- `orderBy=createdAt` is required because `createdAt <` is a range operator
+- The KQL `AND` combines the filter with the cursor — both must be satisfied
+
 ## Task API v2 — Query Parameters & Filtering
 
 The Task API runs endpoint (`GET /runs`) supports these server-side filter parameters:

@@ -167,7 +167,7 @@ POST /{spaceSlug}/{kappSlug}/{formSlug}/bridgedResources/{bridgedResourceName}
 
 Body is URL-encoded form data with: `attributes`, `values[paramName]`, `limit`, `offset`.
 
-For datastore forms: `POST /{spaceSlug}/datastore/{formSlug}/bridgedResources/{name}`
+**Note:** In v6+, all forms live within kapps. The legacy space-level `/datastore/{formSlug}` path may still work for backward compatibility, but use the kapp path for all new work.
 
 ### Within Forms (K() API)
 

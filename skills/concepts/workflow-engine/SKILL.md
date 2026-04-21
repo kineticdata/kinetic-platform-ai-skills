@@ -173,8 +173,7 @@ Trees are triggered through **webhooks** — HTTP callbacks fired when predeterm
 **Supported event types:**
 - **User Events:** Created, Updated, Deleted
 - **Team Events:** Created, Updated, Deleted
-- **Datastore Form Events:** Forms Created/Updated, Submissions Created/Submitted
-- **Standard Form Events:** Form Created/Updated, Submission Created/Submitted
+- **Form Events:** Form Created/Updated, Submission Created/Submitted/Updated/Closed/Deleted
 
 ### WebAPIs
 

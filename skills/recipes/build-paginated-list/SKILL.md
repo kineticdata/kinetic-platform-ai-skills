@@ -107,6 +107,42 @@ const q = buildStatusCategoryQuery({ status: 'Open', category: 'Hardware' });
 
 **See:** `skills/concepts/kql-and-indexing/SKILL.md` for the complete operator reference and gotchas.
 
+### Text Search (Starts-With) Pattern
+
+Use the `=*` operator for type-ahead search. It requires `orderBy` on the searched field:
+
+```js
+// Search by name prefix
+const buildSearchQuery = ({ searchTerm }) =>
+  searchTerm
+    ? defineKqlQuery().startsWith('values[Summary]', searchTerm).end()
+    : null;
+
+// Or raw KQL:
+const q = `values[Summary] =* "${searchTerm}"`;
+// Must include: &orderBy=values[Summary]
+```
+
+**In the params:**
+```js
+const params = useMemo(() => ({
+  kapp: kappSlug,
+  form: formSlug,
+  search: {
+    q: searchTerm ? `values[Summary] =* "${searchTerm}"` : undefined,
+    orderBy: searchTerm ? 'values[Summary]' : undefined,
+    include: ['details', 'values'],
+    limit: 25,
+  },
+}), [kappSlug, formSlug, searchTerm]);
+```
+
+**Gotchas:**
+- `=*` is a range operator — requires `orderBy` on the same field and an index covering it
+- `=*` is starts-with only, not contains. For contains search, filter client-side
+- Debounce the search input (300-500ms) to avoid flooding the API on every keystroke
+- An empty search term should omit the `q` and `orderBy` params entirely (return all results)
+
 ---
 
 ## Step 3 — Wire Up `usePaginatedData`
