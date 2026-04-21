@@ -358,10 +358,110 @@ curl -sf ${AUTH} -X PUT "${API}/workflows/${WF2}" \
   -d @/tmp/wf2-tree.json > /dev/null
 echo "  Tree uploaded."
 
+echo "Creating help-desk-ticket form..."
+curl -sf ${AUTH} -X POST "${API}/kapps/ai-testing/forms" \
+  -H "Content-Type: application/json" \
+  -d '{
+  "name":"IT Help Desk Ticket","slug":"help-desk-ticket","status":"Active","type":"Service",
+  "description":"IT support request form — tests form creation, workflow, and integration patterns",
+  "submissionLabelExpression":"${form(\"name\")} — ${values(\"Summary\")}",
+  "integrations":[{"name":"List Users","connectionId":"'"${CONN_ID}"'","operationId":"'"${LIST_USERS_OP}"'","inputMappings":{}}],
+  "indexDefinitions":[
+    {"name":"values[Category]","parts":["values[Category]"],"unique":false},
+    {"name":"values[Priority]","parts":["values[Priority]"],"unique":false},
+    {"name":"values[Status]","parts":["values[Status]"],"unique":false},
+    {"name":"values[Status],values[Category]","parts":["values[Status]","values[Category]"],"unique":false}
+  ],
+  "pages":[{"name":"Submit Ticket","renderType":"submittable","type":"page","advanceCondition":null,"displayCondition":null,"displayPage":null,"events":[],
+    "elements":[
+      {"type":"section","renderType":null,"name":"Ticket Details","title":"Ticket Details","visible":true,"omitWhenHidden":null,"renderAttributes":{},
+       "elements":[
+         {"type":"field","renderType":"text","dataType":"string","name":"Summary","key":"f1","label":"Summary","enabled":true,"visible":true,"required":true,"requiredMessage":"Please provide a summary","defaultValue":null,"defaultDataSource":"none","defaultResourceName":null,"pattern":null,"constraints":[],"events":[],"omitWhenHidden":null,"renderAttributes":{"placeholder":"Brief description of your issue"},"rows":1},
+         {"type":"field","renderType":"text","dataType":"string","name":"Description","key":"f2","label":"Description","enabled":true,"visible":true,"required":false,"requiredMessage":null,"defaultValue":null,"defaultDataSource":"none","defaultResourceName":null,"pattern":null,"constraints":[],"events":[],"omitWhenHidden":null,"renderAttributes":{"placeholder":"Provide details"},"rows":5},
+         {"type":"field","renderType":"dropdown","dataType":"string","name":"Category","key":"f3","label":"Category","enabled":true,"visible":true,"required":true,"requiredMessage":null,"defaultValue":null,"defaultDataSource":"none","defaultResourceName":null,"pattern":null,"constraints":[],"events":[],"omitWhenHidden":null,"renderAttributes":{},"choicesDataSource":"custom","choicesRunIf":null,"choicesResourceName":null,"choices":[{"label":"Hardware","value":"Hardware"},{"label":"Software","value":"Software"},{"label":"Network","value":"Network"},{"label":"Access","value":"Access"},{"label":"Other","value":"Other"}]},
+         {"type":"field","renderType":"radio","dataType":"string","name":"Priority","key":"f4","label":"Priority","enabled":true,"visible":true,"required":true,"requiredMessage":null,"defaultValue":"Medium","defaultDataSource":"none","defaultResourceName":null,"pattern":null,"constraints":[],"events":[],"omitWhenHidden":null,"renderAttributes":{},"choicesDataSource":"custom","choicesRunIf":null,"choicesResourceName":null,"choices":[{"label":"Low","value":"Low"},{"label":"Medium","value":"Medium"},{"label":"High","value":"High"},{"label":"Critical","value":"Critical"}]},
+         {"type":"field","renderType":"dropdown","dataType":"string","name":"Assigned To","key":"f5","label":"Assign To (optional)","enabled":true,"visible":true,"required":false,"requiredMessage":null,"defaultValue":null,"defaultDataSource":"none","defaultResourceName":null,"pattern":null,"constraints":[],"events":[],"omitWhenHidden":null,"renderAttributes":{},"choicesDataSource":"integration","choicesRunIf":null,"choicesResourceName":"List Users","choicesResourceProperty":"Users","choices":{"label":"${integration(\"Display Name\")} (${integration(\"Username\")})","value":"${integration(\"Username\")}"}}
+       ]},
+      {"type":"section","renderType":null,"name":"System Fields","title":null,"visible":false,"omitWhenHidden":false,"renderAttributes":{},
+       "elements":[
+         {"type":"field","renderType":"text","dataType":"string","name":"Requested By","key":"f6","label":"Requested By","enabled":true,"visible":true,"required":false,"requiredMessage":null,"defaultValue":"${identity(\"username\")}","defaultDataSource":"none","defaultResourceName":null,"pattern":null,"constraints":[],"events":[],"omitWhenHidden":null,"renderAttributes":{},"rows":1},
+         {"type":"field","renderType":"text","dataType":"string","name":"Status","key":"f7","label":"Status","enabled":true,"visible":true,"required":false,"requiredMessage":null,"defaultValue":"Open","defaultDataSource":"none","defaultResourceName":null,"pattern":null,"constraints":[],"events":[],"omitWhenHidden":null,"renderAttributes":{},"rows":1}
+       ]},
+      {"type":"section","renderType":null,"name":"Footer","title":null,"visible":true,"omitWhenHidden":null,"renderAttributes":{},
+       "elements":[
+         {"type":"button","renderType":"save","name":"Save Draft","label":"Save Draft","visible":true,"enabled":true,"renderAttributes":{}},
+         {"type":"button","renderType":"submit-page","name":"Submit Ticket","label":"Submit Ticket","visible":true,"enabled":true,"renderAttributes":{}}
+       ]}
+    ]}]
+}' > /dev/null
+echo "  Done."
+
+echo "Creating Process Ticket workflow..."
+WF3=$(curl -sf ${AUTH} -X POST "${API}/kapps/ai-testing/forms/help-desk-ticket/workflows" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Process Ticket", "event": "Submission Submitted", "type": "Tree", "status": "Active"}' \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
+echo "  Workflow: ${WF3}"
+
+python3 -c "
+import json
+tree = {
+    'treeJson': {
+        'builderVersion': '', 'schemaVersion': '1.0', 'version': '', 'processOwnerEmail': '',
+        'lastId': 3, 'name': 'Process Ticket',
+        'notes': 'Echoes summary, sets Status to In Progress via system_integration_v1',
+        'connectors': [
+            {'from': 'start', 'to': 'echo_1', 'label': '', 'value': '', 'type': 'Complete'},
+            {'from': 'echo_1', 'to': 'si_2', 'label': '', 'value': '', 'type': 'Complete'}
+        ],
+        'nodes': [
+            {'configured': True, 'defers': False, 'deferrable': False, 'visible': False,
+             'name': 'Start', 'messages': [], 'id': 'start', 'position': {'x': 10, 'y': 10}, 'version': 1,
+             'parameters': [], 'definitionId': 'system_start_v1',
+             'dependents': {'task': [{'label': '', 'type': 'Complete', 'value': '', 'content': 'echo_1'}]}},
+            {'configured': True, 'defers': False, 'deferrable': False, 'visible': True,
+             'name': 'Echo Summary', 'messages': [], 'id': 'echo_1', 'position': {'x': 200, 'y': 10}, 'version': 1,
+             'parameters': [
+                 {'id': 'input', 'value': \"Ticket: <%= @values['Summary'] %> | Category: <%= @values['Category'] %> | Priority: <%= @values['Priority'] %>\", 'dependsOnId': '', 'dependsOnValue': '', 'description': '', 'label': '', 'menu': '', 'required': True}
+             ],
+             'definitionId': 'utilities_echo_v1',
+             'dependents': {'task': [{'label': '', 'type': 'Complete', 'value': '', 'content': 'si_2'}]}},
+            {'configured': True, 'defers': False, 'deferrable': False, 'visible': True,
+             'name': 'Set Status In Progress', 'messages': [], 'id': 'si_2', 'position': {'x': 400, 'y': 10}, 'version': 1,
+             'parameters': [
+                 {'id': 'connection', 'value': '${CONN_ID}', 'dependsOnId': '', 'dependsOnValue': '', 'description': '', 'label': '', 'menu': '', 'required': True},
+                 {'id': 'operation', 'value': '${UPDATE_SUB_OP}', 'dependsOnId': '', 'dependsOnValue': '', 'description': '', 'label': '', 'menu': '', 'required': True},
+                 {'id': 'parameters.Submission Id*', 'value': \"<%= @submission['Id'] %>\", 'dependsOnId': '', 'dependsOnValue': '', 'description': '', 'label': '', 'menu': '', 'required': False},
+                 {'id': 'parameters.Values [Object]', 'value': '{\"Status\": \"In Progress\"}', 'dependsOnId': '', 'dependsOnValue': '', 'description': '', 'label': '', 'menu': '', 'required': False}
+             ],
+             'definitionId': 'system_integration_v1',
+             'dependents': ''}
+        ]
+    }
+}
+json.dump(tree, open('/tmp/wf3-tree.json', 'w'))
+"
+curl -sf ${AUTH} -X PUT "${API}/workflows/${WF3}" \
+  -H "Content-Type: application/json" \
+  -d @/tmp/wf3-tree.json > /dev/null
+echo "  Tree uploaded."
+
+# --- Step 6: Build form indexes ---
+echo "Building help-desk-ticket indexes..."
+curl -sf ${AUTH} -X POST "${API}/kapps/ai-testing/forms/help-desk-ticket/backgroundJobs" \
+  -H "Content-Type: application/json" \
+  -d '{"type":"Build Index","content":{"indexes":["values[Category]","values[Priority]","values[Status]","values[Status],values[Category]"]}}' > /dev/null
+echo "  Done."
+
 echo ""
 echo "=== Provisioning complete ==="
 echo "Kapp: ${BASE_URL}/app/api/v1/kapps/ai-testing"
 echo "Connection: ${CONN_ID}"
 echo "Operations: List Users=${LIST_USERS_OP}, Create=${CREATE_SUB_OP}, Update=${UPDATE_SUB_OP}"
 echo ""
-echo "To tear down: curl -u '${USERNAME}:${PASSWORD}' -X DELETE '${API}/kapps/ai-testing'"
+echo "Forms: kitchen-sink, help-desk-ticket, approval-request, approval"
+echo "Workflows: Process Ticket, Request Approval, Complete Approval"
+echo ""
+echo "To tear down: ./teardown.sh ${BASE_URL} ${USERNAME} <password>"
+echo "To verify:    ./verify.sh ${BASE_URL} ${USERNAME} <password>"
+echo "To run portal: cd portal && npm run dev (set REACT_APP_PROXY_HOST in .env.development.local)"

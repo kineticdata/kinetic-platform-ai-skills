@@ -61,7 +61,8 @@ These skills are the shared knowledge base for **any AI assistant or developer**
 
 | Skill | Path | Read when you need to... |
 |-------|------|--------------------------|
-| Bootstrap | `skills/front-end/bootstrap/SKILL.md` | Set up a new React portal — KineticLib, Vite proxy, auth state, routing |
+| Bootstrap | `skills/front-end/bootstrap/SKILL.md` | Set up a new React portal — installation, KineticLib, CoreForm prerequisites, Vite dev proxy, auth state machine |
+| Portal Patterns | `skills/front-end/portal-patterns/SKILL.md` | Portal architecture — routing, Redux setup, useData hook, context fetching, kappSlug resolution, project structure, reference implementation |
 | Forms | `skills/front-end/forms/SKILL.md` | Render forms in React — CoreForm component, callbacks, globals.jsx, widget system |
 | Data Fetching | `skills/front-end/data-fetching/SKILL.md` | Fetch submissions/data in React — useData, usePaginatedData, defineKqlQuery |
 | Mutations | `skills/front-end/mutations/SKILL.md` | Create/update/delete submissions from React — executeIntegration, submission API functions |
