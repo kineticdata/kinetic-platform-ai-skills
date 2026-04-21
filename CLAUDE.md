@@ -3,13 +3,23 @@
 ## How to Use These Skills
 **Before implementing** anything involving the Kinetic Platform, read the relevant skill file(s) from the index below. Do NOT guess — read the skill first. Skills are loaded on-demand to save context; read only what you need for the current task.
 
-When you discover new patterns, corrections, or undocumented behavior, update the appropriate SKILL.md file. Document the **approach** (generic platform knowledge), not implementation-specific details (specific IDs, customer patterns).
+When you discover new patterns, corrections, or undocumented behavior, update the appropriate SKILL.md file.
+
+## Writing Guidelines for Skills
+
+These skills are the shared knowledge base for **any AI assistant or developer** building on the Kinetic Platform. Follow these principles:
+
+- **Document the approach, not specific implementations.** Show the generic pattern (how to create an operation, how to build a workflow) — not hardcoded IDs, customer-specific field names, or environment URLs.
+- **Platform behavior, not implementation choices.** Document what the platform does (API behavior, required properties, error responses). Don't document how a specific customer chose to use it (their form names, their workflow designs, their CSS classes).
+- **Operations, connections, forms, and workflows are implementation-specific.** The skills teach the *schema* and *approach* for creating them. The specific operations you need depend on your use case.
+- **Never include credentials, environment URLs, or UUIDs** in skill files. Those belong in project config, not shared documentation.
+- **Test fixtures are separate.** The `tests/` directory has environment-specific provisioning scripts and exported JSON. Skills reference these as examples but don't embed them.
 
 ## Mandatory Rules
 - Always use `@kineticdata/react` for Kinetic Platform interactions in React portals. Prefer exported helpers (`KineticLib`, `fetch*`, `searchSubmissions`) and only use `bundle.apiLocation()` + `getCsrfToken()` when no helper exists.
 - `useData` is NOT exported by `@kineticdata/react` — it must be implemented as a project-local hook. See the Bootstrap skill.
 - Use `system_integration_v1` (Connections/Operations) for workflow API calls — NOT `kinetic_core_api_v1` (legacy, being retired).
-- NEVER modify connection auth credentials via API — passwords are masked as `null` in responses and PUTting will break them permanently.
+- NEVER modify connection auth credentials via API — passwords are masked as `null` in GET responses and PUTting will overwrite them permanently with no way to recover.
 
 ## Skill Index — Read On-Demand
 
