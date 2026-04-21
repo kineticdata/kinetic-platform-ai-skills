@@ -1,6 +1,6 @@
 ---
 name: integrations
-description: Connections/Operations (modern), Bridges (legacy), Handlers (workflow), and File Resources for integrating the Kinetic Platform with external systems.
+description: Connections/Operations (modern), Bridges (legacy), Handlers (workflow), File Resources, LogHub API, handler import gotchas, and Kinetic Agent management for integrating the Kinetic Platform with external systems.
 ---
 
 # Integrations
@@ -19,7 +19,7 @@ A **Connection** represents an external system. It stores:
 - Base URL
 - Authentication (API Key, Bearer Token, OAuth 2.0, Basic Auth)
 - Default headers
-- Connection type: HTTP (REST API) or SQL Database (PostgreSQL, MySQL, SQL Server)
+- Connection type: HTTP (REST API) or SQL Database (PostgreSQL, SQL Server)
 
 Connections are created and managed in the Space console under Plugins > Connections.
 
@@ -116,13 +116,6 @@ This metadata can be useful for confirming the token's identity and permissions 
 
 **NEVER modify connection auth credentials via API.** Connection passwords (especially for the built-in "Kinetic Platform" connection) are set when the system is provisioned and should not be changed. The GET response masks passwords as `null` — if you PUT back `password: null` or a different password, you will **permanently break the connection** with no way to recover the original credentials. Only modify non-auth fields (name, description, operations) via API. Auth changes should only be done through the admin console by someone who knows the current credentials.
 
-**Output mapping expression syntax:**
-- `body.teams` — access response body JSON properties
-- `body.teams?.length ?? 0` — null-safe access with default values (JavaScript-style)
-- `current.name` — iterate over array items (used inside `children` maps for list outputs)
-- `statusCode` — HTTP response status code
-- Convention: outputs prefixed with `_` (like `_Error`, `_Status Code`, `_Count`, `_Exists`) are metadata outputs, not business data
-
 ### Operations
 
 An **Operation** defines a specific action within a Connection:
@@ -199,10 +192,153 @@ POST /app/integrator/api/connections/{connectionId}/operations
 }
 ```
 
+### Integrator REST API — Detailed Schema
+
+The Integrator API (v6.1.6) is available at `/app/integrator/api/`. Most endpoints require JWT/Bearer authentication. Unprotected: `/healthz`, `/version`.
+
+#### Connection Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/connections` | List all connections |
+| POST | `/api/connections` | Create a connection |
+| GET | `/api/connections/{id}` | Get a connection |
+| PUT/PATCH | `/api/connections/{id}` | Update a connection |
+| DELETE | `/api/connections/{id}` | Delete a connection |
+| POST | `/api/connections/{id}/test` | Test connection (accepts optional config overrides) |
+| POST | `/api/connections/{id}/restart` | Restart a connection |
+
+#### Operation Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/connections/{connection_id}/operations` | List operations for a connection |
+| POST | `/api/connections/{connection_id}/operations` | Create an operation |
+| GET | `/api/connections/{connection_id}/operations/{id}` | Get an operation |
+| PUT/PATCH | `/api/connections/{connection_id}/operations/{id}` | Update an operation |
+| DELETE | `/api/connections/{connection_id}/operations/{id}` | Delete an operation |
+
+#### Execution & Utility Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/execute` | Execute an operation (optional `?debug` query param for raw response) |
+| POST | `/api/operations/inspect` | Detect input parameters in an operation config |
+| POST | `/api/transform/test` | Test output transformation expressions |
+| GET | `/healthz` | Health check (unprotected) |
+| GET | `/version` | Build version info (unprotected) |
+
+#### Connection Schema
+
+```json
+{
+  "id": "uuid",
+  "type": "http" | "postgres" | "mssql",
+  "name": "string (required)",
+  "description": "",
+  "documentationLink": "",
+  "config": { "configType": "http|postgres|mssql", ... },
+  "secrets": {},
+  "status": { "healthy": false },
+  "lockVersion": 0
+}
+```
+
+#### Connection Config by Type
+
+**HTTP (`configType: "http"`):**
+- `baseUrl` (required) — endpoint base address
+- `testPath` — path used for connection testing
+- `caCert` — trusted CA x509 certificate (optional)
+- `auth` — one of:
+  - `basic` — `{ authType: "basic", username, password }`
+  - `raw_bearer_token` — `{ authType: "raw_bearer_token", header: "Authorization", prefix: "Bearer", token }`
+  - `client_credentials` — `{ authType: "client_credentials", tokenUrl, clientId, clientSecret, clientAuth: "basic_auth"|"www_form_urlencoded", scope }`
+  - `http_bearer_token` — dynamic token via a separate HTTP operation with `tokenOutput` and `expirationOutput` expressions
+
+**PostgreSQL (`configType: "postgres"`):**
+- `host`, `port`, `username`, `password`, `database` (all required)
+- `poolSize` (default: 5, min: 1)
+- `caCert` (optional)
+
+**SQL Server (`configType: "mssql"`):**
+- `host`, `port`, `username`, `password`, `database` (all required)
+- `instance` (optional)
+- `poolSize` (default: 5, min: 1)
+- `caCert` (optional)
+
+#### Operation Schema
+
+```json
+{
+  "id": "uuid",
+  "name": "string (required)",
+  "connectionId": "uuid (required)",
+  "config": { "configType": "http|postgres|mssql", ... },
+  "outputs": {},
+  "notes": null,
+  "documentationLink": ""
+}
+```
+
+#### Operation Config by Type
+
+**HTTP (`configType: "http"`):**
+- `method` (required) — `GET|POST|PUT|DELETE|PATCH`
+- `path` (required) — appended to connection's `baseUrl`
+- `body` — `{ bodyType: "raw", raw }` | `{ bodyType: "www_form_urlencoded", form }` | `{ bodyType: "multipart_form", parts: [{ name, content, contentType?, fileName? }] }`
+- `params` — query parameters (object of string values)
+- `headers` — request headers (values: string or string array)
+- `followRedirect` (default: false)
+- `streamResponse` (default: false)
+- `includeEmptyParams` (default: false)
+
+**PostgreSQL (`configType: "postgres"`):**
+- `statement` (required) — SQL query with `$1, $2, ...` placeholders
+- `parameters` — array of values bound to positional placeholders
+
+**SQL Server (`configType: "mssql"`):**
+- `statement` (required) — SQL query with `@name` placeholders
+- `parameters` — object mapping named placeholders to values
+
+#### Operation Outputs
+
+A map of named expressions that extract values from the response:
+```json
+{
+  "outputs": {
+    "Total Count": { "value": "body.count" },
+    "Items": {
+      "value": "body.submissions",
+      "children": {
+        "Id": { "value": "id" },
+        "Name": { "value": "values.Name" }
+      }
+    }
+  }
+}
+```
+
 **API schema rules:**
 - `body.bodyType` must be `"raw"` — the API rejects `"json"` and `"www_form_urlencoded"`
 - Do NOT include `inputs` or `outputChildren` fields — the API rejects them
 - Convention: prefix metadata outputs with `_` (e.g., `_Error`, `_Status Code`, `_Count`)
+
+#### Execute Request
+
+```json
+POST /api/execute
+{
+  "connectionId": "uuid (required)",
+  "operationId": "uuid (use saved operation)",
+  "operation": { ... },
+  "parameters": { "param_name": "value" }
+}
+```
+
+- Use `operationId` to run a saved operation, or inline an `operation` object.
+- `parameters` provides runtime values for templated inputs.
+- Add `?debug` query param for detailed response: `{ duration, outputs, raw: { statusCode, headers, body } }`.
 
 ### Usage in Forms
 
@@ -442,4 +578,115 @@ Only when you need to stream file content from an external system into the Kinet
 | **Runs on** | Kinetic Platform | Kinetic Agent | Task Engine / Agent | Kinetic Agent |
 | **Code required** | No (low-code config) | Java adapter | Ruby handler | Java adapter |
 | **Supports** | REST APIs, SQL databases | Any (via adapter) | Any (via Ruby) | File streaming |
-| **Real-time capable** | Yes (forms, kapp integrations) | Yes (forms) | No (async workflows only) | Yes (file streaming) |
+
+---
+
+## LogHub API (Real-Time Logs)
+
+The LogHub API provides access to real-time platform logs.
+
+### Endpoint
+
+```
+GET /app/loghub/api/v1/logs?limit=25&format=ndjson&start={ISO}&end={ISO}&tail=true
+```
+
+### Authentication
+
+Requires **Bearer JWT** (NOT Basic Auth). The JWT must be signed with the space's `oauthSigningKey` using HMAC-SHA256.
+
+JWT payload:
+```json
+{
+  "clientId": "system",
+  "displayName": "Admin",
+  "email": "admin@example.com",
+  "exp": 1234567890,
+  "iss": "kinetic-data",
+  "spaceAdmin": true,
+  "spaceSlug": "my-space",
+  "username": "admin"
+}
+```
+
+Retrieve the signing key: `GET /app/api/v1/space?include=details` → `space.oauthSigningKey`
+
+### Response Format
+
+NDJSON (one JSON object per line). The last line is metadata with `nextPageToken`.
+
+### Log Entry Fields
+
+| Field | Description |
+|-------|-------------|
+| `timestamp` | ISO 8601 timestamp |
+| `level` | `INFO`, `DEBUG`, `WARN`, `ERROR` |
+| `message` | Log message text |
+| `app.component` | `core` or `task` |
+| `app.user` | Username associated with the request |
+| `app.requestPath` | API path |
+| `app.requestMethod` | HTTP method |
+| `app.responseStatus` | HTTP response code |
+| `app.responseTime` | Response time in ms |
+| `app.correlationId` | Request correlation ID |
+
+### Availability
+
+**Not available on all servers.** Check whether the LogHub endpoint exists before building features that depend on it.
+
+---
+
+## Handler Import & Management Gotchas
+
+### Binary Upload Requires Raw Buffer
+
+When uploading handler ZIPs through a Node.js proxy, the request body must be a raw `Buffer`. Using `.toString()` corrupts the ZIP file:
+
+```js
+// WRONG — corrupts binary data
+const body = await req.text();
+
+// CORRECT — preserve raw bytes
+const body = Buffer.from(await req.arrayBuffer());
+```
+
+The handler import endpoint is `POST /handlers` (Task API v2) with multipart form data, field name `package`. Add `?force=true` to overwrite an existing handler.
+
+### Connection Test Always Returns 200
+
+`POST /connections/{id}/test` **always returns HTTP 200** — even when the connection fails. Check the `status` field in the response body:
+
+```js
+const result = await testConnection(id);
+if (result.status === 'error') {
+  // Connection failed — result.message has details
+}
+```
+
+### Handler Properties Format Mismatch
+
+The GET and PUT endpoints use different formats:
+
+- **GET** `/handlers/{id}?include=properties` returns: `[{name, value, type, required}, ...]`
+- **PUT** `/handlers/{id}` accepts: `{properties: {"name": "value", ...}}` (flat key-value object)
+
+### SMTP Handler Gmail Configuration
+
+| Property | Value |
+|----------|-------|
+| `server` | `smtp.gmail.com` |
+| `port` | `587` |
+| `tls` | `true` |
+| `username` | Gmail address |
+| `password` | Gmail App Password (NOT regular password) |
+
+### Kinetic Agent CRUD
+
+Agents are managed via the Core API:
+
+```
+GET/POST   /app/api/v1/platformComponents/agents
+PUT/DELETE /app/api/v1/platformComponents/agents/{slug}
+```
+
+Body: `{ "slug": "my-agent", "url": "https://agent.example.com", "secret": "shared-secret" }`

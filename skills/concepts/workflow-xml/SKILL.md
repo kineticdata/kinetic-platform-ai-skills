@@ -12,6 +12,38 @@ For creating and managing workflows (tree creation, treeJson upload, sources), s
 
 ---
 
+## 🚨 MANDATORY — Workflow Tree Gate Scripts
+
+Before writing, PUTting, or debugging any workflow tree, use the gate scripts in `scripts/` alongside this skill:
+
+| Script | Purpose |
+|---|---|
+| `scripts/validate-workflow.mjs` | Validates a tree XML against all rules documented in this skill. Refuses invalid trees. Cites the rule violated. Run before every PUT. |
+| `scripts/put-workflow.mjs` | Atomic validate + PUT wrapper. The sanctioned way to push a tree to the engine. |
+| `scripts/workflow-debug.mjs` | Inspects a run via `/runs/{id}/tasks` (NOT `/triggers` — non-deferrable handlers execute inline and don't create triggers). |
+| `scripts/hook-check-workflow-put.mjs` | Claude Code `PreToolUse` hook. Install in `~/.claude/settings.json` to block raw Bash PUTs that bypass the validator. |
+
+**Why these exist:** The rules documented below are enforced mechanically so silent failures (node-drop, 404-in-handler, ghost-run-status) can't happen. Every developer who clones this skills repo inherits the same safeguards.
+
+**Hook install (per machine, one-time):**
+```json
+{
+  "hooks": {
+    "PreToolUse": [{
+      "matcher": "Bash",
+      "hooks": [{
+        "type": "command",
+        "command": "node /absolute/path/to/skills/skills/platform/workflow-xml/scripts/hook-check-workflow-put.mjs"
+      }]
+    }]
+  }
+}
+```
+
+Bypass only via `KINETIC_SKIP_VALIDATION=1` for rare intentional cases.
+
+---
+
 ## Task API Endpoints & Authentication
 
 **Base URL pattern:**
@@ -223,10 +255,28 @@ ERB expressions in parameters and conditions can access these context variables:
 | `@task` | Hash | Current node: `Id`, `Status`, `Name`, `Deferral Token`, `Node Id`, `Tree Id`, `Tree Name`, `Loop Index` |
 | `@trigger` | Hash | Engine info: `Id`, `Status`, `Action`, `Execution Type`, `Node Id` |
 
+### WebAPI Context Variables (verified via runtime dump)
+
+These variables are confirmed available in WebAPI tree execution:
+
+| Variable | Type | Example Value |
+|----------|------|---------------|
+| `@request_query_params` | Hash | `{"id"=>"TEST-001", "foo"=>"bar"}` |
+| `@request_body_params` | Hash | `{}` (empty for GET, parsed body for POST) |
+| `@request_headers` | Hash | `{}` |
+| `@requested_by` | Hash | `{"email"=>"...", "displayName"=>"john", "username"=>"john"}` |
+| `@source` | Hash | `{"Name"=>"Kinetic Request CE", "Group"=>"WebApis > {kapp}", "Id"=>nil, "Data"=>"..."}` |
+| `@run` | Hash | `{"Id"=>3083}` |
+| `@task` | Hash | `{"Id"=>..., "Status"=>"New", "Name"=>"...", "Node Id"=>"...", "Tree Name"=>"...", "Source"=>"Kinetic Request CE", ...}` |
+| `@trigger` | Hash | `{"Id"=>..., "Engine Identification"=>"...", "Status"=>"...", "Action"=>"Root", ...}` |
+| `@results` | Hash | Results from completed upstream tasks (keyed by node name) |
+
+**Not available in WebAPI context:** `@space`, `@kapp`, `@form`, `@submission`, `@values`, `@user`, `@space_attributes`, `@user_profile_attributes` — these are event-tree-only variables.
+
 **Passing data into WebAPI trees:** Use query params, body, or headers:
 ```ruby
-<%= @request_query_params.fetch('myParam', '') %>
-<%= @request_body_params.fetch('orderId', '') %>
+<%= @request_query_params['id'] %>
+<%= @request_body_params['orderId'] %>
 <%= @requested_by['username'] %>
 ```
 
@@ -262,14 +312,16 @@ Results are accessed by **task name**, then **result key**:
 
 ### Return Node Parameter Rules (CRITICAL)
 
-**WebAPI trees** — Return node MUST use these specific parameter IDs:
+**WebAPI trees** — Return node MUST use ALL FOUR parameter IDs:
 
 | Parameter | Required | Description |
 |-----------|----------|-------------|
 | `content` | yes | Response body (supports ERB: `<%= ... %>`) |
 | `content_type` | yes | MIME type, e.g. `application/json` |
 | `response_code` | yes | HTTP status code, e.g. `200` |
-| `headers_json` | no | Extra response headers as JSON |
+| `headers_json` | **yes** | Extra response headers as JSON (use `{}` if none) |
+
+**CRITICAL: `headers_json` is REQUIRED even if empty.** Omitting it causes `RuntimeError` from `system_tree_return_v1` at runtime — the run fails with `run_results_error` and a `Handler Error` in the error queue. Always include `{"id": "headers_json", "value": "{}"}` in the parameters. This has caused repeated debugging sessions.
 
 **Routine trees** — Return node uses custom output parameter IDs matching the routine's declared outputs.
 

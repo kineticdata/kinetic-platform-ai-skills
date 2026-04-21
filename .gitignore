@@ -11,3 +11,4 @@ Thumbs.db
 
 # Claude Code local state (settings.json has machine-specific paths)
 .claude/
+.superpowers/

@@ -1,6 +1,6 @@
 ---
 name: pagination
-description: Core API pageToken pagination, 1000-record cap, keyset pagination for large datasets, Task API offset pagination, and server-side/client-side pagination patterns.
+description: Core API pageToken pagination, 1000-record cap, keyset pagination for large datasets, Task API offset pagination, server-side/client-side pagination patterns, golden rule (max 25 client-side), and deletion pagination gotchas.
 ---
 
 # Pagination
@@ -24,13 +24,43 @@ For apps displaying paginated lists, **always use server-side KQL queries instea
 
 The Core API submission endpoints have a **hard cap of 1000 total results per query**, regardless of how you paginate within that query. Understanding this is essential for retrieving large datasets.
 
-### How `pageToken` Works
+### `pageToken` Is Unreliable For Client-Side Pagination
 
-When a query returns results, the response may include a `nextPageToken` field. This token signals that **more records exist within the current query's 1000-record window**. You pass it back on the next request to get the next page of results within that window.
+**`pageToken` does not work reliably for client-side page-by-page navigation.** Passing it back often returns the same data, empty results, or skips records unpredictably.
 
-- Token format: `<queryId>.<offset>` (e.g., `674018a0-07cd-11f1-8941-d708bf046e91.500`)
-- Pass it via `&pageToken=<token>` to get the next page
-- When `nextPageToken` is `null`, there are no more results **in this query window**
+**For client-side pagination:** Use `nextPageToken` only as a boolean signal (more records exist?). Paginate with keyset cursor (`createdAt`) instead.
+
+**For server-side aggregation (`collectByQuery`):** `pageToken` works adequately within small windows (limit=25, a few pages) because you're collecting all results, not navigating back and forth. Duplication or skips don't matter when you're just accumulating.
+
+### How To Actually Paginate (Keyset / createdAt Cursor)
+
+The correct client-side pagination pattern:
+
+1. Fetch page 1: `?include=details,values&limit=25` (no cursor)
+2. Check if `nextPageToken` exists → if yes, there are more pages (show Next button)
+3. Store the `createdAt` of the **last record** on the current page
+4. For the next page: re-query with `createdAt < "lastTimestamp"` added to KQL
+5. For previous pages: store each page's first record's `createdAt` in a stack
+
+**You MUST use `include=details`** (not just `values`) so that `createdAt` is available on each record.
+
+```js
+// Correct pagination pattern
+let path = `/kapps/${KAPP}/forms/${form}/submissions?include=details,values&limit=25`;
+const lastCreatedAt = pageKeys[currentPage];
+if (lastCreatedAt) {
+  const kql = `createdAt < "${lastCreatedAt}"`;
+  path += '&q=' + encodeURIComponent(kql);
+}
+const res = await api(path);
+const subs = res.submissions || [];
+const hasNext = !!res.nextPageToken;
+if (hasNext && subs.length) {
+  pageKeys[currentPage + 1] = subs[subs.length - 1].createdAt;
+}
+```
+
+**Why this works:** The Core API returns submissions sorted by `createdAt` DESC by default. Each page's last record has the oldest timestamp. Querying `createdAt < lastTimestamp` gives the next window of older records.
 
 ### The 1000-Record Cap
 
@@ -151,22 +181,107 @@ The server returns pre-computed JSON; the frontend makes a single fetch per dash
 
 ## Client-Side Pagination Pattern
 
-For apps displaying paginated lists, use the PAGER infrastructure:
+For apps displaying paginated lists, use createdAt-based keyset pagination:
 
 ```js
-function makePager() {
-  return { items: [], pageTokens: [null], pageIndex: 0,
-           nextPageToken: null, hasNext: false, hasPrev: false };
+// State per tab
+let data = [], page = 1, pageKeys = { 1: null }, hasNext = false;
+
+async function loadPage() {
+  const lastCreatedAt = pageKeys[page];
+  let kql = '';
+  if (lastCreatedAt) kql = `createdAt < "${lastCreatedAt}"`;
+  // Combine with any active filters
+  if (filterKql && kql) kql = `(${filterKql}) AND ${kql}`;
+  else if (filterKql) kql = filterKql;
+
+  let path = `/kapps/${KAPP}/forms/${form}/submissions?include=details,values&limit=25`;
+  if (kql) path += '&q=' + encodeURIComponent(kql);
+  const res = await api(path);
+  data = res.submissions || [];
+  hasNext = !!res.nextPageToken;
+  if (hasNext && data.length) pageKeys[page + 1] = data[data.length - 1].createdAt;
+  render();
+}
+
+function nextPage() { if (hasNext) { page++; loadPage(); } }
+function prevPage() { if (page > 1) { page--; loadPage(); } }
+function resetPage() { page = 1; pageKeys = { 1: null }; hasNext = false; loadPage(); }
+```
+
+**Key requirements:**
+- `include=details,values` (NOT just `values`) — `createdAt` is in `details`
+- `nextPageToken` is ONLY used to check if more records exist (boolean)
+- Never pass `pageToken` back to the API — it's broken
+- Store `createdAt` of last record as the cursor for the next page
+
+## Golden Rule: Max 25 Per Client-Side Fetch
+
+**Never load all records into the browser.** Never use `collectAll()` or loop through pages client-side. Always:
+
+1. Fetch with `limit=25` and `pageToken`
+2. Show one page at a time with Prev/Next buttons
+3. Let the user paginate forward/backward
+
+Server-side `collectByQuery()` for aggregation (dashboards, KPIs) is fine — the browser makes a single fetch to your server endpoint, and the server handles the pagination internally.
+
+This rule has no exceptions — not even for export or bulk operations. Use `limit=25` with `pageToken`, add delays between pages, and implement backoff on errors.
+
+---
+
+## `collectByQuery` maxPages Performance Trap
+
+Setting `maxPages=40` in server-side aggregation means up to 40 sequential API calls (~500ms each = **20 seconds**). For dashboard endpoints where you know the query scope:
+
+**Better approach: KQL range queries with larger limits**
+
+```js
+// BAD: 40 sequential API calls
+const all = await collectByQuery('incidents', 'values[Status]="Open"', auth, 40);
+
+// GOOD: 1 API call with date-scoped range query
+const kql = `values[Status]="Open" AND values[Created] >= "${startDate}" AND values[Created] < "${endDate}"`;
+const r = await kineticRequest('GET',
+  `/kapps/${kapp}/forms/incidents/submissions?include=values&limit=200&q=${encodeURIComponent(kql)}&orderBy=values[Created]`,
+  null, auth);
+```
+
+`limit=200` is valid (hard cap is 1000). Reserve `collectByQuery` with high `maxPages` for truly unbounded aggregation (rollups, backfill).
+
+---
+
+## Deletion Pagination Gotcha
+
+When bulk-deleting records, **do not re-fetch page 1 after each deletion batch**. The API returns records in `createdAt` descending order (newest first). If target records are on later pages, re-fetching page 1 keeps returning the same non-target records.
+
+**Correct approach:** Paginate forward using `pageToken` through all pages, collecting IDs to delete. Then delete in batches. Do multiple full passes until a clean pass finds nothing.
+
+```js
+// Paginate forward, collect matching IDs
+let pageToken = null;
+const toDelete = [];
+do {
+  let url = `/kapps/${kapp}/forms/${form}/submissions?include=values&limit=25`;
+  if (pageToken) url += `&pageToken=${pageToken}`;
+  const r = await fetch(url);
+  const data = await r.json();
+  for (const s of data.submissions) {
+    if (shouldDelete(s)) toDelete.push(s.id);
+  }
+  pageToken = data.nextPageToken;
+} while (pageToken);
+
+// Delete in parallel batches of 10
+for (let i = 0; i < toDelete.length; i += 10) {
+  await Promise.all(toDelete.slice(i, i + 10).map(id => deleteSubmission(id)));
 }
 ```
 
-Each tab follows: **load → applyFilters(direction) → render**
-- `'reset'` — new query, go to page 1
-- `'next'` / `'prev'` — navigate using stored pageToken stack
-- omitted — re-fetch current page (after write actions)
+---
 
 ## Pagination Gotchas
 
-- **Core API has a hard 1000-record cap per query** — `pageToken` only paginates within that cap; use keyset pagination with KQL `createdAt` filters to get past it
+- **`pageToken` IS BROKEN** — only use `nextPageToken` as a boolean to know if more records exist. Never pass it back to fetch the next page. Use `createdAt` keyset pagination instead.
+- **Core API has a hard 1000-record cap per query** — use keyset pagination with KQL `createdAt` filters to get past it
 - **Task API `limit=0` returns ALL records** — use `limit=1` for lightweight count queries
 - The Task API has different pagination (limit/offset) vs Core API (limit/pageToken+keyset)
