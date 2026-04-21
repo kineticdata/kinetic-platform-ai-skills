@@ -11,7 +11,13 @@ The Kinetic form engine renders forms from a JSON definition. Forms can be built
 
 ## Form JSON Schema
 
-A form definition retrieved via `GET /kapps/{kapp}/forms/{form}?include=fields,indexDefinitions,attributesMap` contains:
+**`include=pages` vs `include=fields` — Critical distinction:**
+- **`include=pages`** — returns the full nested page/section/field structure with ALL properties (renderType, dataType, choices, constraints, events, etc.). **Use this when you need the complete form definition.**
+- **`include=fields`** — returns a flat list of field names only (no renderType, no choices, no constraints). Useful for quick field name lookups but NOT sufficient for form structure analysis.
+
+Always use `include=pages` when reading a form for duplication, validation, or inspection.
+
+A form definition retrieved via `GET /kapps/{kapp}/forms/{form}?include=pages,indexDefinitions,attributesMap` contains:
 
 ```json
 {
@@ -180,63 +186,114 @@ const result = await saveSubmissionMultipart({
 
 When **updating** a submission with new files while keeping existing ones, pass the existing attachment objects (with `link` property stripped) in `values` and new files in `files`.
 
-### Complete Field Property Reference (from Kitchen Sink Form)
+### Complete Field Property Reference
 
-Every field in a form API payload requires ALL properties for its type. Missing any property causes `400 Invalid Form`. Below is the canonical reference derived from the official Kitchen Sink Form.
+Every field in a form API payload requires ALL properties for its type. Missing any property causes `400 Invalid Form`. Copy-paste the template for your field type and fill in the values.
 
-#### Base Properties (ALL field types)
-
-```json
-{
-  "type": "field",
-  "name": "Field Name",
-  "key": "f1",
-  "label": "Display Label",
-  "renderType": "text",
-  "dataType": "string",
-  "enabled": true,
-  "visible": true,
-  "required": false,
-  "requiredMessage": null,
-  "defaultValue": null,
-  "defaultDataSource": "none",
-  "defaultResourceName": null,
-  "pattern": null,
-  "constraints": [],
-  "events": [],
-  "omitWhenHidden": null,
-  "renderAttributes": {}
-}
-```
-
-#### Type-Specific Properties
-
-| Property | `text` | `dropdown` | `radio` | `checkbox` | `date`/`datetime`/`time` | `attachment` |
-|----------|--------|-----------|---------|-----------|------------------------|-------------|
-| `rows` | **Required** (1=single, 3+=textarea) | NO | NO | NO | NO | NO |
-| `choices` | — | **Required** (array) | **Required** | **Required** | — | — |
-| `choicesDataSource` | — | **Required** (`"custom"`) | **Required** | **Required** | — | — |
-| `choicesRunIf` | — | **Required** (`null`) | **Required** | **Required** | — | — |
-| `choicesResourceName` | — | **Required** (`null`) | **Required** | **Required** | — | — |
-| `choicesResourceProperty` | — | Optional (`null`) | Optional | Optional | — | — |
-| `allowMultiple` | — | — | — | — | — | **Required** (boolean) |
-| `dataType` | `"string"` | `"string"` | `"string"` | `"json"` | `"string"` | `"file"` |
-
-**"Required"** means the property must be present in the JSON — even if the value is `null`. **"NO"** means including it causes a 400 error. **"—"** means not applicable (omit entirely).
-
-#### Static Choices Example (dropdown/radio/checkbox)
+#### `text` — 19 properties
 
 ```json
 {
-  "choicesDataSource": "custom",
-  "choicesRunIf": null,
-  "choicesResourceName": null,
-  "choices": [
-    {"label": "Option A", "value": "Option A"},
-    {"label": "Option B", "value": "Option B"}
-  ]
+  "type": "field", "renderType": "text", "dataType": "string",
+  "name": "Field Name", "key": "f1", "label": "Display Label",
+  "enabled": true, "visible": true, "required": false, "requiredMessage": null,
+  "defaultValue": null, "defaultDataSource": "none", "defaultResourceName": null,
+  "pattern": null, "constraints": [], "events": [],
+  "omitWhenHidden": null, "renderAttributes": {},
+  "rows": 1
 }
 ```
+`rows`: 1 = single line, 3+ = textarea. This is the ONLY type that uses `rows`.
+
+#### `dropdown` — 22 properties
+
+```json
+{
+  "type": "field", "renderType": "dropdown", "dataType": "string",
+  "name": "Field Name", "key": "f1", "label": "Display Label",
+  "enabled": true, "visible": true, "required": false, "requiredMessage": null,
+  "defaultValue": null, "defaultDataSource": "none", "defaultResourceName": null,
+  "pattern": null, "constraints": [], "events": [],
+  "omitWhenHidden": null, "renderAttributes": {},
+  "choicesDataSource": "custom", "choicesRunIf": null, "choicesResourceName": null,
+  "choices": [{"label": "Option A", "value": "Option A"}, {"label": "Option B", "value": "Option B"}]
+}
+```
+
+#### `radio` — 22 properties
+
+```json
+{
+  "type": "field", "renderType": "radio", "dataType": "string",
+  "name": "Field Name", "key": "f1", "label": "Display Label",
+  "enabled": true, "visible": true, "required": false, "requiredMessage": null,
+  "defaultValue": null, "defaultDataSource": "none", "defaultResourceName": null,
+  "pattern": null, "constraints": [], "events": [],
+  "omitWhenHidden": null, "renderAttributes": {},
+  "choicesDataSource": "custom", "choicesRunIf": null, "choicesResourceName": null,
+  "choices": [{"label": "Option A", "value": "Option A"}, {"label": "Option B", "value": "Option B"}]
+}
+```
+
+#### `checkbox` — 22 properties
+
+```json
+{
+  "type": "field", "renderType": "checkbox", "dataType": "json",
+  "name": "Field Name", "key": "f1", "label": "Display Label",
+  "enabled": true, "visible": true, "required": false, "requiredMessage": null,
+  "defaultValue": null, "defaultDataSource": "none", "defaultResourceName": null,
+  "pattern": null, "constraints": [], "events": [],
+  "omitWhenHidden": null, "renderAttributes": {},
+  "choicesDataSource": "custom", "choicesRunIf": null, "choicesResourceName": null,
+  "choices": [{"label": "Option A", "value": "Option A"}, {"label": "Option B", "value": "Option B"}]
+}
+```
+Note: `dataType` is `"json"` (not `"string"`). Values are stored as JSON arrays.
+
+#### `date` / `datetime` / `time` — 18 properties each
+
+```json
+{
+  "type": "field", "renderType": "date", "dataType": "string",
+  "name": "Field Name", "key": "f1", "label": "Display Label",
+  "enabled": true, "visible": true, "required": false, "requiredMessage": null,
+  "defaultValue": null, "defaultDataSource": "none", "defaultResourceName": null,
+  "pattern": null, "constraints": [], "events": [],
+  "omitWhenHidden": null, "renderAttributes": {}
+}
+```
+Change `renderType` to `"datetime"` or `"time"` as needed. No type-specific properties.
+
+#### `attachment` — 19 properties
+
+```json
+{
+  "type": "field", "renderType": "attachment", "dataType": "file",
+  "name": "Field Name", "key": "f1", "label": "Display Label",
+  "enabled": true, "visible": true, "required": false, "requiredMessage": null,
+  "defaultValue": null, "defaultDataSource": "none", "defaultResourceName": null,
+  "pattern": null, "constraints": [], "events": [],
+  "omitWhenHidden": null, "renderAttributes": {},
+  "allowMultiple": false
+}
+```
+`allowMultiple`: `true` allows multiple file uploads on a single field.
+
+#### Type-Specific Property Summary
+
+| Property | `text` | `dropdown`/`radio`/`checkbox` | `date`/`datetime`/`time` | `attachment` |
+|----------|--------|-------------------------------|--------------------------|-------------|
+| `rows` | **Required** | DO NOT include | DO NOT include | DO NOT include |
+| `choices` | — | **Required** | — | — |
+| `choicesDataSource` | — | **Required** | — | — |
+| `choicesRunIf` | — | **Required** (null for static) | — | — |
+| `choicesResourceName` | — | **Required** (null for static) | — | — |
+| `allowMultiple` | — | — | — | **Required** |
+| `dataType` | `"string"` | `"string"` (dropdown/radio) or `"json"` (checkbox) | `"string"` | `"file"` |
+| **Total properties** | 19 | 22 | 18 | 19 |
+
+**"DO NOT include"** = including the property causes a 400 error. **"—"** = not applicable, omit entirely.
 
 #### Content Elements
 

@@ -19,7 +19,7 @@ Comprehensive audit from three angles: live API testing on demo.kinops.io, `@kin
 | 7 | ~~File attachment download undocumented~~ | form-engine | **FIXED** — download URL pattern documented |
 | 8 | ~~Model query execution undocumented~~ | models | **FIXED** — bridged resource execution added |
 | 9 | ~~KQL null value queries undocumented~~ | kql-and-indexing | **FIXED** — `key = null` syntax documented |
-| 10 | **No complete required-properties-per-field-type reference** | form-engine | OPEN — partial coverage, needs full canonical table |
+| 10 | ~~No complete required-properties-per-field-type reference~~ | form-engine | **FIXED** — copy-pasteable templates for all 8 types with exact property counts |
 
 ### Front-End / React
 
@@ -110,4 +110,6 @@ Comprehensive audit from three angles: live API testing on demo.kinops.io, `@kin
 - **Medium gaps:** 13/15 resolved (87%) — 2 skipped as implementation-specific
 - **New gaps found & fixed:** 7/7 (100%)
 
-**Remaining open:** #10 (complete required-properties-per-field-type — partial coverage exists), #38 (widget props — implementation-specific, skipped), #45 (calcViewState — implementation-specific, skipped)
+**Remaining:** #38 (widget props — implementation-specific, skipped), #45 (calcViewState — implementation-specific, skipped)
+
+All actionable gaps are resolved.
