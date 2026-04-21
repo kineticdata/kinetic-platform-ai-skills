@@ -62,7 +62,8 @@ function textOf(el, tag) {
   return m ? m[1] : "";
 }
 function attrOf(el, name) {
-  const m = new RegExp(`${name}="([^"]*)"`).exec(el);
+  // Word-boundary prefix so attrOf("id") doesn't match definition_id="..."
+  const m = new RegExp(`(?:^|\\s)${name}="([^"]*)"`).exec(el);
   return m ? m[1] : "";
 }
 function extractTasks(src) {
