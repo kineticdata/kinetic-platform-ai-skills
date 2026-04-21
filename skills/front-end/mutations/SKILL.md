@@ -28,7 +28,7 @@ const handleError = error => {
   return { error: { message: 'Unexpected error occurred.' } };
 };
 
-export const executeIntegration = ({ kappSlug, formSlug, integrationName, parameters }) =>
+export const executeIntegration = ({ kappSlug, formSlug, integrationName, parameters, contentType = 'application/json' }) =>
   fetch(
     [
       `${bundle.apiLocation()}/integrations/kapps/${kappSlug}`,
@@ -37,8 +37,11 @@ export const executeIntegration = ({ kappSlug, formSlug, integrationName, parame
     ].filter(Boolean).join(''),
     {
       method: 'POST',
-      body: JSON.stringify(parameters),
-      headers: { 'X-XSRF-TOKEN': getCsrfToken() },
+      body: contentType === 'application/json' ? JSON.stringify(parameters) : parameters,
+      headers: {
+        'Content-Type': contentType,
+        'X-XSRF-TOKEN': getCsrfToken(),
+      },
     },
   )
   .then(handleResponse)
@@ -48,6 +51,8 @@ export const executeIntegration = ({ kappSlug, formSlug, integrationName, parame
 **URL patterns:**
 - Kapp-level: `/integrations/kapps/{kappSlug}/{integrationName}`
 - Form-level: `/integrations/kapps/{kappSlug}/forms/{formSlug}/{integrationName}`
+
+**Content-Type depends on the integration.** Most integrations expect `application/json` (the default above), but some may expect `application/x-www-form-urlencoded`, `multipart/form-data`, or other types. Match the Content-Type to what the server-side integration endpoint expects. Without the correct Content-Type, the server returns `400: "Unable to parse JSON content."` or similar.
 
 **Response shape:**
 On success: the parsed JSON body from the integration.
@@ -107,6 +112,38 @@ const { response } = useData(fetchSubmission, {
 });
 const submission = response?.submission;
 ```
+
+### Update (field values outside CoreForm)
+
+Use `updateSubmission` to modify field values without rendering a form. This is the pattern for inline edits, status changes, notes, and any update that doesn't require the full form UI.
+
+```js
+import { updateSubmission } from '@kineticdata/react';
+
+// Update specific field values — omitted fields are untouched (partial update)
+const { submission, error } = await updateSubmission({
+  id: submissionId,
+  values: { Status: 'Closed', Resolution: 'Fixed in latest release' },
+  include: 'values',  // return updated values in response
+});
+
+if (error) {
+  console.error('Update failed:', error);
+} else {
+  console.log('Updated:', submission.values.Status);
+}
+```
+
+**coreState transition:**
+```js
+// Close a submission
+const { error } = await updateSubmission({
+  id: submissionId,
+  submission: { coreState: 'Closed' },
+});
+```
+
+**Gotcha:** `updateSubmission` wraps `PUT /submissions/{id}`. Required field validation runs on coreState transitions (e.g., Draft → Submitted enforces required fields including attachments).
 
 ### Delete (with confirmation)
 

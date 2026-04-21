@@ -402,36 +402,131 @@ Content-Type: application/json
 }
 ```
 
-### Upload the tree XML definition
+### Upload the tree definition (treeJson)
+
+Use treeJson (not treeXml) for reliable round-trips. The request workflow sets status, creates an approval with deferral, then logs the result after approval:
 
 ```
-PUT /app/api/v1/kapps/{kappSlug}/forms/{yourFormSlug}/workflows/{id}
+PUT /app/api/v1/workflows/{id}
 Content-Type: application/json
 
 {
-  "treeXml": "<taskTree>...</taskTree>"
+  "treeJson": {
+    "builderVersion": "", "schemaVersion": "1.0", "version": "", "processOwnerEmail": "",
+    "lastId": 4, "name": "Request Approval",
+    "connectors": [
+      {"from": "start", "to": "si_1", "label": "", "value": "", "type": "Complete"},
+      {"from": "si_1", "to": "si_2", "label": "", "value": "", "type": "Complete"},
+      {"from": "si_2", "to": "echo_3", "label": "", "value": "", "type": "Complete"}
+    ],
+    "nodes": [
+      {"configured": true, "defers": false, "deferrable": false, "visible": false,
+       "name": "Start", "id": "start", "definitionId": "system_start_v1",
+       "parameters": [], "messages": [], "position": {"x": 10, "y": 10}, "version": 1,
+       "dependents": {"task": [{"type": "Complete", "content": "si_1"}]}},
+
+      {"configured": true, "defers": false, "deferrable": false, "visible": true,
+       "name": "Set Status Pending", "id": "si_1", "definitionId": "system_integration_v1",
+       "parameters": [
+         {"id": "connection", "value": "<your-connection-uuid>"},
+         {"id": "operation", "value": "<your-update-submission-operation-uuid>"},
+         {"id": "parameters.Submission Id*", "value": "<%= @submission['Id'] %>"},
+         {"id": "parameters.Values [Object]", "value": "{\"Status\": \"Pending Approval\"}"}
+       ],
+       "messages": [], "position": {"x": 200, "y": 10}, "version": 1,
+       "dependents": {"task": [{"type": "Complete", "content": "si_2"}]}},
+
+      {"configured": true, "defers": true, "deferrable": true, "visible": true,
+       "name": "Create Approval", "id": "si_2", "definitionId": "system_integration_v1",
+       "parameters": [
+         {"id": "connection", "value": "<your-connection-uuid>"},
+         {"id": "operation", "value": "<your-create-submission-operation-uuid>"},
+         {"id": "parameters.Kapp*", "value": "<your-kapp-slug>"},
+         {"id": "parameters.Form*", "value": "approval"},
+         {"id": "parameters.Core State", "value": "Draft"},
+         {"id": "parameters.Values [Object]", "value": "<%= {Approver: @submission['Created By'], 'Original Submission Id': @submission['Id'], 'Deferral Token': @task['Deferral Token']}.to_json %>"}
+       ],
+       "messages": [], "position": {"x": 400, "y": 10}, "version": 1,
+       "dependents": {"task": [{"type": "Complete", "content": "echo_3"}]}},
+
+      {"configured": true, "defers": false, "deferrable": false, "visible": true,
+       "name": "Log Result", "id": "echo_3", "definitionId": "utilities_echo_v1",
+       "parameters": [
+         {"id": "input", "value": "Approval completed: <%= @results['Create Approval'] %>"}
+       ],
+       "messages": [], "position": {"x": 600, "y": 10}, "version": 1,
+       "dependents": ""}
+    ]
+  }
 }
 ```
 
-> Upload only the inner `<taskTree>` element — the server wraps it in the `<tree>` envelope automatically.
+**Key points:**
+- "Create Approval" node has `"defers": true, "deferrable": true` — this pauses the workflow
+- `@task['Deferral Token']` captures the token for the approval form to use later
+- Uses `system_integration_v1` (not legacy `kinetic_core_api_v1`) — replace UUIDs with your connection/operation IDs
+- "Log Result" only fires after the deferral is completed by the callback workflow
 
 ### Register the approval callback workflow
 
-Same pattern, against the approval form:
+Same pattern on the approval form — this workflow fires when the approver submits their decision:
 
 ```
 POST /app/api/v1/kapps/{kappSlug}/forms/approval/workflows
 Content-Type: application/json
 
 {
-  "name": "Submission Submitted",
+  "name": "Complete Approval",
   "event": "Submission Submitted",
   "type": "Tree",
   "status": "Active"
 }
 ```
 
-Then upload the callback tree XML via PUT as above.
+Then upload the callback treeJson:
+
+```json
+{
+  "treeJson": {
+    "builderVersion": "", "schemaVersion": "1.0", "version": "", "processOwnerEmail": "",
+    "lastId": 3, "name": "Complete Approval",
+    "connectors": [
+      {"from": "start", "to": "trigger_1", "label": "", "value": "", "type": "Complete"},
+      {"from": "trigger_1", "to": "si_2", "label": "", "value": "", "type": "Complete"}
+    ],
+    "nodes": [
+      {"configured": true, "defers": false, "deferrable": false, "visible": false,
+       "name": "Start", "id": "start", "definitionId": "system_start_v1",
+       "parameters": [], "messages": [], "position": {"x": 10, "y": 10}, "version": 1,
+       "dependents": {"task": [{"type": "Complete", "content": "trigger_1"}]}},
+
+      {"configured": true, "defers": false, "deferrable": false, "visible": true,
+       "name": "Complete Deferral", "id": "trigger_1", "definitionId": "utilities_create_trigger_v1",
+       "parameters": [
+         {"id": "action_type", "value": "Complete"},
+         {"id": "deferral_token", "value": "<%= @values['Deferral Token'] %>"},
+         {"id": "deferred_variables", "value": "<results><result name=\"Decision\"><%= @values['Decision'] %></result></results>"},
+         {"id": "message", "value": "Approval: <%= @values['Decision'] %>"}
+       ],
+       "messages": [], "position": {"x": 200, "y": 10}, "version": 1,
+       "dependents": {"task": [{"type": "Complete", "content": "si_2"}]}},
+
+      {"configured": true, "defers": false, "deferrable": false, "visible": true,
+       "name": "Close Approval", "id": "si_2", "definitionId": "system_integration_v1",
+       "parameters": [
+         {"id": "connection", "value": "<your-connection-uuid>"},
+         {"id": "operation", "value": "<your-update-submission-operation-uuid>"},
+         {"id": "parameters.Submission Id*", "value": "<%= @submission['Id'] %>"},
+         {"id": "parameters.Core State", "value": "Closed"}
+       ],
+       "messages": [], "position": {"x": 400, "y": 10}, "version": 1,
+       "dependents": ""}
+    ]
+  }
+}
+```
+
+The callback reads `Deferral Token` from the approval submission, completes the parent workflow's deferral with the Decision as a deferred variable, then closes the approval submission.
 
 ---
 

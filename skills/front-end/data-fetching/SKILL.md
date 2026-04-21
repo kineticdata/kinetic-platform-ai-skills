@@ -50,6 +50,20 @@ export function useData(fn, params) {
 
 **Race condition safety:** Timestamp-based stale response rejection — if params change before the previous fetch resolves, the old response is discarded.
 
+**Error handling:** `@kineticdata/react` fetch functions do NOT reject promises on HTTP errors — they resolve with `{ error: "message" }` in the response. Check `response.error` after loading completes:
+
+```jsx
+const { loading, response } = useData(fetchSubmission, params);
+const error = response?.error;
+const submission = response?.submission;
+
+if (loading) return <Loading />;
+if (error) return <div>Error: {error}</div>;
+if (!submission) return <div>Not found</div>;
+```
+
+For `searchSubmissions`, errors appear the same way: `response.error` is a string. A 400 from a missing index returns something like `"The query requires one of the following index definitions..."`. Network failures result in `response` being `null` (the promise resolves but with no data).
+
 **Usage:**
 ```jsx
 const spaceParams = useMemo(

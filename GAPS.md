@@ -58,12 +58,12 @@ Comprehensive audit from three angles: live API testing on demo.kinops.io, `@kin
 |---|-----|-------------------|--------|
 | 28 | `globals` import path inconsistency | bootstrap | OPEN — implementation-specific |
 | 29 | ~~`created` vs `completed` callback semantics~~ | forms | **FIXED** — documented |
-| 30 | Missing `Content-Type` header in `executeIntegration` | mutations | OPEN |
-| 31 | No submission field update pattern outside CoreForm | mutations | OPEN |
-| 32 | `removeSecure`/`removeSameSiteNone` functions missing | bootstrap | OPEN |
-| 33 | No complete workflow XML in approval recipe | add-approval-workflow | OPEN |
-| 34 | No error handling patterns for useData/usePaginatedData | data-fetching | OPEN |
-| 35 | `omitWhenHidden: null` vs `false` never explained | create-submission-form | OPEN |
+| 30 | ~~Missing `Content-Type` header in `executeIntegration`~~ | mutations | **FIXED** — added Content-Type (configurable per integration) |
+| 31 | ~~No submission field update pattern outside CoreForm~~ | mutations | **FIXED** — added updateSubmission section |
+| 32 | ~~`removeSecure`/`removeSameSiteNone` functions missing~~ | bootstrap | **FIXED** — consolidated in Vite config example |
+| 33 | ~~No complete workflow treeJson in approval recipe~~ | add-approval-workflow | **FIXED** — working treeJson with system_integration_v1 |
+| 34 | ~~No error handling patterns for useData/usePaginatedData~~ | data-fetching | **FIXED** — documented response.error pattern |
+| 35 | ~~`omitWhenHidden: null` vs `false` never explained~~ | form-engine | **FIXED** — documented in form-engine Hidden Fields section |
 
 ---
 
