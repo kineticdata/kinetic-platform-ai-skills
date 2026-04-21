@@ -127,11 +127,48 @@ This metadata can be useful for confirming the token's identity and permissions 
 
 An **Operation** defines a specific action within a Connection:
 - HTTP method (GET, POST, PUT, PATCH, DELETE)
-- Endpoint path (relative to connection base URL)
-- Input parameters (mapped from form fields or workflow context)
-- Output mappings (extract values from the response)
+- Endpoint path (relative to connection base URL, with `{{param}}` placeholders for path variables)
+- Request body template (Mustache syntax with `{{param}}` and `{{{param}}}` for unescaped)
+- Output mappings (extract values from the response using dot notation)
 
 Operations are testable from the platform UI before being used in forms or workflows.
+
+**Creating operations via API** (Integrator API, requires OAuth):
+
+```json
+POST /app/integrator/api/connections/{connectionId}/operations
+{
+  "name": "Update Submission",
+  "config": {
+    "configType": "http",
+    "method": "PUT",
+    "path": "/submissions/{{Submission Id*}}",
+    "params": {},
+    "body": {
+      "bodyType": "raw",
+      "raw": "{\n  {{#Core State}}\n    \"coreState\": \"{{Core State}}\",\n  {{/Core State}}\n  {{#Values [Object]}}\n    \"values\": {{{Values [Object]}}},\n  {{/Values [Object]}}\n}"
+    },
+    "headers": {"accept": "application/json", "content-type": "application/json"},
+    "includeEmptyParams": false,
+    "followRedirect": false,
+    "streamResponse": false
+  },
+  "outputs": {
+    "Id": {"value": "body.submission?.id"},
+    "_Error": {"value": "body.error"},
+    "_Status Code": {"value": "statusCode"}
+  }
+}
+```
+
+**Key schema rules:**
+- `body.bodyType` must be `"raw"` (not `"json"` or `"www_form_urlencoded"`)
+- `body.raw` contains the Mustache template string
+- Path variables use `{{Name*}}` — the `*` indicates required
+- Body variables: `{{Name}}` for escaped, `{{{Name}}}` (triple braces) for unescaped JSON objects
+- `{{#Name}}...{{/Name}}` blocks are conditional — content included only when parameter has a value
+- List operations use `outputs.Children.children` map with `current.fieldName` for iterating response arrays
+- No `inputs` or `outputChildren` fields — the API rejects them
 
 ### Usage in Forms
 
