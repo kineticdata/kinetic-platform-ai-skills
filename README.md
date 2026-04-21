@@ -125,6 +125,60 @@ Then reference from `~/.claude/CLAUDE.md` for global access across all projects.
 
 ---
 
+## For Kinetic Data Employees — Testing Skills
+
+When updating skills, run the test suite to verify your changes don't break AI assistants' ability to build working apps.
+
+### Test Suite
+
+The test suite provisions a complete test environment (kapp, forms, workflows, connection, operations) and verifies everything works end-to-end.
+
+```bash
+# Provision test fixtures on any Kinetic environment
+./tests/provision.sh https://your-space.kinops.io username password
+
+# Run 16 verification checks
+./tests/verify.sh https://your-space.kinops.io username password
+
+# Clean up when done
+./tests/teardown.sh https://your-space.kinops.io username password
+```
+
+**What the tests verify:**
+- Kapp creation with formTypes, kapp fields, and indexes (system + custom field)
+- Form creation with all field types and property variations
+- Workflow execution with `system_integration_v1` (preferred handler)
+- Deferral/approval lifecycle (submit → pending → deferred → approved → closed)
+- Workflow filters (KSL expression on Submission Submitted)
+- KQL search with form-level and kapp-level indexes
+- Kapp-wide cross-form search using kapp fields
+
+### Sample Portal
+
+A minimal React portal for manual testing of CoreForm rendering and kapp-wide search.
+
+```bash
+cd portal
+cp .env.development.local.sample .env.development.local
+# Edit .env.development.local with your Kinetic environment URL
+npm install
+npm run dev
+# Open http://localhost:3000
+```
+
+### Internal-Only Directories
+
+These directories are for KD employees and are not intended for customer use:
+
+| Directory | Purpose |
+|-----------|---------|
+| `tests/` | Provision, verify, and teardown scripts |
+| `tests/fixtures/` | Exported form/workflow JSON reference |
+| `portal/` | Sample React portal for manual testing |
+| `docs/superpowers/` | Design specs and implementation plans |
+
+---
+
 ## Contributing
 
 ### Adding a New Skill

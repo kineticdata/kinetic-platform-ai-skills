@@ -43,7 +43,7 @@ KAPP=$(curl -sf ${AUTH} "${API}/kapps/ai-testing?include=indexDefinitions,formTy
 FT_COUNT=$(echo "$KAPP" | python3 -c "import sys,json; print(len(json.load(sys.stdin).get('kapp',{}).get('formTypes',[])))")
 IDX_COUNT=$(echo "$KAPP" | python3 -c "import sys,json; print(len(json.load(sys.stdin).get('kapp',{}).get('indexDefinitions',[])))")
 check "formTypes count" "3" "$FT_COUNT"
-check "kapp index count" "6" "$IDX_COUNT"
+check "kapp index count" "10" "$IDX_COUNT"
 
 # --- 2. Forms ---
 echo ""
@@ -147,7 +147,8 @@ sleep 3
 
 SEARCH_COUNT=$(curl -sf ${AUTH} "${API}/kapps/ai-testing/forms/help-desk-ticket/submissions?q=values%5BStatus%5D%3D%22In%20Progress%22&include=values" \
   | python3 -c "import sys,json; print(len(json.load(sys.stdin).get('submissions',[])))")
-check "KQL search finds ticket" "1" "$SEARCH_COUNT"
+# At least 1 result (may find more from previous runs)
+check "KQL search finds tickets" "true" "$([ "$SEARCH_COUNT" -ge 1 ] && echo "true" || echo "false")"
 
 # --- Summary ---
 echo ""

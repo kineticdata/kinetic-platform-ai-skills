@@ -39,13 +39,21 @@ curl -sf ${AUTH} -X POST "${API}/kapps" \
     "slug": "ai-testing",
     "status": "Active",
     "formTypes": [{"name": "Service"}, {"name": "Test"}, {"name": "Approval"}],
+    "fields": [
+      {"name": "Approver", "renderType": "text"},
+      {"name": "Status", "renderType": "text"}
+    ],
     "indexDefinitions": [
       {"name": "type", "parts": ["type"], "unique": false},
       {"name": "coreState", "parts": ["coreState"], "unique": false},
       {"name": "createdBy", "parts": ["createdBy"], "unique": false},
       {"name": "submittedBy", "parts": ["submittedBy"], "unique": false},
+      {"name": "type,coreState", "parts": ["type","coreState"], "unique": false},
       {"name": "type,coreState,submittedBy", "parts": ["type","coreState","submittedBy"], "unique": false},
-      {"name": "type,coreState,createdBy", "parts": ["type","coreState","createdBy"], "unique": false}
+      {"name": "type,coreState,createdBy", "parts": ["type","coreState","createdBy"], "unique": false},
+      {"name": "type,coreState,values[Approver]", "parts": ["type","coreState","values[Approver]"], "unique": false},
+      {"name": "type,values[Status]", "parts": ["type","values[Status]"], "unique": false},
+      {"name": "type,coreState,values[Status]", "parts": ["type","coreState","values[Status]"], "unique": false}
     ]
   }' > /dev/null
 echo "  Done."
@@ -54,7 +62,7 @@ echo "  Done."
 echo "Building kapp indexes..."
 curl -sf ${AUTH} -X POST "${API}/kapps/ai-testing/backgroundJobs" \
   -H "Content-Type: application/json" \
-  -d '{"type": "Build Index", "content": {"indexes": ["type","coreState","createdBy","submittedBy","type,coreState,submittedBy","type,coreState,createdBy"]}}' > /dev/null
+  -d '{"type": "Build Index", "content": {"indexes": ["type","coreState","createdBy","submittedBy","type,coreState","type,coreState,submittedBy","type,coreState,createdBy","type,coreState,values[Approver]","type,values[Status]","type,coreState,values[Status]"]}}' > /dev/null
 echo "  Done."
 
 # --- Step 3: Create Kinetic Platform connection + operations ---
