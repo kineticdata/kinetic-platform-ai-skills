@@ -135,18 +135,23 @@ Operations are testable from the platform UI before being used in forms or workf
 
 **Creating operations via API** (Integrator API, requires OAuth):
 
-```json
+```
 POST /app/integrator/api/connections/{connectionId}/operations
+```
+
+**Operation schema:**
+
+```json
 {
-  "name": "Update Submission",
+  "name": "Operation Name",
   "config": {
     "configType": "http",
-    "method": "PUT",
-    "path": "/submissions/{{Submission Id*}}",
-    "params": {},
+    "method": "GET|POST|PUT|PATCH|DELETE",
+    "path": "/your/endpoint/{{PathParam*}}",
+    "params": {"queryParam": "{{Query Param}}"},
     "body": {
       "bodyType": "raw",
-      "raw": "{\n  {{#Core State}}\n    \"coreState\": \"{{Core State}}\",\n  {{/Core State}}\n  {{#Values [Object]}}\n    \"values\": {{{Values [Object]}}},\n  {{/Values [Object]}}\n}"
+      "raw": "Mustache template string for request body"
     },
     "headers": {"accept": "application/json", "content-type": "application/json"},
     "includeEmptyParams": false,
@@ -154,21 +159,50 @@ POST /app/integrator/api/connections/{connectionId}/operations
     "streamResponse": false
   },
   "outputs": {
-    "Id": {"value": "body.submission?.id"},
+    "OutputName": {"value": "body.response.field"},
     "_Error": {"value": "body.error"},
     "_Status Code": {"value": "statusCode"}
   }
 }
 ```
 
-**Key schema rules:**
-- `body.bodyType` must be `"raw"` (not `"json"` or `"www_form_urlencoded"`)
-- `body.raw` contains the Mustache template string
-- Path variables use `{{Name*}}` — the `*` indicates required
-- Body variables: `{{Name}}` for escaped, `{{{Name}}}` (triple braces) for unescaped JSON objects
-- `{{#Name}}...{{/Name}}` blocks are conditional — content included only when parameter has a value
-- List operations use `outputs.Children.children` map with `current.fieldName` for iterating response arrays
-- No `inputs` or `outputChildren` fields — the API rejects them
+**Mustache template syntax for path and body:**
+
+| Syntax | Purpose | Example |
+|--------|---------|---------|
+| `{{Name}}` | Escaped parameter value | Path: `/users/{{Username*}}` |
+| `{{{Name}}}` | Unescaped value (for raw JSON objects) | Body: `"data": {{{JSON Payload}}}` |
+| `{{Name*}}` | Required parameter (`*` suffix) | Path variables, required inputs |
+| `{{#Name}}...{{/Name}}` | Conditional block — included only when parameter has a value | Optional body fields |
+
+**Output mapping expressions:**
+
+| Expression | Purpose |
+|------------|---------|
+| `body.field` | Access response body JSON property |
+| `body.field?.nested` | Null-safe access |
+| `body.field?.length ?? 0` | Default value |
+| `current.field` | Iterate array items (inside `children` maps) |
+| `statusCode` | HTTP response status code |
+
+**For list operations** (returning arrays), use `children` inside an output to iterate:
+
+```json
+"outputs": {
+  "Items": {
+    "value": "body.results",
+    "children": {
+      "Name": "current.name",
+      "Id": "current.id"
+    }
+  }
+}
+```
+
+**API schema rules:**
+- `body.bodyType` must be `"raw"` — the API rejects `"json"` and `"www_form_urlencoded"`
+- Do NOT include `inputs` or `outputChildren` fields — the API rejects them
+- Convention: prefix metadata outputs with `_` (e.g., `_Error`, `_Status Code`, `_Count`)
 
 ### Usage in Forms
 

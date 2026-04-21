@@ -199,7 +199,7 @@ This is how portals build unified request lists, approval inboxes, and dashboard
 
 ### Kapp-Level Index Gotchas (Critical)
 
-**`values[FieldName]` indexes at the kapp level return "field was not found" via REST API PUT.** Attempting to add kapp-level indexes with `values[FieldName]` parts returns `"The 'FieldName' field was not found"` — even when forms in the kapp have that field defined and built at the form level. Tested April 2026 on demo.kinops.io with confirmed-existing fields.
+**`values[FieldName]` indexes at the kapp level return "field was not found" via REST API PUT.** Attempting to add kapp-level indexes with `values[FieldName]` parts returns `"The 'FieldName' field was not found"` — even when forms in the kapp have that field defined and built at the form level. This is a confirmed platform limitation.
 
 These indexes CAN exist on kapps (the `services` and `queue` kapps have them), but they were created via **template provisioning/import** (Ruby SDK `import_space`), not via individual REST API calls. This appears to be a platform limitation of the REST API for kapp-level index management. (Note: form-level `values[FieldName]` indexes work perfectly via REST API PUT on individual forms.)
 
