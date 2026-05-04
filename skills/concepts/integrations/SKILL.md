@@ -192,6 +192,10 @@ POST /app/integrator/api/connections/{connectionId}/operations
 }
 ```
 
+**`children` use plain string expressions, NOT object wrappers.** Top-level outputs are objects (`{"value": "expression"}`), but `children` entries are bare strings (`"Name": "current.name"`). A common mistake is mirroring the top-level shape inside `children` — `{"Name": {"value": "current.name"}}` does not work. Stick to the asymmetry: top-level = objects with `value` key; `children` = string-to-expression map.
+
+**The `*` suffix is part of the parameter's *key*, not a flag** — it must appear consistently everywhere the parameter is referenced. If your operation defines `path: "/PublicHolidays/{{Year*}}/{{CountryCode*}}"`, the parameter keys are literally `Year*` and `CountryCode*`. When a form's `inputMappings` (or a workflow handler call) provides values for those parameters, the keys in the input map must include the asterisk: `{"Year*": "${values('Start Year')}", "CountryCode*": "${values('Country Code')}"}`. Passing `{"Year": "2026"}` (without the asterisk) causes a silent miss — the path placeholder isn't substituted, and the request goes out malformed. The Mustache template and the input-mapping keys must match exactly, asterisks included.
+
 ### Integrator REST API — Detailed Schema
 
 The Integrator API (v6.1.6) is available at `/app/integrator/api/`. Most endpoints require JWT/Bearer authentication. Unprotected: `/healthz`, `/version`.
@@ -227,6 +231,8 @@ The Integrator API (v6.1.6) is available at `/app/integrator/api/`. Most endpoin
 | POST | `/api/transform/test` | Test output transformation expressions |
 | GET | `/healthz` | Health check (unprotected) |
 | GET | `/version` | Build version info (unprotected) |
+
+**Integrator API list endpoints return bare arrays.** Unlike Core API endpoints — which wrap collections in an envelope object (e.g., `{"connections": [...], "nextPageToken": "..."}`) — Integrator API list endpoints (`GET /connections`, `GET /connections/{id}/operations`, etc.) return the array directly at the top level: `[{"id": "...", "name": "..."}, ...]`. Code that assumes a wrapping object (`response.connections`) will fail; index into the response itself.
 
 #### Connection Schema
 
