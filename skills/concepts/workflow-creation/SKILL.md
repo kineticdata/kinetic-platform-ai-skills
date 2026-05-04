@@ -21,6 +21,21 @@ The export endpoint returns JSON with a single `tree` key containing an XML stri
 ```
 Parse the XML string from the `tree` field — it is **not** raw XML.
 
+### Fetching `treeJson` from the Tree API
+
+When you fetch a tree with `?include=treeJson` (e.g., `GET /trees/{title}?include=treeJson`), the `treeJson` is at the **top level** of the response — not nested under a `tree` key.
+
+```json
+{
+  "title": "Kinetic Request CE :: ... :: My Workflow",
+  "name": "My Workflow",
+  "status": "Active",
+  "treeJson": { "nodes": [...], "connectors": [...] }
+}
+```
+
+This is different from `?include=treeXml` and from the `/export` endpoint described above, both of which wrap the content under a `tree` field.
+
 ---
 
 ## Tree Title Format
@@ -34,16 +49,16 @@ Handler Failure Error Process
 ```
 
 ### Trees (Event-Triggered Workflows)
-Title = `{sourceName} :: {sourceGroup} :: {eventName}`:
+Title = `{sourceName} :: {sourceGroup} :: {workflowName}`:
 ```
 Kinetic Request CE :: bee52c65-dbae-4959-894e-b659e59eaba1 :: User Created
-Kinetic Request CE :: 3d440511-d011-4167-9de4-244a6fc19974 :: Team Updated
+Kinetic Request CE :: 9a2adb12-12c5-410a-99cc-4ba7d03f03d3 :: Laptop Request Approval
 ```
 
 Where:
 - **sourceName** = The system generating events (usually `Kinetic Request CE`)
 - **sourceGroup** = UUID of the form/entity, or a named group (`Space`, `WebApis`, etc.)
-- **eventName** = The trigger event (`Submitted`, `Created`, `User Created`, etc.)
+- **workflowName** = The workflow's `name` field, NOT the event name. For workflows registered via `POST /kapps/{kapp}/forms/{form}/workflows`, the third part is whatever you set as the workflow `name` (e.g., `"Laptop Request Approval"`), even though the workflow is bound to an event like `"Submission Submitted"`. The two are often the same for system-generated workflows (e.g., `User Created`), but for custom workflows they can differ.
 
 ### Special Tree Sources
 - `Kinetic Task :: Run Error :: Notify on Run Error` — Task engine errors
