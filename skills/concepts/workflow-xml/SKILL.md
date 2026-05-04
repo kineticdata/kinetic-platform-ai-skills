@@ -813,6 +813,8 @@ Run IDs are **integers**, not UUIDs. The response includes:
 
 **Note:** Form-triggered workflows (non-WebAPI, non-routine) that have no `system_tree_return_v1` will remain in `Started` status permanently. This is normal — the workflow ran to completion, but the engine only sets `Completed` when a tree_return node executes.
 
+**Run-level status can lag task completion.** Even on workflows that *do* eventually settle to a final status, a run may report `status: "Started"` briefly after all of its tasks have already moved to `Closed`. When verifying that a workflow completed, check the individual task statuses (`tasks[].status`) rather than relying on the run-level `status` field alone — task statuses are the source of truth for "what actually happened."
+
 ### Debugging Workflow Runs
 
 Use the detailed include parameters on the runs API to diagnose failures:
