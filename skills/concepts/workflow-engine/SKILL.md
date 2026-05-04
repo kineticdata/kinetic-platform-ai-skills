@@ -425,6 +425,10 @@ The component path (`/app/components/task/...`) is what the Kinetic Console uses
 | PUT | `/app/api/v1/kapps/{kapp}/workflows/{id}` | Update workflow / upload tree definition |
 | DELETE | `/app/api/v1/kapps/{kapp}/workflows/{id}` | Soft-delete workflow |
 
+**No standalone `GET /workflows/{id}` exists.** A 404 is returned for `GET /app/api/v1/workflows/{id}` (without the kapp/form scoping). To read a single workflow's metadata, either:
+- Use the kapp- or form-nested list: `GET /app/api/v1/kapps/{kapp}/workflows` or `GET /app/api/v1/kapps/{kapp}/forms/{form}/workflows`, then filter by `id`, OR
+- Use the Task API by tree title: `GET /app/components/task/app/api/v2/trees/{url-encoded-title}` (see `concepts/workflow-creation` for the title format).
+
 ### Two-Step Creation
 
 1. **Create:** `POST /workflows` with `{name, event, type:"Tree", status:"Active"}`
