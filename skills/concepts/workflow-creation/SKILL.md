@@ -99,6 +99,20 @@ PUT /app/components/task/app/api/v2/trees/{url-encoded-title}
 
 **Use `treeJson` for updates** — it's more reliable than `treeXml` for round-trips and properly handles connector logic.
 
+**`stale_record` errors on PUT.** If the tree has been modified (manually or by a concurrent process) since you last fetched its `versionId`, a PUT with the now-stale `versionId` returns `{"errorKey":"stale_record"}`. The fix is to re-fetch the current `versionId` and retry:
+
+```bash
+CURRENT=$(curl -s -u "$USER:$PASS" \
+  "{base}/app/components/task/app/api/v2/trees/{encoded-title}" \
+  | python3 -c "import json,sys; print(json.load(sys.stdin).get('versionId'))")
+curl -X PUT -u "$USER:$PASS" \
+  "{base}/app/components/task/app/api/v2/trees/{encoded-title}" \
+  -H "Content-Type: application/json" \
+  -d "{\"treeJson\": $TREE_JSON, \"versionId\": \"$CURRENT\"}"
+```
+
+For new trees that have never been edited, `"versionId": "0"` is correct. Stale-record retries are common during iterative development — bake the fetch-versionId step into any tree-PUT script.
+
 ### Handlers API
 
 **`GET /handlers` only returns handlers assigned to a handler category.** Handlers without a category are invisible in the list but still exist and work in trees. You can always fetch a specific handler directly by definition ID: `GET /handlers/{definitionId}?include=parameters,results`.
