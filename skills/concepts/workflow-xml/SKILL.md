@@ -273,6 +273,8 @@ These variables are confirmed available in WebAPI tree execution:
 
 **Not available in WebAPI context:** `@space`, `@kapp`, `@form`, `@submission`, `@values`, `@user`, `@space_attributes`, `@user_profile_attributes` — these are event-tree-only variables.
 
+**`@requested_by` is nil in form-triggered (event-tree) workflows.** Even though `@requested_by` is listed in "Available in All Workflows" above, in practice it is `nil` when the workflow is fired by a form submission event. Calling any method on it (`@requested_by['username']`, `@requested_by['displayName']`, etc.) raises `NoMethodError: undefined method '[]' for nil:NilClass`. **The failure is silent at the run level**: the offending task crashes, the run continues marking other tasks complete, but the *next* task downstream of the crashed one stays at status `"New"` indefinitely with no surfaced error. Always check `/app/components/task/app/api/v2/errors?limit=10` when a workflow stalls. In form workflows, use `@values[...]`, `@submission[...]`, `@results[...]`, `@task[...]`, or literal strings — never `@requested_by`. (`@requested_by` does work in WebAPI contexts where the table above is accurate.)
+
 **Passing data into WebAPI trees:** Use query params, body, or headers:
 ```ruby
 <%= @request_query_params['id'] %>
