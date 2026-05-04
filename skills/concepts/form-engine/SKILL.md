@@ -580,6 +580,7 @@ Constraints are **JavaScript expressions** that validate field values at submiss
 - **API requires ALL field properties in POST/PUT** — missing properties cause 400 "Invalid Form". When creating forms via API, provide every property for each field (even if `null`). Different field types have different required property sets (see Render Type Property Rules above).
 - **`events: []` is required** — even when empty, the events array must be present on forms, pages, and fields in API payloads.
 - **Section `renderType` must be present** — `null` is valid, but omitting it causes API errors.
+- **Section `title` is required** — sections need both `renderType: null` AND a `title` property; omitting `title` causes a 400. Use the section `name` as the title if no separate display label is needed.
 - **Checkbox values: write as JSON string, read as native array** — submitting `"[\"A\",\"B\"]"` (string) reads back as `["A", "B"]` (array). Use `indexOf()` not `===` for membership checks.
 - **`K('field[X]').value(newValue)` triggers Change events** — can create infinite loops if the Change event sets the same field. Guard with `runIf` conditions.
 - **`hide()`/`show()` can conflict with builder conditions** — the form engine self-corrects, overriding programmatic changes.
