@@ -66,6 +66,8 @@ export INTEGRATOR_TOKEN="eyJhbGciOi..."
 
 A Connection represents one external system instance. Create one per system (one for ServiceNow prod, one for ServiceNow dev, etc.).
 
+> **Base URL pattern — bake the version prefix in.** Set `url` to the host *plus* the common path prefix the API uses (e.g. `/api/v1`, `/rest/api/3`, `/services/data/v59.0`). Operation paths will then be short relative paths like `/employees/{{Employee Id}}` instead of `/api/v1/employees/{{Employee Id}}` repeated 50 times. Kinetic appends `path` to `url` literally — no trailing slash on `url`, always a leading slash on `path`. See the **Base URL strategy** section in `skills/concepts/integrations/SKILL.md` for full details and per-system examples.
+
 ```bash
 curl -s -X POST \
   -H "Authorization: Bearer $INTEGRATOR_TOKEN" \
@@ -555,7 +557,8 @@ curl -s -u "admin:password" \
 | CSRF error calling integration from browser | Include `'X-XSRF-TOKEN': getCsrfToken()` header — required for all browser-originated POSTs |
 | Output mapping values are `null` | Check the JSON path — use the UI Test tab to inspect the raw response body first |
 | Workflow handler has no `results.*` available | Only outputs declared in `outputMappings` are accessible downstream; add missing mappings |
-| Connection URL has trailing slash | External API paths in Operations must NOT start with `/` when the connection URL has a trailing slash, or must start with `/` when it does not — match consistently |
+| Operation paths repeat `/api/v1` everywhere | The version prefix belongs in the Connection `url`, not on every Operation. See "Base URL strategy" in `skills/concepts/integrations/SKILL.md`. |
+| Double slash in request URL | Kinetic appends `operation.path` to `connection.url` literally. Either leave the trailing slash off the URL, or leave the leading slash off the path — pick one and be consistent. |
 | Basic Auth credentials in connection are wrong | Use `PUT /connections/{id}` with just the `credentials` block to update without changing other fields |
 | kapp-level integration returns 404 | Integration name on kapp must match `integrationName` in `executeIntegration` exactly (case-sensitive) |
 

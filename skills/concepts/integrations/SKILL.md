@@ -116,6 +116,29 @@ This metadata can be useful for confirming the token's identity and permissions 
 
 **NEVER modify connection auth credentials via API.** Connection passwords (especially for the built-in "Kinetic Platform" connection) are set when the system is provisioned and should not be changed. The GET response masks passwords as `null` — if you PUT back `password: null` or a different password, you will **permanently break the connection** with no way to recover the original credentials. Only modify non-auth fields (name, description, operations) via API. Auth changes should only be done through the admin console by someone who knows the current credentials.
 
+### Base URL strategy — bake the common path prefix into the Connection
+
+When an external API has a stable path prefix that every endpoint shares (e.g. `/api/v1`, `/rest/api/3`, `/services/data/v59.0`), put that prefix in the Connection's `baseUrl`, not in every Operation's `path`.
+
+**Why this matters:**
+- Kinetic concatenates `connection.baseUrl + operation.config.path` to form the request URL. If the prefix is in `baseUrl`, every Operation's `path` is short and readable. If you put the prefix in each Operation, you'll repeat `/api/v1` 50 times — every typo or version bump is a global edit.
+- The `testPath` field in the Connection is also relative to `baseUrl`. With the prefix baked in, `testPath` can be a meaningful health-check endpoint like `/employees/directory` rather than `/api/v1/employees/directory`.
+- If a small subset of endpoints lives on a different prefix (e.g. `/api/v1_1/...` revisions), put those in a **separate Connection** rather than mixing prefixes within one. Connections are cheap.
+
+**Examples:**
+
+| External API | `baseUrl` | Sample Operation `path` |
+|--------------|-----------|-------------------------|
+| BambooHR | `https://acme.bamboohr.com/api/v1` | `/employees/{{Employee Id}}` |
+| Kinetic Platform (Core API) | `https://demo.kinops.io/app/api/v1` | `/space`, `/kapps/{{Kapp Slug}}/forms` |
+| ServiceNow | `https://acme.service-now.com/api/now` | `/table/incident/{{Sys Id}}` |
+| Jira Cloud | `https://acme.atlassian.net/rest/api/3` | `/issue/{{Issue Key}}` |
+| Salesforce | `https://acme.my.salesforce.com/services/data/v59.0` | `/sobjects/Account/{{Id}}` |
+
+**Trailing-slash rule:** Don't put a trailing slash on `baseUrl` and always start `path` with a leading `/`. Kinetic concatenates them literally — `https://x/api/v1` + `/employees` → `https://x/api/v1/employees`. A trailing slash on baseUrl combined with a leading slash on path produces a double slash that some servers reject.
+
+**When NOT to bake in a prefix:** APIs whose endpoints span unrelated paths (e.g. one Operation hits `/v1/users` and another hits `/internal/admin/sync`). In that case keep `baseUrl` at the host only and put the full path on each Operation.
+
 ### Operations
 
 An **Operation** defines a specific action within a Connection:
