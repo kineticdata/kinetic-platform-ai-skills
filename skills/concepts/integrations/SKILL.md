@@ -102,7 +102,7 @@ This metadata can be useful for confirming the token's identity and permissions 
 }
 ```
 
-**Note:** Operation `outputs` is an **object** (keyed by output name), not an array. Each output has a `value` field for mapping expressions. The `config.path` supports `{{variable}}` template syntax for dynamic paths (`{{Param*}}` marks required params).
+**Note:** Operation `outputs` is an **object** (keyed by output name), not an array. Each output has a `value` field for mapping expressions. The `config.path` supports `{{variable}}` Mustache template syntax for dynamic paths. Path variables are inherently required and Kinetic flags them as such when parsing the operation.
 
 **Connection auth types (observed from live API):**
 
@@ -140,7 +140,7 @@ POST /app/integrator/api/connections/{connectionId}/operations
   "config": {
     "configType": "http",
     "method": "GET|POST|PUT|PATCH|DELETE",
-    "path": "/your/endpoint/{{PathParam*}}",
+    "path": "/your/endpoint/{{PathParam}}",
     "params": {"queryParam": "{{Query Param}}"},
     "body": {
       "bodyType": "raw",
@@ -161,12 +161,14 @@ POST /app/integrator/api/connections/{connectionId}/operations
 
 **Mustache template syntax for path and body:**
 
+Standard Mustache only — no Kinetic-specific extensions. There is **no** `{{Name*}}` "required" suffix; an asterisk inside a tag is taken literally as part of the parameter name (your input would render as `Name*` in the operation's parameter list). Required-ness is derived from where the variable appears: path variables are always required; body and query variables are optional unless the operation logic enforces them.
+
 | Syntax | Purpose | Example |
 |--------|---------|---------|
-| `{{Name}}` | Escaped parameter value | Path: `/users/{{Username*}}` |
+| `{{Name}}` | HTML-escaped parameter value | Path: `/users/{{Username}}` |
 | `{{{Name}}}` | Unescaped value (for raw JSON objects) | Body: `"data": {{{JSON Payload}}}` |
-| `{{Name*}}` | Required parameter (`*` suffix) | Path variables, required inputs |
 | `{{#Name}}...{{/Name}}` | Conditional block — included only when parameter has a value | Optional body fields |
+| `{{^Name}}...{{/Name}}` | Inverted section — included only when parameter is empty | Default-value fallbacks |
 
 **Output mapping expressions:**
 

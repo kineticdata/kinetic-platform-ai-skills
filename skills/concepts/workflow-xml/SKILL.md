@@ -479,14 +479,14 @@ Executes a Connection/Operation pair. **This is the preferred handler for all AP
 
 Each operation defines inputs (path variables, body fields, query params). These become additional node parameters with the `parameters.` prefix. The parameter ID is `parameters.<name>` where `<name>` matches the operation's input name exactly.
 
-Example — an "Update Submission" operation with path `/submissions/{{Submission Id*}}` and body inputs:
+Example — an "Update Submission" operation with path `/submissions/{{Submission Id}}` and body inputs:
 
 ```json
 {
   "parameters": [
     {"id": "connection", "value": "<connection-uuid>"},
     {"id": "operation", "value": "<operation-uuid>"},
-    {"id": "parameters.Submission Id*", "value": "<%= @submission['Id'] %>"},
+    {"id": "parameters.Submission Id", "value": "<%= @submission['Id'] %>"},
     {"id": "parameters.Values [Object]", "value": "{\"Status\": \"Pending Approval\"}"},
     {"id": "parameters.Core State", "value": "Closed"}
   ]
