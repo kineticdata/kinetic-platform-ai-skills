@@ -85,6 +85,8 @@ POST /app/components/task/app/api/v2/trees
 }
 ```
 
+> **Use `/app/components/task/app/api/v2/trees`, NOT `/kinetic-task/app/api/v2/trees`.** Both paths exist in older Kinetic deployments, but the `/kinetic-task/...` variant silently drops `inputs` and `outputs` on POST — producing routines with no public interface. The `/app/components/task/...` path is the correct namespace on current platform versions. If a routine's declared inputs/outputs aren't appearing in the GET response after creation, check the path you POSTed to.
+
 **Gotcha:** POST creates the tree metadata AND saves the `treeXml` in the same call.
 
 ### PUT to Update
@@ -112,6 +114,8 @@ curl -X PUT -u "$USER:$PASS" \
 ```
 
 For new trees that have never been edited, `"versionId": "0"` is correct. Stale-record retries are common during iterative development — bake the fetch-versionId step into any tree-PUT script.
+
+**`versionId` must be a JSON string, not a number.** Passing `"versionId": 5` (no quotes) returns HTTP 500 with `{"message":"java.lang.Long cannot be cast to java.lang.String"}` — loud, not silent, but easy to hit if you're building the body in a language that auto-coerces numeric strings. Always quote it: `"versionId": "5"`. Verified May 2026: number form returns 500, string form returns 200.
 
 ### Programmatic Construction Gotchas
 
