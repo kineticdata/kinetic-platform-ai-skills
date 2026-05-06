@@ -113,6 +113,17 @@ curl -X PUT -u "$USER:$PASS" \
 
 For new trees that have never been edited, `"versionId": "0"` is correct. Stale-record retries are common during iterative development — bake the fetch-versionId step into any tree-PUT script.
 
+### Programmatic Construction Gotchas
+
+**Python f-strings collide with Ruby ERB interpolation.** Both languages use `{...}` for substitution: Python f-strings substitute `{var}` at string-build time, Ruby ERB substitutes `#{var}` at runtime. When you generate ERB from a Python f-string, Python silently absorbs `{role}` as a variable and leaves the `#` literal — producing malformed ERB like `"#Finance review: ..."` instead of `"Finance review: ..."`. The bug is invisible until the workflow runs and the rendered ERB looks wrong (or, worse, parses but reads incorrectly).
+
+Workarounds when generating ERB programmatically from Python:
+- **String concatenation** (`+`) — clearest separation of Python vs Ruby syntax.
+- **`str.format()` with escaped braces** — `'#{{@values[\'X\']}}'.format(...)` (`{{` escapes to a single `{`).
+- **Raw triple-quoted strings** for ERB blocks, with Python interpolation done outside via concatenation.
+
+The same logic applies to f-strings around any treeJson string field that contains `{` or `}` — connector `value` expressions, parameter `value` ERB, ERB-templated JSON payloads. When in doubt, check the stored result via `GET /trees/{title}?include=treeJson` and `repr()` the parameter value.
+
 ### Handlers API
 
 **`GET /handlers` only returns handlers assigned to a handler category.** Handlers without a category are invisible in the list but still exist and work in trees. You can always fetch a specific handler directly by definition ID: `GET /handlers/{definitionId}?include=parameters,results`.
