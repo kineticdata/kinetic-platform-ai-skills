@@ -25,6 +25,8 @@ Connecting an external system has four phases:
 
 The Connection and Operations are managed through the **Integrator API**, which requires OAuth 2.0 — not Basic Auth.
 
+**Bridges as an alternative.** This recipe covers Connections + Operations. Bridges (with their associated Models) are a coexisting integration mechanism that some systems are reached through instead — especially when a form needs a stable typed data view to populate dropdowns against, when the target is reached through a non-REST adapter (SQL, LDAP, custom databases), or when an existing bridge for the system is the established pattern in your space. See `concepts/models/SKILL.md` for bridge guidance. The two mechanisms can coexist within a single kapp; choose based on what the integration needs and your team's existing patterns rather than on a "modern vs legacy" framing.
+
 ---
 
 ## Step 1 — Obtain an Integrator API Token
