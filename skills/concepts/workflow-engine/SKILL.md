@@ -162,6 +162,22 @@ A **routine** is a reusable workflow with explicitly defined inputs and outputs.
 - Computing due dates based on SLA attributes
 - Executing standard data lookups
 
+### Common Workflow Components
+
+Customer workflows in production Kinetic spaces vary widely in size, complexity, and idiom. Some are three or four nodes that fire a single API call; others are dozens or hundreds of nodes orchestrating multi-stage approval, notification, and fulfillment. Demo spaces don't represent that full range — they tend to optimize for clarity and pedagogy over realism. The components below name building blocks frequently observed across multiple spaces, with brief notes on what each commonly handles. Treat this section as vocabulary for talking about workflows, not a prescription for shape.
+
+**The standard `routine_kinetic_*` library.** New Kinetic environments ship with a library of Global Routines wrapping common Core API operations: `routine_kinetic_submission_retrieve_v1`, `routine_kinetic_submission_update_v1`, `routine_kinetic_submission_update_status_v1`, `routine_kinetic_email_template_notification_send_v1`, `routine_kinetic_user_create_v1`, `routine_kinetic_finish_v1`, and many more. Customer-built routines extend this library; spaces vary in how heavily they extend it. A workflow composed primarily of `routine_kinetic_*` calls (plus glue) is a frequently-observed style — see "Routine composition" below.
+
+**Error-handling routine.** `routine_handler_failure_error_process_v1` is the building block invoked when a handler raises an error. In observed traffic, it is wired *inside* individual routines — not in the caller's code. A typical Core-API-wrapping routine has the API node connecting to three Complete connectors with mutually-exclusive Ruby conditions on `@results['API']['Handler Error Message']`: success path, real-error path (which routes to `routine_handler_failure_error_process_v1`, then a recursive retry, then return), and special-case 404 path. Form-attached workflows that compose the standard library inherit this error handling without wiring it themselves. See `concepts/workflow-xml` for the connector-level structure.
+
+**`utilities_echo_v1` for value storage and computed results.** Beyond debugging, echo nodes are commonly used as named result-stash points: an echo node titled "Approval Task Id" with `input` set to a computed value exposes that value downstream as `@results['Approval Task Id']['output']`. Echo can also run Ruby in its `input` parameter and surface the evaluated string for downstream use. Treat echo as a flexible utility, not strictly a debugging aid.
+
+**Parallel work — `system_join_v1` and `system_junction_v1`.** Both reconverge multiple branches into a single downstream path. Join evaluates only its immediate incoming connectors (with `type: All`/`Any`/`Some`); Junction traces back to a common parent node and proceeds when each branch is "complete as possible" (including branches that conditionally short-circuited). Junction is observed more often in routine-composed workflows that branch on submission state and rejoin; Join is more common when the branch count is fixed and known (parallel approvals). See `concepts/workflow-xml` for parameter and connector details.
+
+**Callback workflows on deferred subforms.** When a workflow node defers (`defers: true, deferrable: true`) and creates a subform submission carrying a deferral token, the subform's own `Submission Submitted` workflow handles the resume. These callback trees are commonly small — three nodes is frequently sufficient: `start` → `utilities_create_trigger_v1` (which reads the token from `@values['Deferral Token']` and passes any decision data back via `deferred_variables`) → close-own-submission. The shape repeats across approval forms, fulfillment subtasks, and any other deferred-handoff pattern. See `recipes/add-approval-workflow` for a worked example.
+
+**Routine composition as a workflow style.** A frequently-observed customer pattern is a form-attached workflow built almost entirely from `routine_kinetic_*` calls plus connectors with Ruby `value` expressions for branching, plus `utilities_echo_v1` nodes to stash IDs, plus `system_junction_v1` to converge after conditional branches. The error-handling routine and Core API calls live inside the routines being called, so the customer code stays readable. This is one approach among several — direct `system_integration_v1` workflows and mixed styles are equally valid depending on what each step needs.
+
 ---
 
 ## Triggering Workflows
