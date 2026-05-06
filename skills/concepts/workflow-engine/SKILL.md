@@ -192,11 +192,11 @@ Workflows fire based on coreState transitions — not field value changes. The t
 | Workflow Event | When it fires | coreState after |
 |----------------|---------------|-----------------|
 | Submission Created | Any new submission is created (via POST) | Draft or Submitted (depends on whether `coreState:"Submitted"` was in the POST body) |
-| Submission Submitted | Draft → Submitted transition (via submit action) | Submitted |
+| Submission Submitted | A submission becomes Submitted — either POST with `coreState:"Submitted"` or PUT Draft → Submitted | Submitted |
 | Submission Updated | Any PUT that modifies values on a Submitted record | Submitted |
 | Submission Closed | coreState transitions to Closed (via PUT with `coreState:"Closed"`) | Closed |
 
-**Important:** Creating a submission with `coreState:"Submitted"` in the POST body fires "Submission Created" — NOT "Submission Submitted". The "Submitted" event only fires on the explicit submit action transitioning a Draft to Submitted.
+**Both `Submission Created` and `Submission Submitted` fire on a single POST with `coreState:"Submitted"`.** Verified empirically (May 2026) — registering both event workflows on the same form and POSTing once produces one run of each. Earlier versions of this skill claimed that POSTing with `coreState:"Submitted"` only fired `Submission Created`, not `Submission Submitted`; that was wrong. If you need to suppress `Submission Submitted` until a deliberate approval action (for example, when creating an approval-form submission inside another workflow), POST with `coreState:"Draft"` and submit later via a separate PUT — both events still fire, but at the times you choose.
 
 ---
 
@@ -480,7 +480,7 @@ The Workflow Engine (Task) is a **separate web app** that runs independently fro
 - **Kapp-level workflows** — Submission + Form events (fires for all forms in the kapp)
 - **Space-level workflows** — All events (Space, User, Team, plus Submission/Form across all kapps)
 
-Note: `Submission Saved` fires on every save (including Draft saves), while `Submission Submitted` only fires on the transition to `coreState: "Submitted"`. `Form Restored` and `Team Restored` fire when a soft-deleted entity is restored.
+Note: `Submission Saved` fires on every save (including Draft saves). `Submission Submitted` fires when a submission becomes `Submitted` — either via a POST with `coreState:"Submitted"` or a PUT transitioning Draft → Submitted (see the callout in "Workflow Events and coreState" above). `Form Restored` and `Team Restored` fire when a soft-deleted entity is restored.
 
 ### Workflow Response Shape
 

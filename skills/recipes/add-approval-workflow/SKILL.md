@@ -754,7 +754,7 @@ On the approved path, you may create fulfillment task submissions, call external
 | Approval callback fires but main workflow does not resume | Confirm `deferral_token` parameter in `utilities_create_trigger_v1` matches exactly — tokens are case-sensitive UUIDs |
 | Approval form fields not received by callback workflow | Add `omitWhenHidden: false` to the hidden section; verify `Deferral Token` field is in the hidden section |
 | Run stays at `status: "Started"` after callback | Query triggers: `GET /triggers?runId={id}&include=details` — look for `status: "Error"` or non-null `message` on any trigger |
-| "Creating a submission with coreState:Submitted fires Submission Created not Submission Submitted" | Only use `coreState: "Draft"` when creating the approval submission; submit it via a separate PUT or the approver's form action |
+| Approval form's `Submission Submitted` workflow fires the moment you create the approval submission | POSTing the approval with `coreState:"Submitted"` fires both `Submission Created` AND `Submission Submitted` immediately — exactly what an approval queue doesn't want. POST with `coreState:"Draft"` instead; the human approver's form submission triggers the callback at the right time. |
 | Trees created via Task API are "orphaned" | Always create trees via `POST /app/api/v1/kapps/{kapp}/forms/{form}/workflows` — the Task API v2 tree creation lacks platform registration |
 | Connector condition uses `=` instead of `==` | Connector `value` is a Ruby expression — use `==` for equality, not `=` |
 | XML entities in connector conditions | In treeXml, `&&` must be `&amp;&amp;` and `"` must be `&quot;`; use treeJson format to avoid this |
