@@ -499,6 +499,8 @@ Example — an "Update Submission" operation with path `/submissions/{{Submissio
 
 ERB expressions work in parameter values — use them to inject workflow context (`@submission`, `@values`, `@results`, `@task`).
 
+**ERB parameter values must be ASCII-safe.** Non-ASCII characters in parameter ERB — em-dash (`—`), en-dash (`–`), smart quotes (`"` `"` `'` `'`), ellipsis (`…`), accented letters from external API responses — cause `Encoding::UndefinedConversionError` at evaluation time. The Task engine's ERB context appears to default to US-ASCII for parameter values. Sanitize before substitution: `gsub(/[—–]/, '-')`, `gsub(/[""]/, '"')`, or transliterate via `String#unicode_normalize` + ASCII-only filter. Hits often when interpolating user-typed strings or external API content (e.g., country names, vendor descriptions) into a node parameter.
+
 **Results:** Depend on the operation's output mapping. Common outputs: `Id`, `_Error`, `_Status Code`.
 
 **Approach:**
