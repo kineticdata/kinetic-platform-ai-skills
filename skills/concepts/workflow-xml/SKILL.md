@@ -751,7 +751,7 @@ Failed triggers generate error records in the Task engine.
 
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
-| GET | `/errors?include=details&status=Active` | List errors (`include=details` required for `id` field) |
+| GET | `/errors?include=details&status=Active` | List errors (**`include=details` is REQUIRED to get the `id` field needed by `/errors/resolve`** — see callout below) |
 | POST | `/errors/resolve` | Bulk-resolve errors |
 
 ### Error Object Fields
@@ -764,6 +764,8 @@ Failed triggers generate error records in the Task engine.
 | `status` | `Active` or `Handled` |
 | `summary` | Human-readable error description |
 | `type` | Error type (see below) |
+
+> **Always pass `include=details` when listing errors for programmatic resolution.** Without it, `GET /errors` returns objects whose only ID-shaped fields are `relatedItem1Id` (trigger) and `relatedItem2Id` (node) — neither is the error ID. Posting those to `/errors/resolve` returns 404 `Unable to retrieve the error with id`. With `include=details`, the response gains a top-level `id` field; pass those to `/errors/resolve` and they work. Verified empirically (May 2026) — resolving errors `[163, 164]` returned `{"messageType":"success","message":"Resolved task errors [163, 164]"}`.
 
 ### Error Types
 
