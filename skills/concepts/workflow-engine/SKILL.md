@@ -526,6 +526,24 @@ The `filter` field accepts KSL expressions for conditional triggering. **Critica
 
 The filter is evaluated by the Core API before triggering the Task engine. If the filter returns false, the workflow is silently skipped — no run is created.
 
+**Change-detection in filters is NOT supported.** `values_previous()` is NOT a valid KSL binding even though `@values_previous` is available in node ERB. The filter accepts `values_previous('Status') != "X"` at registration but the binding returns nil/empty at runtime, so the filter never matches change-detection conditions. Workflow appears inert; no run created, no entry in `/errors`.
+
+**Pattern: KSL filter + ERB connector guard.** Do the gross check in the filter on the current state, then guard the side-effect node inside the tree with a connector condition that uses `@values_previous`:
+
+```json
+// Workflow registration
+{ "event": "Submission Updated",
+  "filter": "values('Status') == \"In Repair\"" }
+```
+
+```json
+// Connector inside the tree (start → side-effect node)
+{ "from": "start", "to": "n1", "type": "Complete",
+  "value": "@values_previous['Status'] != 'In Repair'" }
+```
+
+The KSL filter creates the run only when the current state matches; the connector blocks the side-effect node when it's a no-op update (Status was already "In Repair"). Empty runs (only `start` Closed) are produced for no-op PUTs but no external side effect fires.
+
 The GET response also includes diagnostic arrays: `{ "migratable": [], "missing": [], "orphaned": [], "workflows": [...] }`
 
 ---

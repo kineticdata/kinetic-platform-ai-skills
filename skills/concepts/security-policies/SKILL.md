@@ -107,6 +107,8 @@ Space-level definitions cannot be applied within a Kapp.
 | `space('slug')` | `string` | Space property |
 | `hasIntersection(a, b)` | `boolean` | True if arrays share any element (inline JS helper, not a platform built-in) |
 
+> **Not a valid binding: `values_previous()`.** `@values_previous` exists in workflow-node ERB context (see `workflow-engine`), but `values_previous(...)` is NOT a valid KSL binding for security policies or workflow filters. The Core API accepts the expression at registration time without complaint, but at runtime it returns nil/empty, so any change-detection filter using it never matches. For change detection in workflow filters, see the workaround pattern in `workflow-engine`.
+
 ### KSL Binding Function Details
 
 #### `identity(property, [defaultValue])`
