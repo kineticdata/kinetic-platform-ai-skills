@@ -342,6 +342,8 @@ Both reconverge parallel branches, but with different logic:
 - `type: "Any"` — proceeds as soon as one connector arrives
 - `type: "Some"` — proceeds after `number` connectors arrive (set `number` parameter)
 
+> **Runtime gotcha: the `number` parameter must be declared on the node even when `type` is `"All"` or `"Any"`.** The handler definition marks `number` as `required: false` (and only relevant for `type: "Some"`), but at runtime the engine raises `UnknownVariableError raised by the "system_join_v1" handler` if `number` is absent from the node's parameter list. Declare it with empty `value: ""` to satisfy the runtime. The cleanest source-of-truth is to fetch any existing tree using Join (e.g., `Queue Assignment Validate`) and copy its parameter shape verbatim — including the `dependsOnId: "type"`, `dependsOnValue: "Some"` metadata on the `number` parameter.
+
 **`system_junction_v1`** — traces back through **entire branches to a common parent node**:
 - No parameters — evaluates whether each branch is "complete as possible"
 - A branch is complete when: no deferred nodes are waiting, and all evaluable connectors have been evaluated
