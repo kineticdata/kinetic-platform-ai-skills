@@ -763,6 +763,8 @@ On the approved path, you may create fulfillment task submissions, call external
 
 ## Reusable Approval Routine
 
+The recipe up to this point shows one approach: deferral nodes wired directly into the form's tree, with the approval-submission creation inline. A second approach observed across customer spaces is to extract the deferral + approval-submission creation into a **Global Routine**. Either is valid; the routine approach pays off when the same approval shape is needed across multiple forms, while the inline approach keeps everything in one tree where it's easier to read end-to-end. The two are alternatives, not phases of an evolution.
+
 For consistency across multiple forms, extract the deferral + approval submission creation into a **Global Routine** with declared inputs:
 
 | Input | Description |
