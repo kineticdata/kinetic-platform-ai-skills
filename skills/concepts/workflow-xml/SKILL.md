@@ -207,6 +207,25 @@ The `<dependents>` section defines execution flow — which tasks run next:
 @team_previous['Name'] == "Default" && @team['Name'] != "Default"
 ```
 
+#### Path Selection via Multiple Complete Connectors
+
+A common branching idiom: give a single source node multiple outgoing Complete connectors, each with a Ruby `value` expression that selects exactly one path. Distinct from KSL filters (which gate whether a workflow fires at all), connector value expressions select WHICH downstream branch runs after the source node completes. Observed examples from the kinetic-portal space:
+
+```xml
+<!-- API node with three mutually-exclusive Complete connectors -->
+<dependents>
+  <task type="Complete" value="@results['API']['Handler Error Message'].to_s.empty?">return_results</task>
+  <task type="Complete" value="!@results['API']['Handler Error Message'].to_s.empty? &amp;&amp; @results['API']['Response Code'].to_i == 404">return_does_not_exist</task>
+  <task type="Complete" value="!@results['API']['Handler Error Message'].to_s.empty? &amp;&amp; @results['API']['Response Code'].to_i != 404">error_process</task>
+</dependents>
+```
+
+Patterns to keep in mind:
+- **Coverage**: write the conditions so they collectively cover all possible outcomes. A node whose only outgoing Complete connectors all evaluate false silently terminates the branch with no error.
+- **Mutual exclusivity**: when conditions overlap, multiple downstream branches run in parallel. Sometimes that's intentional; usually it isn't.
+- **`@results['Node Name']` reads**: connector conditions can reference any upstream node's results, not just the immediate parent.
+- **Encoding in XML**: `&&` becomes `&amp;&amp;`, `"` becomes `&quot;`. treeJson connector values use raw JSON strings and avoid this entirely.
+
 ### treeJson Connector Format
 
 ```json
@@ -308,7 +327,7 @@ Results are accessed by **task name**, then **result key**:
 | `system_tree_call` | Handler used by `<taskDefinition>` for routines | None |
 | `utilities_create_trigger_v1` | Completes or updates a deferred node | `action_type` (required), `deferral_token` (required), `deferred_variables`, `message` |
 | `utilities_defer_v1` | Immediately returns deferral token then defers | `deferral_value` (optional initial value) |
-| `utilities_echo_v1` | Returns its input unchanged (useful for debugging) | `input` (required) |
+| `utilities_echo_v1` | Returns its `input` parameter unchanged. Used for debugging, for stashing computed values under a named handle (downstream nodes read `@results['Echo Name']['output']`), and for running Ruby in the `input` parameter to expose the evaluated string downstream. | `input` (required) |
 | `system_integration_v1` | Executes a Connection/Operation | `connection` (required, ID), `operation` (required, ID) |
 | `system_submission_create_v1` | Creates a submission from workflow | `kappSlug`, `formSlug`, `coreState`, `currentPage`, `origin`, `parent` |
 
@@ -568,6 +587,31 @@ routine_handler_failure_error_process_v1
 ```
 
 **Identifying subroutines:** Any task with `definition_id` starting with `routine_` is calling another Global Routine.
+
+#### Error-Handling Pattern Inside Routines
+
+Frequently observed across kinetic-shipped routines that wrap Core API calls: the API node has three Complete connectors that branch on the result, with `routine_handler_failure_error_process_v1` on the error path. The shape:
+
+```
+start → API call (kinetic_core_api_v1 or similar)
+              │
+              ├ Complete  [@results['API']['Handler Error Message'].to_s.empty?]
+              │   → return success
+              │
+              ├ Complete  [!@results['API']['Handler Error Message'].to_s.empty? && Response Code != 404]
+              │   → routine_handler_failure_error_process_v1
+              │   → recursive retry (routine calls itself)
+              │   → return-from-error
+              │
+              └ Complete  [!@results['API']['Handler Error Message'].to_s.empty? && Response Code == 404]
+                  → return special "does not exist" result
+```
+
+Notes from observed traffic:
+- All routing uses Complete connectors. Error-vs-success is decided by Ruby `value` expressions, not by separate connector types.
+- `routine_handler_failure_error_process_v1` takes no parameters in observed cases — invoked with default config.
+- The recursive retry is structural: after the error routine logs/processes, control passes to a fresh invocation of the same routine (e.g. inside `Submission_Update`, the retry node is `routine_kinetic_submission_update_v1`).
+- Customer-facing form workflows in observed traffic invoke this error routine **zero times directly** — the error handling lives inside the standard `routine_kinetic_*` library, and composing those routines inherits it. Flag this when reading or generating workflows: if a customer tree directly invokes `routine_handler_failure_error_process_v1`, that's unusual and worth understanding why.
 
 ---
 
