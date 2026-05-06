@@ -450,9 +450,9 @@ See the Mutations skill (`front-end/mutations`) for the `executeIntegration` hel
 
 ---
 
-## Bridges (Legacy — Non-REST Systems)
+## Bridges
 
-Bridges remain in active use; spaces often have both bridges and Connections+Operations side by side. Detailed bridge guidance is in `concepts/models/SKILL.md`; a focused update of bridge content is forthcoming as a separate batch.
+Bridges (with their associated Models) are a coexisting integration mechanism alongside Connections + Operations — both are in active use across Kinetic Platform deployments. Bridges shine when a target system benefits from a stable typed data view (forms populating dropdowns from external data), and they're the path for non-REST sources (SQL, LDAP, file systems, Java-SDK-only systems) reached through a custom bridge adapter. The summary below covers the architecture and form-side usage; the detailed treatment — including qualification-query styles (named-structure vs Adhoc), SQL adapter gotchas, cross-form `K.api` calls, and the attachment-name extraction pattern — lives in `concepts/models/SKILL.md`.
 
 ### Architecture
 
@@ -504,9 +504,10 @@ K('bridgedResource[People]').load({
 
 ### When to Use
 
-- Target system requires a Java SDK/library (no REST API)
-- Existing bridge adapters are already deployed
-- Common adapters: LDAP, JIRA (legacy), Kinetic Core, custom databases
+- Target system is reached through a non-REST adapter (SQL, LDAP, custom databases, Java SDK)
+- A bridge for the target system already exists in your space and is the established pattern
+- Form-side dropdown population would benefit from a stable model layer with declared attributes and qualifications
+- Common bridges observed: `kinetic-platform` (internal data — Users, Teams, datastore Submissions), SQL adapters, LDAP, HubSpot via the Adhoc structure
 
 ---
 
