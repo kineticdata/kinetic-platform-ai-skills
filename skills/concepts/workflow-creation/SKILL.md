@@ -128,6 +128,15 @@ Workarounds when generating ERB programmatically from Python:
 
 The same logic applies to f-strings around any treeJson string field that contains `{` or `}` — connector `value` expressions, parameter `value` ERB, ERB-templated JSON payloads. When in doubt, check the stored result via `GET /trees/{title}?include=treeJson` and `repr()` the parameter value.
 
+**JSON-transport double-escape variant.** A related failure mode shows up when generating ERB programmatically and embedding strings into JSON parameter values. If the source-language string contains escaped quotes intended to render as plain quotes inside the stored ERB (e.g., Python `"@values[\\\"Field Name\\\"]"`), the escapes can pile up across two layers (source-language string literal → JSON encoding → Ruby ERB parser at runtime) and end up as literal backslash-quote sequences in the saved tree. Symptoms: `SyntaxError` in the Ruby parser when the parameter is evaluated.
+
+Workarounds:
+- **Use single quotes for Ruby Hash keys.** `@values['Field Name']` needs no escaping inside Python (or JS, Java) double-quoted strings. Switching `@values["X"]` → `@values['X']` removes a class of double-escape bugs.
+- **String concatenation rather than templated literals.** Build the ERB by concatenating pieces (`'<%= ' + something + ' %>'`) so each layer's escaping is unambiguous.
+- **Inspect the stored result.** `GET /trees/{title}?include=treeJson` then `repr()` the parameter value. Stored ERB containing `\\\"` instead of `"` is a classic sign of double-escape — the runtime Ruby parser sees backslash-quote, not a properly-escaped quote.
+
+Observed in practice: programmatic builds across multiple dogfood tests (capex-approval-test, vendor-risk-test) hit this when the agent used `@values[\\\"Field Name\\\"]` in Python source. Switching to `@values['Field Name']` fixed the class of bug.
+
 ### Handlers API
 
 **`GET /handlers` only returns handlers assigned to a handler category.** Handlers without a category are invisible in the list but still exist and work in trees. You can always fetch a specific handler directly by definition ID: `GET /handlers/{definitionId}?include=parameters,results`.
