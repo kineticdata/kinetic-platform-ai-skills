@@ -354,6 +354,8 @@ Use a hidden section with `omitWhenHidden: false` to store fields whose values s
 
 The specific field names you put in hidden sections are implementation-specific — the platform pattern is the technique of `visible: false` + `omitWhenHidden: false` + expression `defaultValue`.
 
+**Page placement is irrelevant on multi-page forms.** Hidden system-field sections work identically on any page. Workflows and security policies access field values by name, not by page; place hidden fields on whichever page is most convenient (typically Page 1, since it always renders).
+
 ### Pattern Validation
 
 The `pattern` property is an **object** (not a string) with `regex` and `message`:
