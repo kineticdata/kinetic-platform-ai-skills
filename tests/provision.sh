@@ -137,7 +137,7 @@ operations = [
     {
         'name': 'Create Submission',
         'config': {
-            'path': '/kapps/{{Kapp*}}/forms/{{Form*}}/submissions', 'params': {},
+            'path': '/kapps/{{Kapp}}/forms/{{Form}}/submissions', 'params': {},
             'body': {'raw': '{  \n  {{#Core State}}\n    \"coreState\": \"{{Core State}}\",\n  {{/Core State}}\n  {{#Values [Object]}}\n    \"values\": {{{Values [Object]}}},\n  {{/Values [Object]}}\n}', 'bodyType': 'raw'},
             'headers': {'accept': 'application/json', 'content-type': 'application/json'},
             'configType': 'http', 'method': 'POST',
@@ -148,7 +148,7 @@ operations = [
     {
         'name': 'Update Submission',
         'config': {
-            'path': '/submissions/{{Submission Id*}}', 'params': {},
+            'path': '/submissions/{{Submission Id}}', 'params': {},
             'body': {'raw': '{  \n  {{#Core State}}\n    \"coreState\": \"{{Core State}}\",\n  {{/Core State}}\n  {{#Values [Object]}}\n    \"values\": {{{Values [Object]}}},\n  {{/Values [Object]}}\n}', 'bodyType': 'raw'},
             'headers': {'accept': 'application/json', 'content-type': 'application/json'},
             'configType': 'http', 'method': 'PUT',
