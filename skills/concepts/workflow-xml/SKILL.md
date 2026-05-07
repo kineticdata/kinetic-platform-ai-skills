@@ -662,10 +662,12 @@ When building treeJson programmatically, every node MUST have these flags set co
 Node IDs follow the canonical format `{definition_id}_{N}`, where `N` is taken from a single monotonically-incremented `lastID` counter shared across ALL nodes in the tree. Each new node increments `lastID` and uses the new value as its `_N` suffix:
 
 ```
-EXAMPLE: system_start_v1_1, utilities_echo_v1_2, system_wait_v1_3, smtp_email_send_v1_4
+EXAMPLE: start, utilities_echo_v1_2, system_wait_v1_3, smtp_email_send_v1_4
 ```
 
 The `lastID` (in the tree's top-level metadata) should equal the highest suffix used.
+
+**The Start node is the one structural exception.** Its id is the literal string `"start"`, not the canonical `{definition_id}_{N}` form. Every working tree on the platform — Console-built or programmatically generated — uses `id: "start"` for the `system_start_v1` node. The engine looks up the tree's entry point by exact match on `"start"`. Without that literal id, the initial `BranchHeadTrigger` fails with `java.lang.RuntimeException`, surfacing as an `Unidentified Error` in `/errors` (no `relatedItem2Id` on the error record), and the run spawns zero tasks. Verified May 2026 (vendor-risk-test rebuild): three submissions in a row failed identically with `system_start_v1_1` as the Start id; switching to literal `"start"` and updating connector references resolved cleanly. The canonical `{definition_id}_{N}` rule applies to every other node in the tree.
 
 Two failure modes to keep in mind:
 
@@ -676,8 +678,10 @@ Two failure modes to keep in mind:
 (Verified May 2026, vendor-risk-test: an 18-node workflow with non-canonical IDs `n1`, `n2`, `n13a`, `n13b`, `n14a`, `n14b`, etc. ran all 18 nodes correctly across two test paths; the Console builder displayed 1 node — the last `n14b` survived the dedupe.)
 
 **Practical guidance:**
+- Use the literal `"start"` for the Start node's id — never `system_start_v1_1` or any other canonical-form variant. Connectors and `dependents` references to the start node must also use `"start"` exactly.
 - For programmatic tree generation, follow the canonical `{definition_id}_{N}` pattern with a single shared `lastID` counter.
 - Avoid alpha suffixes for branch disambiguation. Use distinct numeric IDs even for symmetric branches (`system_integration_v1_13` for one branch's close node, `system_integration_v1_14` for the other's).
+- When validating a tree's IDs programmatically, allow `"start"` as the only non-canonical id; require canonical format on every other node.
 - A tree that runs correctly but renders incompletely in the Console builder is almost always an ID-format issue. Fetch a Console-built tree's treeJson to see the format the builder expects, or compare a working tree's IDs to a misbehaving tree's.
 
 ### Deferrable Node Messages
