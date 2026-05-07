@@ -509,6 +509,24 @@ Before wiring into workflows or the portal, verify each operation independently.
 
 **Test via the UI:** In the Space console, go to Plugins > Connections > {Connection} > {Operation} > Test. Enter parameter values and inspect the raw response.
 
+**Test via the Integrator `/execute` endpoint directly:**
+
+The Integrator exposes `POST /app/integrator/api/execute`, which runs a single operation against its connection without going through a workflow or form — useful for verifying inputs/outputs in isolation. Requires an OAuth bearer token (Step 1).
+
+```bash
+curl -s -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -X POST "$BASE/app/integrator/api/execute" \
+  -d '{
+    "connectionId": "<connection-uuid>",
+    "operationId":  "<operation-uuid>",
+    "parameters":   { "Country Code": "US" }
+  }'
+```
+
+Two notes on the request body:
+- **Key is `parameters`, not `inputs`.** Posting `{"inputs": {...}}` returns `{"error": "Request does not match the API schema", "validationErrors": [{"error": "Unexpected field: inputs"}]}`.
+- **Each parameter's key matches the literal placeholder name** from the operation definition. If the operation's path uses `{{Country Code}}` (with the space), the request key is `"Country Code"` — also with the space. Renaming to `country_code` or `countryCode` causes silent miss; the placeholder isn't substituted and the request goes out malformed.
+
 **Test via the API directly (simulate what the operation would call):**
 
 ```bash
