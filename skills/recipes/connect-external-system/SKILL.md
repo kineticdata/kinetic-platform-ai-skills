@@ -25,6 +25,8 @@ Connecting an external system has four phases:
 
 The Connection and Operations are managed through the **Integrator API**, which requires OAuth 2.0 — not Basic Auth.
 
+**Bridges as an alternative.** This recipe covers Connections + Operations. Bridges (with their associated Models) are a coexisting integration mechanism that some systems are reached through instead — especially when a form needs a stable typed data view to populate dropdowns against, when the target is reached through a non-REST adapter (SQL, LDAP, custom databases), or when an existing bridge for the system is the established pattern in your space. See `concepts/models/SKILL.md` for bridge guidance. The two mechanisms can coexist within a single kapp; choose based on what the integration needs and your team's existing patterns rather than on a "modern vs legacy" framing.
+
 ---
 
 ## Step 1 — Obtain an Integrator API Token
@@ -177,6 +179,8 @@ curl -s -X POST \
 ```
 
 Save the operation `id` — it is referenced in workflow tasks and form integration configs.
+
+**You don't need to invoke an operation immediately to be useful.** It's a common authoring pattern to define a catalog of operations against a connection ahead of need — workflows or React portal code wire them up over time. Across the kinetic-portal example space, 53 of 78 operations were referenced from no workflow and no form at the time of the snapshot; that's normal "library ahead of need" rather than dead code. Don't feel obliged to call every operation you define from the recipe — a useful catalog often outpaces the workflows that consume it.
 
 ### Common Operation Patterns
 
@@ -506,6 +510,24 @@ Then on the dropdown field:
 Before wiring into workflows or the portal, verify each operation independently.
 
 **Test via the UI:** In the Space console, go to Plugins > Connections > {Connection} > {Operation} > Test. Enter parameter values and inspect the raw response.
+
+**Test via the Integrator `/execute` endpoint directly:**
+
+The Integrator exposes `POST /app/integrator/api/execute`, which runs a single operation against its connection without going through a workflow or form — useful for verifying inputs/outputs in isolation. Requires an OAuth bearer token (Step 1).
+
+```bash
+curl -s -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -X POST "$BASE/app/integrator/api/execute" \
+  -d '{
+    "connectionId": "<connection-uuid>",
+    "operationId":  "<operation-uuid>",
+    "parameters":   { "Country Code": "US" }
+  }'
+```
+
+Two notes on the request body:
+- **Key is `parameters`, not `inputs`.** Posting `{"inputs": {...}}` returns `{"error": "Request does not match the API schema", "validationErrors": [{"error": "Unexpected field: inputs"}]}`.
+- **Each parameter's key matches the literal placeholder name** from the operation definition. If the operation's path uses `{{Country Code}}` (with the space), the request key is `"Country Code"` — also with the space. Renaming to `country_code` or `countryCode` causes silent miss; the placeholder isn't substituted and the request goes out malformed.
 
 **Test via the API directly (simulate what the operation would call):**
 

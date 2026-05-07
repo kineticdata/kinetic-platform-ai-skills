@@ -142,14 +142,22 @@ Create an Echo node right after Start with this input to see every variable avai
 ```
 This dumps variable names, types, and hash keys. Check the Echo node's `output` result in Activity Monitor.
 
-**ERB Hash access pitfall:** In the Task engine ERB context, Ruby Hash `[]` raises `IndexError` for missing keys (unlike standard Ruby which returns `nil`). Always use `.fetch('key', 'default')` for optional parameters:
+**ERB Hash access pitfall:** In the Task engine ERB context, Ruby Hash `[]` raises `IndexError` for missing keys (unlike standard Ruby which returns `nil`). The standard Ruby `.dig()` safe-access method is **also unavailable** — calling it on `@results` or other Hash-like proxies raises `UnknownVariableError` at evaluation time, even on the simplest case. Use `.fetch(key, default)` exclusively for safe missing-key access; for nested access, chain `.fetch` calls:
 ```ruby
 # BAD — raises IndexError if key missing:
 <%= @request_query_params['personId'] %>
 
+# BAD — raises UnknownVariableError; .dig() is unavailable in this ERB context:
+<%= @results.dig('Some Node', 'Some Field') %>
+
 # GOOD — returns empty string if missing:
 <%= @request_query_params.fetch('personId', '') %>
+
+# GOOD — chain .fetch for nested access:
+<%= @results.fetch('Some Node', {}).fetch('Some Field', nil) %>
 ```
+
+Verified May 2026 (vendor-risk-test): `@results.dig('Create Compliance Approval', 'Decision') || @results.dig('Create Procurement Approval', 'Decision') || ''` in an echo node's `input` parameter raised `UnknownVariableError`. Switching to `@results.fetch('Create Compliance Approval', {}).fetch('Decision', nil) || ...` resolved.
 
 **Note:** `@values['FieldName']` does NOT raise IndexError for missing fields — all form fields are present in `@values` (with empty string for unfilled fields). The `.fetch` pattern is needed for `@request_query_params`, `@request_headers`, and other hashes where keys are not guaranteed.
 
@@ -161,6 +169,22 @@ A **routine** is a reusable workflow with explicitly defined inputs and outputs.
 - Sending standardized notifications
 - Computing due dates based on SLA attributes
 - Executing standard data lookups
+
+### Common Workflow Components
+
+Customer workflows in production Kinetic spaces vary widely in size, complexity, and idiom. Some are three or four nodes that fire a single API call; others are dozens or hundreds of nodes orchestrating multi-stage approval, notification, and fulfillment. Demo spaces don't represent that full range — they tend to optimize for clarity and pedagogy over realism. The components below name building blocks frequently observed across multiple spaces, with brief notes on what each commonly handles. Treat this section as vocabulary for talking about workflows, not a prescription for shape.
+
+**The standard `routine_kinetic_*` library.** New Kinetic environments ship with a library of Global Routines wrapping common Core API operations: `routine_kinetic_submission_retrieve_v1`, `routine_kinetic_submission_update_v1`, `routine_kinetic_submission_update_status_v1`, `routine_kinetic_email_template_notification_send_v1`, `routine_kinetic_user_create_v1`, `routine_kinetic_finish_v1`, and many more. Customer-built routines extend this library; spaces vary in how heavily they extend it. A workflow composed primarily of `routine_kinetic_*` calls (plus glue) is a frequently-observed style — see "Routine composition" below.
+
+**Error-handling routine.** `routine_handler_failure_error_process_v1` is the building block invoked when a handler raises an error. In observed traffic, it is wired *inside* individual routines — not in the caller's code. A typical Core-API-wrapping routine has the API node connecting to three Complete connectors with mutually-exclusive Ruby conditions on `@results['API']['Handler Error Message']`: success path, real-error path (which routes to `routine_handler_failure_error_process_v1`, then a recursive retry, then return), and special-case 404 path. Form-attached workflows that compose the standard library inherit this error handling without wiring it themselves. See `concepts/workflow-xml` for the connector-level structure.
+
+**`utilities_echo_v1` for value storage and computed results.** Beyond debugging, echo nodes are commonly used as named result-stash points: an echo node titled "Approval Task Id" with `input` set to a computed value exposes that value downstream as `@results['Approval Task Id']['output']`. Echo can also run Ruby in its `input` parameter and surface the evaluated string for downstream use. Treat echo as a flexible utility, not strictly a debugging aid.
+
+**Parallel work — `system_join_v1` and `system_junction_v1`.** Both reconverge multiple branches into a single downstream path. Join evaluates only its immediate incoming connectors (with `type: All`/`Any`/`Some`); Junction traces back to a common parent node and proceeds when each branch is "complete as possible" (including branches that conditionally short-circuited). Junction is observed more often in routine-composed workflows that branch on submission state and rejoin; Join is more common when the branch count is fixed and known (parallel approvals). See `concepts/workflow-xml` for parameter and connector details.
+
+**Callback workflows on deferred subforms.** When a workflow node defers (`defers: true, deferrable: true`) and creates a subform submission carrying a deferral token, the subform's own `Submission Submitted` workflow handles the resume. These callback trees are commonly small — three nodes is frequently sufficient: `start` → `utilities_create_trigger_v1` (which reads the token from `@values['Deferral Token']` and passes any decision data back via `deferred_variables`) → close-own-submission. The shape repeats across approval forms, fulfillment subtasks, and any other deferred-handoff pattern. See `recipes/add-approval-workflow` for a worked example.
+
+**Routine composition as a workflow style.** A frequently-observed customer pattern is a form-attached workflow built almost entirely from `routine_kinetic_*` calls plus connectors with Ruby `value` expressions for branching, plus `utilities_echo_v1` nodes to stash IDs, plus `system_junction_v1` to converge after conditional branches. The error-handling routine and Core API calls live inside the routines being called, so the customer code stays readable. This is one approach among several — direct `system_integration_v1` workflows and mixed styles are equally valid depending on what each step needs.
 
 ---
 
@@ -192,11 +216,11 @@ Workflows fire based on coreState transitions — not field value changes. The t
 | Workflow Event | When it fires | coreState after |
 |----------------|---------------|-----------------|
 | Submission Created | Any new submission is created (via POST) | Draft or Submitted (depends on whether `coreState:"Submitted"` was in the POST body) |
-| Submission Submitted | Draft → Submitted transition (via submit action) | Submitted |
+| Submission Submitted | A submission becomes Submitted — either POST with `coreState:"Submitted"` or PUT Draft → Submitted | Submitted |
 | Submission Updated | Any PUT that modifies values on a Submitted record | Submitted |
 | Submission Closed | coreState transitions to Closed (via PUT with `coreState:"Closed"`) | Closed |
 
-**Important:** Creating a submission with `coreState:"Submitted"` in the POST body fires "Submission Created" — NOT "Submission Submitted". The "Submitted" event only fires on the explicit submit action transitioning a Draft to Submitted.
+**Both `Submission Created` and `Submission Submitted` fire on a single POST with `coreState:"Submitted"`.** Verified empirically (May 2026) — registering both event workflows on the same form and POSTing once produces one run of each. Earlier versions of this skill claimed that POSTing with `coreState:"Submitted"` only fired `Submission Created`, not `Submission Submitted`; that was wrong. If you need to suppress `Submission Submitted` until a deliberate approval action (for example, when creating an approval-form submission inside another workflow), POST with `coreState:"Draft"` and submit later via a separate PUT — both events still fire, but at the times you choose.
 
 ---
 
@@ -425,6 +449,10 @@ The component path (`/app/components/task/...`) is what the Kinetic Console uses
 | PUT | `/app/api/v1/kapps/{kapp}/workflows/{id}` | Update workflow / upload tree definition |
 | DELETE | `/app/api/v1/kapps/{kapp}/workflows/{id}` | Soft-delete workflow |
 
+**No standalone `GET /workflows/{id}` exists.** A 404 is returned for `GET /app/api/v1/workflows/{id}` (without the kapp/form scoping). To read a single workflow's metadata, either:
+- Use the kapp- or form-nested list: `GET /app/api/v1/kapps/{kapp}/workflows` or `GET /app/api/v1/kapps/{kapp}/forms/{form}/workflows`, then filter by `id`, OR
+- Use the Task API by tree title: `GET /app/components/task/app/api/v2/trees/{url-encoded-title}` (see `concepts/workflow-creation` for the title format).
+
 ### Two-Step Creation
 
 1. **Create:** `POST /workflows` with `{name, event, type:"Tree", status:"Active"}`
@@ -476,7 +504,7 @@ The Workflow Engine (Task) is a **separate web app** that runs independently fro
 - **Kapp-level workflows** — Submission + Form events (fires for all forms in the kapp)
 - **Space-level workflows** — All events (Space, User, Team, plus Submission/Form across all kapps)
 
-Note: `Submission Saved` fires on every save (including Draft saves), while `Submission Submitted` only fires on the transition to `coreState: "Submitted"`. `Form Restored` and `Team Restored` fire when a soft-deleted entity is restored.
+Note: `Submission Saved` fires on every save (including Draft saves). `Submission Submitted` fires when a submission becomes `Submitted` — either via a POST with `coreState:"Submitted"` or a PUT transitioning Draft → Submitted (see the callout in "Workflow Events and coreState" above). `Form Restored` and `Team Restored` fire when a soft-deleted entity is restored.
 
 ### Workflow Response Shape
 
@@ -521,6 +549,24 @@ The `filter` field accepts KSL expressions for conditional triggering. **Critica
 - **Space-level workflows** (User/Team events) — filter can use `identity()`, `space('slug')` but NOT `values()`, `form()`, or `kapp()` (no form/kapp context)
 
 The filter is evaluated by the Core API before triggering the Task engine. If the filter returns false, the workflow is silently skipped — no run is created.
+
+**Change-detection in filters is NOT supported.** `values_previous()` is NOT a valid KSL binding even though `@values_previous` is available in node ERB. The filter accepts `values_previous('Status') != "X"` at registration but the binding returns nil/empty at runtime, so the filter never matches change-detection conditions. Workflow appears inert; no run created, no entry in `/errors`.
+
+**Pattern: KSL filter + ERB connector guard.** Do the gross check in the filter on the current state, then guard the side-effect node inside the tree with a connector condition that uses `@values_previous`:
+
+```json
+// Workflow registration
+{ "event": "Submission Updated",
+  "filter": "values('Status') == \"In Repair\"" }
+```
+
+```json
+// Connector inside the tree (start → side-effect node)
+{ "from": "start", "to": "n1", "type": "Complete",
+  "value": "@values_previous['Status'] != 'In Repair'" }
+```
+
+The KSL filter creates the run only when the current state matches; the connector blocks the side-effect node when it's a no-op update (Status was already "In Repair"). Empty runs (only `start` Closed) are produced for no-op PUTs but no external side effect fires.
 
 The GET response also includes diagnostic arrays: `{ "migratable": [], "missing": [], "orphaned": [], "workflows": [...] }`
 
