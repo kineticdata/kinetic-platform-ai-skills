@@ -361,7 +361,7 @@ Both reconverge parallel branches, but with different logic:
 - `type: "Any"` — proceeds as soon as one connector arrives
 - `type: "Some"` — proceeds after `number` connectors arrive (set `number` parameter)
 
-> **Runtime gotcha: the `number` parameter must be declared on the node even when `type` is `"All"` or `"Any"`.** The handler definition marks `number` as `required: false` (and only relevant for `type: "Some"`), but at runtime the engine raises `UnknownVariableError raised by the "system_join_v1" handler` if `number` is absent from the node's parameter list. Declare it with empty `value: ""` to satisfy the runtime. The cleanest source-of-truth is to fetch any existing tree using Join (e.g., `Queue Assignment Validate`) and copy its parameter shape verbatim — including the `dependsOnId: "type"`, `dependsOnValue: "Some"` metadata on the `number` parameter.
+> **Runtime gotcha: the `number` parameter must be declared on the node even when `type` is `"All"` or `"Any"`.** The handler definition marks `number` as `required: false` (and only relevant for `type: "Some"`), but at runtime the engine raises `UnknownVariableError raised by the "system_join_v1" handler` if `number` is absent from the node's parameter list. Declare it with empty `value: ""` to satisfy the runtime. This is one instance of a broader handler-parameter-declaration pattern — see "Optional Handler Parameters May Need to Be Declared" further down. The cleanest source-of-truth for any handler is to fetch an existing working tree using that handler and copy its parameter shape verbatim — including `dependsOnId`/`dependsOnValue` metadata.
 
 **`system_junction_v1`** — traces back through **entire branches to a common parent node**:
 - No parameters — evaluates whether each branch is "complete as possible"
@@ -553,6 +553,22 @@ Configured with `api_username`, `api_password`, `api_location` properties.
 
 **Results:** `Response Body`, `Response Code`, `Handler Error Message`
 
+#### `error_handling` Parameter Behavior — `Error Message` vs `Raise Error`
+
+Multiple handlers (`kinetic_core_api_v1`, `smtp_email_send_v1`, others) have an `error_handling` parameter with menu values `Error Message` and `Raise Error`. The choice changes whether handler failures halt the workflow:
+
+- **`Raise Error`** — handler failure raises an error the engine treats as a node failure. The node's task status goes to an Error/Failed state, the run lands in the error queue, downstream connectors do not fire. Recovery requires `POST /errors/resolve`.
+- **`Error Message`** — handler failure is captured into the node's `Handler Error Message` result. **The node still completes (`status: "Closed"`), and downstream connectors fire normally** — the workflow continues past the failure with no error queue entry. The error message is in `@results['Node Name']['Handler Error Message']` for downstream nodes to inspect.
+
+`Error Message` is a deliberate design lever: notification side-effects (an SMTP send to an unreachable server, a webhook POST that times out) typically shouldn't halt an approval workflow. But the behavior is easy to misread if you assume handler errors always stop progression. To stop progression when the handler fails, set `Raise Error`, OR leave `Error Message` and gate the next connector on the empty-check:
+
+```ruby
+# Connector value — only proceed if the handler did NOT error
+@results['Send Email']['Handler Error Message'].to_s.empty?
+```
+
+This pattern is widely used in routine-composed workflows where the API-call node uses `Error Message` and the success branch is gated on the empty check.
+
 ### Email Handler — `smtp_email_send_v1`
 
 Sends emails via SMTP. Configured with `server`, `port`, `tls`, `username`, `password` properties.
@@ -569,7 +585,19 @@ Sends emails via SMTP. Configured with `server`, `port`, `tls`, `username`, `pas
 
 **Results:** `Handler Error Message`, `Message Id`
 
+**Watch out for non-ASCII characters in subject and body.** Email subjects and message bodies are likely places for users to embed pretty Unicode — em-dashes (`—`), en-dashes (`–`), smart quotes (`"` `"` `'` `'`), ellipsis (`…`). These cause `Encoding::CompatibilityError` at runtime. See the ASCII-safe ERB note in the integration-handler section above.
+
 **Tip:** Use `include=parameters,results` on the handlers API to discover parameters for any handler: `GET /handlers/{definitionId}?include=parameters,results`
+
+### Optional Handler Parameters May Need to Be Declared
+
+Handler metadata's `required: false` flag and runtime tolerance can diverge. A node may need to declare ALL parameters listed in the handler definition — including the optional ones — with empty value, even when those parameters wouldn't logically apply. Omitting an optional parameter from the node can cause the handler to raise `UnknownVariableError` at evaluation time, with the workflow stalling on the affected node.
+
+Observed cases (verified May 2026):
+- **`system_join_v1`** — `number` parameter (the count for `type: "Some"`). Required at runtime even when `type` is `"All"` or `"Any"`. Declare as `value: ""`.
+- **`smtp_email_send_v1`** — `bcc` and `htmlbody` parameters (both `required: false` in handler def). When omitted from the node, the handler raises `UnknownVariableError`; declaring both with `value: ""` resolves it.
+
+Until a handler is verified to tolerate omitted optional parameters, **declare every parameter listed in the handler definition on the node**, supplying empty value for ones that don't apply. Fetch the handler definition (`GET /handlers/{definitionId}?include=parameters`) to enumerate the full parameter list; the canonical source-of-truth for parameter-shape conventions is any existing tree on the platform that uses the handler.
 
 ### Routine Calls (subroutines)
 Routine definition IDs follow the pattern: `routine_kinetic_{entity}_{action}_v1`
