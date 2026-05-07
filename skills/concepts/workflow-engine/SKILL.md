@@ -142,14 +142,22 @@ Create an Echo node right after Start with this input to see every variable avai
 ```
 This dumps variable names, types, and hash keys. Check the Echo node's `output` result in Activity Monitor.
 
-**ERB Hash access pitfall:** In the Task engine ERB context, Ruby Hash `[]` raises `IndexError` for missing keys (unlike standard Ruby which returns `nil`). Always use `.fetch('key', 'default')` for optional parameters:
+**ERB Hash access pitfall:** In the Task engine ERB context, Ruby Hash `[]` raises `IndexError` for missing keys (unlike standard Ruby which returns `nil`). The standard Ruby `.dig()` safe-access method is **also unavailable** — calling it on `@results` or other Hash-like proxies raises `UnknownVariableError` at evaluation time, even on the simplest case. Use `.fetch(key, default)` exclusively for safe missing-key access; for nested access, chain `.fetch` calls:
 ```ruby
 # BAD — raises IndexError if key missing:
 <%= @request_query_params['personId'] %>
 
+# BAD — raises UnknownVariableError; .dig() is unavailable in this ERB context:
+<%= @results.dig('Some Node', 'Some Field') %>
+
 # GOOD — returns empty string if missing:
 <%= @request_query_params.fetch('personId', '') %>
+
+# GOOD — chain .fetch for nested access:
+<%= @results.fetch('Some Node', {}).fetch('Some Field', nil) %>
 ```
+
+Verified May 2026 (vendor-risk-test): `@results.dig('Create Compliance Approval', 'Decision') || @results.dig('Create Procurement Approval', 'Decision') || ''` in an echo node's `input` parameter raised `UnknownVariableError`. Switching to `@results.fetch('Create Compliance Approval', {}).fetch('Decision', nil) || ...` resolved.
 
 **Note:** `@values['FieldName']` does NOT raise IndexError for missing fields — all form fields are present in `@values` (with empty string for unfilled fields). The `.fetch` pattern is needed for `@request_query_params`, `@request_headers`, and other hashes where keys are not guaranteed.
 
