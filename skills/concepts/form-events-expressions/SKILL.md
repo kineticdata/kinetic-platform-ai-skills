@@ -241,8 +241,12 @@ In expression contexts (visible, required, defaultValue, mapping values), use th
 | `required()` | Whether required |
 | `visible()` | Whether visible |
 | `enabled()` | Whether enabled |
-| `options()` | Available choices (dropdown/radio/checkbox) |
+| `options()` | Available choices (dropdown/radio/checkbox) — see note below |
 | `on(event, callback)` | Attach event listener |
+
+**`options()` returns a live array reference, but mutating it does not re-render the dropdown.** Pushing/replacing entries in the array (`opts.length = 0; opts.push(...)`) updates the in-memory array but the rendered choices do not change, even when the mutation is wrapped in `K('form').$apply()`. The K() field API has no `setOptions`, `refresh`, or equivalent method for replacing choices at runtime.
+
+For cascading dropdowns (where choices depend on another field's value), the working pattern is multiple separate dropdown fields, each with its own static options and a `visible` expression gating which one shows. See the form-engine skill's Conditional Visibility section.
 
 ### Form Methods
 
@@ -270,6 +274,8 @@ All support: `name()`, `element()`, `show()`, `hide()`. Buttons also support `en
 |--------|-------------|
 | `id()` | Submission ID (null for new) |
 | `value(fieldName)` | Field value from a previous page (cross-page access) |
+
+**`K('submission')` does not expose `coreState` or other submission-level metadata.** Form-side JavaScript can only read `id()` and field values — `K('submission').coreState` returns `undefined`. To check submission state (`Draft` / `Submitted` / `Closed`), fetch the submission via the Core API.
 
 ### Bridged Resource Methods
 
