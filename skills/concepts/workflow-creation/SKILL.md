@@ -131,11 +131,13 @@ The same logic applies to f-strings around any treeJson string field that contai
 **JSON-transport double-escape variant.** A related failure mode shows up when generating ERB programmatically and embedding strings into JSON parameter values. If the source-language string contains escaped quotes intended to render as plain quotes inside the stored ERB (e.g., Python `"@values[\\\"Field Name\\\"]"`), the escapes can pile up across two layers (source-language string literal → JSON encoding → Ruby ERB parser at runtime) and end up as literal backslash-quote sequences in the saved tree. Symptoms: `SyntaxError` in the Ruby parser when the parameter is evaluated.
 
 Workarounds:
-- **Use single quotes for Ruby Hash keys.** `@values['Field Name']` needs no escaping inside Python (or JS, Java) double-quoted strings. Switching `@values["X"]` → `@values['X']` removes a class of double-escape bugs.
+- **Single quotes for Ruby Hash KEYS, double quotes for VALUES that interpolate.** `@values['Field Name']` needs no escaping inside Python (or JS, Java) double-quoted strings — single quotes are clean for keys. But Ruby Hash VALUES that contain `#{...}` interpolation (e.g., `"#{@values['Vendor Name']} approved"`) MUST use double quotes — single-quoted Ruby strings don't interpolate AND can't contain unescaped single quotes (so a single-quoted value with `#{@values['Field']}` inside is a Ruby parse error: the inner `'` closes the outer string mid-stream). The pattern that holds programmatically: `{'Key' => "value with #{@values['Field']}"}` — single quote the key, double quote the value when the value needs interpolation.
 - **String concatenation rather than templated literals.** Build the ERB by concatenating pieces (`'<%= ' + something + ' %>'`) so each layer's escaping is unambiguous.
 - **Inspect the stored result.** `GET /trees/{title}?include=treeJson` then `repr()` the parameter value. Stored ERB containing `\\\"` instead of `"` is a classic sign of double-escape — the runtime Ruby parser sees backslash-quote, not a properly-escaped quote.
 
-Observed in practice: programmatic builds across multiple dogfood tests (capex-approval-test, vendor-risk-test) hit this when the agent used `@values[\\\"Field Name\\\"]` in Python source. Switching to `@values['Field Name']` fixed the class of bug.
+Observed in practice (multiple dogfood tests across May 2026):
+- The double-escape variant — `@values[\\\"Field Name\\\"]` in Python source becoming literal `\"` in stored ERB. Switching to `@values['Field Name']` fixed it.
+- The single-quoted-value variant — `{'Summary' => 'High-risk: #{@values['Name']} ...'}` produced a severe Ruby SyntaxError at runtime. The error surfaced as `java.lang.RuntimeException` on `BranchHeadTrigger` (engine couldn't even start the run, zero tasks created) rather than a specific `Node Parameter Error`, because the ERB parse error was severe enough to crash the engine before any node executed. Switching the value to double quotes — `{'Summary' => "High-risk: #{@values['Name']} ..."}` — resolved cleanly.
 
 ### Handlers API
 
