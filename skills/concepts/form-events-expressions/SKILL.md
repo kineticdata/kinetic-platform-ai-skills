@@ -71,6 +71,8 @@ Connections/Operations are exposed on forms via the `integrations` array (replac
 | `Change` | Field value changes (user or programmatic) | Field |
 | `Click` | Button clicked | Button |
 
+**Form events fire only when the form renders in CoreForm.** Submissions created directly via the REST API (`POST /app/api/v1/kapps/{kapp}/forms/{form}/submissions`) bypass form-side JavaScript entirely — Load, Change, Submit, and Click events do not run, and `defaultValue`, `visible`, and `required` expressions are not evaluated. The submission is created from whatever JSON the POST body contains. This matters for testing: form-JS behavior must be verified by rendering the form in a browser, not by API submission.
+
 ### Event Actions
 
 | Action | Description |
@@ -114,14 +116,22 @@ Mappings can also set `visible` (show/hide the target field).
 
 ### Page Load Event (Custom DOM Manipulation)
 
+A common pattern for review pages: a Custom Load event reads field values from previous pages and injects formatted HTML into a content element on the current page.
+
 ```json
 {
   "type": "Load",
   "action": "Custom",
-  "name": "Load Summary Review",
-  "code": "const displaySection = K('section[Summary Review Data]').element();\nconst reviewTarget = K('content[Summary Review HTML]').element();\n// ... build HTML from hidden fields and inject into content element"
+  "name": "Build Review",
+  "code": "const target = K('content[Review HTML]').element().querySelector('#review-target');\nconst fmt = v => v == null ? '<em>—</em>' :\n  Array.isArray(v) ? v.map(o => o && o.name ? o.name : o).join(', ') :\n  typeof v === 'object' ? JSON.stringify(v) : String(v);\nconst rows = [\n  ['Requestor', K('submission').value('Requestor Name')],\n  ['Department', K('submission').value('Department')],\n  ['Category', K('submission').value('Service Category')],\n  ['Priority', K('submission').value('Priority')],\n  ['Attachments', K('submission').value('Attachments')]\n];\ntarget.innerHTML = '<dl>' + rows.map(([k, v]) => `<dt>${k}</dt><dd>${fmt(v)}</dd>`).join('') + '</dl>';"
 }
 ```
+
+The pattern requires three pieces working together:
+
+1. **Anchor `<div>` inside the content element.** The content element's `htmlContent` should contain `<div id="review-target"></div>` (or any stable selector) — this gives the JS a guaranteed injection point that survives re-renders.
+2. **Cross-page reads via `K('submission').value()`.** Field-level `K('field[Name]').value()` only reaches fields on the current page. For values from previous pages, use `K('submission').value('Field Name')`.
+3. **Defensive value formatting.** `value()` returns different shapes by field type: strings for text/dropdown, JSON arrays for checkbox/multi-select, arrays of `{name, size}` objects for attachment fields. Naive coercion produces `[object Object]` for the attachment case. The `fmt()` helper above handles `null`, arrays (mapping objects with a `name` property to that name), and primitives.
 
 ### Submit Event (Async Pattern)
 
