@@ -657,16 +657,28 @@ When building treeJson programmatically, every node MUST have these flags set co
 
 **Only Wait and other genuinely deferrable handlers** should have `defers: true, deferrable: true`. The Start node must NEVER be deferrable.
 
-### Node ID Uniqueness Rules
+### Node ID Conventions
 
-Node IDs use the format `{definition_id}_{N}` where N is a sequential integer. Suffixes must be **globally unique across ALL handler types** in a tree:
+Node IDs follow the canonical format `{definition_id}_{N}`, where `N` is taken from a single monotonically-incremented `lastID` counter shared across ALL nodes in the tree. Each new node increments `lastID` and uses the new value as its `_N` suffix:
 
 ```
-CORRECT: system_start_v1_1, utilities_echo_v1_2, system_wait_v1_3
-WRONG:   system_start_v1_1, utilities_echo_v1_1, system_wait_v1_1  (duplicate _1 suffix)
+EXAMPLE: system_start_v1_1, utilities_echo_v1_2, system_wait_v1_3, smtp_email_send_v1_4
 ```
 
-Duplicate suffixes cause the workflow builder to **silently drop nodes**. `<lastID>` should equal the highest suffix used.
+The `lastID` (in the tree's top-level metadata) should equal the highest suffix used.
+
+Two failure modes to keep in mind:
+
+**Numeric suffix collision** — if two nodes end up with the same `_N` (e.g., `system_start_v1_1` and `utilities_echo_v1_1`), the Console workflow builder silently drops one of them. The canonical format avoids this by construction when `lastID` is incremented monotonically; collisions usually arise from hand-edited XML or programmatic generation that doesn't share a counter across handler types.
+
+**Non-canonical IDs and alpha suffixes** — IDs that don't follow `{definition_id}_{N}` (e.g., custom shorthand like `n1`, `n2`, `n13a`, `n13b`), or that use alpha suffixes for branch disambiguation (`n14a`/`n14b` to distinguish parallel branches' close nodes), break the Console workflow builder. The builder strips trailing alpha characters and dedupes by the resulting numeric key — `n13a` and `n13b` both reduce to `n13`, and only one renders. **The runtime engine does NOT have this issue**: the engine processes treeJson IDs as opaque strings and runs all nodes correctly. A tree can pass behavioral tests end-to-end while showing only a fraction of its nodes when opened in the Console.
+
+(Verified May 2026, vendor-risk-test: an 18-node workflow with non-canonical IDs `n1`, `n2`, `n13a`, `n13b`, `n14a`, `n14b`, etc. ran all 18 nodes correctly across two test paths; the Console builder displayed 1 node — the last `n14b` survived the dedupe.)
+
+**Practical guidance:**
+- For programmatic tree generation, follow the canonical `{definition_id}_{N}` pattern with a single shared `lastID` counter.
+- Avoid alpha suffixes for branch disambiguation. Use distinct numeric IDs even for symmetric branches (`system_integration_v1_13` for one branch's close node, `system_integration_v1_14` for the other's).
+- A tree that runs correctly but renders incompletely in the Console builder is almost always an ID-format issue. Fetch a Console-built tree's treeJson to see the format the builder expects, or compare a working tree's IDs to a misbehaving tree's.
 
 ### Deferrable Node Messages
 
