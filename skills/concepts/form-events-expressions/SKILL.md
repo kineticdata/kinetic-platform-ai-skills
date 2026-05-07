@@ -195,6 +195,37 @@ The `K()` function provides runtime access to form objects in Custom event code.
 | `K('space')` | Current space |
 | `K('bridgedResource[Name]')` | Bridged resource by name |
 
+### Data Selectors vs. Wrapped Selectors
+
+The selectors fall into two distinct shapes — and the asymmetry is a common trap.
+
+**Data selectors** return plain JavaScript objects. Access via property notation; method calls throw `TypeError: K(...).property is not a function`:
+
+| Selector | Properties (observed) |
+|----------|----------------------|
+| `K('identity')` | `anonymous`, `attributes`, `authenticated`, `displayName`, `email`, `groups`, `profileAttributes`, `sessionToken`, `spaceAdmin`, `teams`, `username` |
+| `K('kapp')` | `name`, `slug`, `attributes` |
+| `K('space')` | `name`, `slug`, `attributes` |
+
+```javascript
+K('identity').username        // 'someone@example.com'   ✓
+K('identity').username()      // TypeError                ✗
+K('kapp').slug                // 'service-portal'         ✓
+```
+
+**Wrapped selectors** return AngularJS `$scope` objects with method APIs. Use parentheses:
+
+```javascript
+K('field[Status]').value()           // get
+K('field[Status]').value('Active')   // set
+K('submission').value('Department')  // cross-page read
+K('form').serialize()                // current page values
+```
+
+Wrapped selectors include `K('field[X]')`, `K('section[X]')`, `K('content[X]')`, `K('button[X]')`, `K('page')`, `K('submission')`, `K('form')`, and `K('bridgedResource[X]')`. `K('form')` and `K('page')` expose Angular internals like `$watch`, `$digest`, `$apply`, confirming the underlying scope mechanism.
+
+In expression contexts (visible, required, defaultValue, mapping values), use the binding form instead of `K()` — `${identity('username')}`, `${kapp('slug')}`, `${space('name')}`. Bindings work in expressions; `K()` works in Custom event JavaScript.
+
 ### Field Methods
 
 | Method | Description |
