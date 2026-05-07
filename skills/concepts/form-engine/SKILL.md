@@ -306,7 +306,21 @@ Change `renderType` to `"datetime"` or `"time"` as needed. No type-specific prop
 {"type": "button", "name": "Submit", "label": "Submit", "visible": true, "enabled": true, "renderType": "submit-page", "renderAttributes": {}}
 ```
 
-Button `renderType` values: `"submit-page"`, `"save"`, `"previous-page"`, `"custom"`. Custom buttons also need `"events": []`.
+Button `renderType` values:
+
+| `renderType` | Behavior |
+|--------------|----------|
+| `"submit-page"` | Advance to the next page (use on intermediate pages of multi-page forms) |
+| `"submit"` | Final form submission — transitions `coreState` to `Submitted` (use on the final page) |
+| `"save"` | Save current state without submitting (submission stays in `Draft`) |
+| `"previous-page"` | Navigate back to the previous page |
+| `"custom"` | Arbitrary behavior via attached `events` |
+
+**Multi-page forms require explicit button elements on each page.** The platform does not auto-render Submit buttons. A page with `renderType: "submittable"` is structurally submittable (programmatic `K('form').submitPage()` works), but no UI button appears unless an explicit button element exists in the page's `elements` array. Pages without an explicit button can leave the user with no affordance to advance or submit.
+
+**Use `submit-page` on intermediate pages and `submit` on the final page.** A multi-page form whose final page has a `submit-page` button (or no button) can never transition `coreState` from `Draft` to `Submitted` — the user clicks through, the submission saves as Draft, and any `Submission Submitted` workflow never fires.
+
+**`events` is only allowed on `renderType: "custom"` buttons.** PUTting a button with `events: []` and any other `renderType` returns HTTP 400 with `"The 'events' property of the '<name>' submit button is not supported."` Custom buttons require `events: []` (or populated); other renderTypes must omit the key entirely.
 
 **`renderAttributes: {}` is required on buttons** — omitting it causes a 400 error.
 
@@ -513,6 +527,8 @@ Constraints are **JavaScript expressions** that validate field values at submiss
   "omitWhenHidden": true
 }
 ```
+
+**`required: true` is enforced even when `visible: false`.** A hidden field with literal `required: true` still produces an "is required" validation error on page submit, blocking the user even though the field is not visible to fill in. When a field's visibility depends on a condition, its `required` should use the same expression (as in the example above) — not a literal `true` — so the requirement only applies when the field is shown.
 
 ### Default Values with Expressions
 
