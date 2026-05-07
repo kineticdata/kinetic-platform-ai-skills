@@ -135,7 +135,7 @@ Workarounds:
 - **String concatenation rather than templated literals.** Build the ERB by concatenating pieces (`'<%= ' + something + ' %>'`) so each layer's escaping is unambiguous.
 - **Inspect the stored result.** `GET /trees/{title}?include=treeJson` then `repr()` the parameter value. Stored ERB containing `\\\"` instead of `"` is a classic sign of double-escape — the runtime Ruby parser sees backslash-quote, not a properly-escaped quote.
 
-Observed in practice (multiple dogfood tests across May 2026):
+Observed in practice (multiple build tests across May 2026):
 - The double-escape variant — `@values[\\\"Field Name\\\"]` in Python source becoming literal `\"` in stored ERB. Switching to `@values['Field Name']` fixed it.
 - The single-quoted-value variant — `{'Summary' => 'High-risk: #{@values['Name']} ...'}` produced a severe Ruby SyntaxError at runtime. The error surfaced as `java.lang.RuntimeException` on `BranchHeadTrigger` (engine couldn't even start the run, zero tasks created) rather than a specific `Node Parameter Error`, because the ERB parse error was severe enough to crash the engine before any node executed. Switching the value to double quotes — `{'Summary' => "High-risk: #{@values['Name']} ..."}` — resolved cleanly.
 
