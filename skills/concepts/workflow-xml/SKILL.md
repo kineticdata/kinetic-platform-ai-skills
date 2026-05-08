@@ -599,7 +599,7 @@ Handler metadata's `required: false` flag and runtime tolerance can diverge. A n
 
 Observed cases (verified May 2026):
 - **`system_join_v1`** — `number` parameter (the count for `type: "Some"`). Required at runtime even when `type` is `"All"` or `"Any"`. Declare as `value: ""`.
-- **`smtp_email_send_v1`** — `bcc` and `htmlbody` parameters (both `required: false` in handler def). When omitted from the node, the handler raises `UnknownVariableError`; declaring both with `value: ""` resolves it.
+- **`smtp_email_send_v1` and `smtp_email_send_v2`** — `bcc` and `htmlbody` parameters (both `required: false` in handler def). When omitted from the node, the handler raises `UnknownVariableError`; declaring both with `value: ""` resolves it. This is an ERB-evaluation failure that fires before the handler's `error_handling: "Error Message"` catch can engage, so even with the catch enabled, missing optional ERB parameters halt the run. Verified May 2026 — v1 and v2 behave identically on this case.
 
 Until a handler is verified to tolerate omitted optional parameters, **declare every parameter listed in the handler definition on the node**, supplying empty value for ones that don't apply. Fetch the handler definition (`GET /handlers/{definitionId}?include=parameters`) to enumerate the full parameter list; the canonical source-of-truth for parameter-shape conventions is any existing tree on the platform that uses the handler.
 
@@ -681,6 +681,8 @@ Two failure modes to keep in mind:
 
 (Verified May 2026, vendor-risk-test: an 18-node workflow with non-canonical IDs `n1`, `n2`, `n13a`, `n13b`, `n14a`, `n14b`, etc. ran all 18 nodes correctly across two test paths; the Console builder displayed 1 node — the last `n14b` survived the dedupe.)
 
+**Leading zeros in numeric suffixes are tolerated.** `utilities_echo_v1_01`, `_001`, and `_0001` all PUT 200 and execute cleanly through the engine — the runtime treats node IDs as opaque strings. Verified May 2026 on simple Start → Echo flows (loops/parallel/junctions not exhaustively tested). The canonical `_{N}` form remains the recommendation for hygiene and Console-builder compatibility, but a tree using `_01`-style IDs won't fail due to leading zeros alone.
+
 **Practical guidance:**
 - Use the literal `"start"` for the Start node's id — never `system_start_v1_1` or any other canonical-form variant. Connectors and `dependents` references to the start node must also use `"start"` exactly.
 - For programmatic tree generation, follow the canonical `{definition_id}_{N}` pattern with a single shared `lastID` counter.
@@ -690,7 +692,7 @@ Two failure modes to keep in mind:
 
 ### Deferrable Node Messages
 
-Deferrable nodes need three message types:
+In **treeXml** format, deferrable nodes need three message types:
 ```xml
 <messages>
     <message type="Create"></message>
@@ -699,6 +701,8 @@ Deferrable nodes need three message types:
 </messages>
 ```
 Non-deferrable nodes need only `<message type="Complete">`.
+
+In **treeJson** format, message content is engine-managed: `messages: []` and `messages: [{type: "Create", ...}, ...]` round-trip identically (the engine returns `messages: []` on GET regardless of what was PUT), and deferrable nodes still defer and complete correctly. Verified May 2026 — both shapes PUT 200, and both reached deferred state cleanly. The three-message-types requirement is XML-format-specific; treeJson nodes can omit.
 
 ### Handler Parameter Case Sensitivity
 
