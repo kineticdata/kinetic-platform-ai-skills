@@ -47,7 +47,7 @@ A form definition retrieved via `GET /kapps/{kapp}/forms/{form}?include=pages,in
 | `slug` | URL-safe identifier |
 | `type` | Classification (e.g., "Service", "Approval", "Task") — queryable for UI views |
 | `status` | "Active" or "Inactive" |
-| `anonymous` | Whether unauthenticated submissions are allowed |
+| `anonymous` | Whether unauthenticated submissions are allowed — **must be a JSON boolean (`true`/`false`)**; passing a string (`"false"`) is rejected at PUT |
 | `submissionLabelExpression` | Template for submission display labels using expression syntax |
 | `customHeadContent` | Custom HTML/JS injected into form head |
 | `attributes` | Key-value metadata (Icon, Assigned Team, Notification Template, etc.) |
@@ -329,6 +329,8 @@ Button `renderType` values:
 ```json
 {"type": "section", "renderType": null, "name": "Section Name", "title": "Display Title", "visible": true, "omitWhenHidden": null, "renderAttributes": {}, "elements": [...]}
 ```
+
+**Section schema is strict.** All four of `renderType`, `omitWhenHidden`, `renderAttributes`, and `events` must be present at PUT (each may be `null` or empty), even when the section has no events and no special rendering. Omitting any of them returns HTTP 400. The `events: []` shape applies to sections that don't define any — include the empty array, don't drop the key.
 
 #### Page Elements
 
