@@ -761,15 +761,11 @@ POST /app/components/task/app/api/v2/runs/{runId}/triggers
 
 This creates a downstream trigger to resume execution from the specified node.
 
-### NEVER Use Task API PUT on Core API-Registered Workflows
+### Task API PUT on Core API-Registered Workflows
 
-**Critical:** Using `PUT /trees/{title}` (Task API v2) on a workflow created via the Core API (`POST /kapps/{kapp}/workflows`) **wipes** the `event`, `platformItemType`, and `platformItemId` fields. The workflow disappears from the Kinetic admin UI and stops firing on form events.
+The v7 docs warn that `PUT /trees/{title}` (Task API v2) on a workflow created via the Core API wipes `event`, `platformItemType`, and `platformItemId`, causing the workflow to disappear from the admin UI and stop firing. **This claim does not replicate on the current platform.** Verified May 2026: three different PUT body shapes (`{treeJson}` alone; `+event`; `+platformItemType+platformItemId`) all preserved registration metadata across consecutive PUTs, and the workflow continued to fire on subsequent submissions in each case.
 
-Task API v2 PUT is **only safe** for:
-- WebAPI trees (no Core API registration)
-- Routines (no Core API registration)
-
-For event-triggered workflows, always use the Core API: `PUT /kapps/{kapp}/workflows/{id}` with `{treeXml: "..."}` or use `update_workflow_tree`.
+For event-triggered workflows, the Core API path remains the recommended idiom: `PUT /kapps/{kapp}/workflows/{id}` with `{treeXml: "..."}` or `{treeJson: {...}}`. The Task API path is also reliable in current-platform tests but isn't the recommended idiom — leave it for WebAPI trees and routines, which don't have Core registration metadata to risk.
 
 ---
 
