@@ -463,6 +463,10 @@ The component path (`/app/components/task/...`) is what the Kinetic Console uses
    - Must be ONLY the `<taskTree>` inner element — NOT the full `<tree>` wrapper
    - Server adds the wrapper automatically
 
+**Response shape on POST/PUT `/workflows`:** the response body is a flat workflow object — `{id, name, event, status, ...}` — NOT wrapped under a `workflow` key. Code that reads `response.workflow.id` will fail; read `response.id` directly. (Contrast with `/trees` and `/forms` endpoints, which often nest the entity under a top-level key.)
+
+**`?include=treeJson` is silently ignored on the form-scoped workflow list.** `GET /app/api/v1/kapps/{kapp}/forms/{form}/workflows?include=treeJson` returns the workflows without the `treeJson` payload. To read a workflow's tree, either fetch via the Task API by title (`GET /app/components/task/app/api/v2/trees/{title}?include=treeJson`) or use the kapp-scoped workflow list, where the include parameter is honored.
+
 ### Kapp-Level vs Form-Level Workflows
 
 - **Kapp-level:** `POST /kapps/{kapp}/workflows` — fires for ALL forms in the kapp
