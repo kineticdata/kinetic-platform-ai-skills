@@ -210,6 +210,8 @@ For team queues where members pick up unassigned work:
 - **Unclaimed work query:** `values[Assigned Team] = "IT Support" AND values[Assigned Individual] = null`
 - **Claiming:** Update the submission's `Assigned Individual` field to the claimer's username
 
+**Team-name resolution gotcha.** When using a queue task routine (e.g., `routine_kinetic_queue_task_create_v1`) with an `Assignee Team` input, the inner `Queue Assignment Validate` step has been observed to silently fall back to the `Default` team when the supplied team name does not resolve to an existing team. The task is created and assigned, but to the wrong queue — no error, no warning. Validate the team-name input upstream (e.g., a workflow node that fetches the team and errors on miss) when correct routing matters.
+
 ### UI Patterns
 
 | View | Query Pattern |
