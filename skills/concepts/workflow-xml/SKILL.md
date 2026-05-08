@@ -548,10 +548,14 @@ Configured with `api_username`, `api_password`, `api_location` properties.
 |-------------|------|----------|------|-------------|
 | `error_handling` | Error Handling | Yes | `Error Message,Raise Error` | How to handle errors |
 | `method` | Method | Yes | `GET,POST,PUT,PATCH,DELETE` | HTTP method (defaults to GET) |
-| `path` | Path | Yes | — | API path (e.g., `/kapps/:kappSlug/forms/:formSlug`) |
+| `path` | Path | Yes | — | API path relative to `api_location` (e.g., `/kapps/:kappSlug/forms/:formSlug`) |
 | `body` | Body | No | — | JSON body for POST/PUT/PATCH |
 
 **Results:** `Response Body`, `Response Code`, `Handler Error Message`
+
+**`path` is appended to the `api_location` info-value, not used standalone.** The handler builds the request URL as `api_location + path`. If `api_location` is misconfigured (blank, missing scheme, etc.), the URL falls apart and the handler fails with errors like `NoMethodError: undefined method 'include?' for nil:NilClass at addr_port`. Always confirm `api_location` is set to the full API base (`https://<host>/app/api/v1`) before debugging path-level issues.
+
+**Usernames containing `@` need to be URL-encoded in `path`.** Email-style usernames (e.g., `casey.armstrong@kineticdata.com`) appearing in the path — common when calling user-scoped endpoints like `/users/{username}` — must be encoded with `URI.encode_www_form_component`, otherwise the `@` is parsed as a userinfo separator and the request fails. ERB pattern: `<%= "/app/api/v1/users/" + URI.encode_www_form_component(@values['Requestor Username']) %>`.
 
 #### `error_handling` Parameter Behavior — `Error Message` vs `Raise Error`
 
