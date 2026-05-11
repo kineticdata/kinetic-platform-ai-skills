@@ -553,6 +553,19 @@ Configured with `api_username`, `api_password`, `api_location` properties.
 
 **Results:** `Response Body`, `Response Code`, `Handler Error Message`
 
+**`Response Code` is returned as a String, not an Integer.** Connector value expressions and ERB comparisons must coerce with `.to_i` or compare against a string literal:
+
+```ruby
+# Works
+@results['API']['Response Code'].to_i == 200
+@results['API']['Response Code'] == '200'
+
+# Silently false (Response Code is the string "200", not the integer 200)
+@results['API']['Response Code'] == 200
+```
+
+The same applies to `Response Code` results from `system_integration_v1` and other HTTP-style handlers.
+
 **`path` is appended to the `api_location` info-value, not used standalone.** The handler builds the request URL as `api_location + path`. If `api_location` is misconfigured (blank, missing scheme, etc.), the URL falls apart and the handler fails with errors like `NoMethodError: undefined method 'include?' for nil:NilClass at addr_port`. Always confirm `api_location` is set to the full API base (`https://<host>/app/api/v1`) before debugging path-level issues.
 
 **Usernames containing `@` need to be URL-encoded in `path`.** Email-style usernames (e.g., `casey.armstrong@kineticdata.com`) appearing in the path — common when calling user-scoped endpoints like `/users/{username}` — must be encoded with `URI.encode_www_form_component`, otherwise the `@` is parsed as a userinfo separator and the request fails. ERB pattern: `<%= "/app/api/v1/users/" + URI.encode_www_form_component(@values['Requestor Username']) %>`.
