@@ -207,6 +207,25 @@ The `<dependents>` section defines execution flow — which tasks run next:
 @team_previous['Name'] == "Default" && @team['Name'] != "Default"
 ```
 
+#### Path Selection via Multiple Complete Connectors
+
+A common branching idiom: give a single source node multiple outgoing Complete connectors, each with a Ruby `value` expression that selects exactly one path. Distinct from KSL filters (which gate whether a workflow fires at all), connector value expressions select WHICH downstream branch runs after the source node completes. Observed examples from the kinetic-portal space:
+
+```xml
+<!-- API node with three mutually-exclusive Complete connectors -->
+<dependents>
+  <task type="Complete" value="@results['API']['Handler Error Message'].to_s.empty?">return_results</task>
+  <task type="Complete" value="!@results['API']['Handler Error Message'].to_s.empty? &amp;&amp; @results['API']['Response Code'].to_i == 404">return_does_not_exist</task>
+  <task type="Complete" value="!@results['API']['Handler Error Message'].to_s.empty? &amp;&amp; @results['API']['Response Code'].to_i != 404">error_process</task>
+</dependents>
+```
+
+Patterns to keep in mind:
+- **Coverage**: write the conditions so they collectively cover all possible outcomes. A node whose only outgoing Complete connectors all evaluate false silently terminates the branch with no error.
+- **Mutual exclusivity**: when conditions overlap, multiple downstream branches run in parallel. Sometimes that's intentional; usually it isn't.
+- **`@results['Node Name']` reads**: connector conditions can reference any upstream node's results, not just the immediate parent.
+- **Encoding in XML**: `&&` becomes `&amp;&amp;`, `"` becomes `&quot;`. treeJson connector values use raw JSON strings and avoid this entirely.
+
 ### treeJson Connector Format
 
 ```json
@@ -273,6 +292,8 @@ These variables are confirmed available in WebAPI tree execution:
 
 **Not available in WebAPI context:** `@space`, `@kapp`, `@form`, `@submission`, `@values`, `@user`, `@space_attributes`, `@user_profile_attributes` — these are event-tree-only variables.
 
+**`@requested_by` is nil in form-triggered (event-tree) workflows.** Even though `@requested_by` is listed in "Available in All Workflows" above, in practice it is `nil` when the workflow is fired by a form submission event. Calling any method on it (`@requested_by['username']`, `@requested_by['displayName']`, etc.) raises `NoMethodError: undefined method '[]' for nil:NilClass`. **The failure is silent at the run level**: the offending task crashes, the run continues marking other tasks complete, but the *next* task downstream of the crashed one stays at status `"New"` indefinitely with no surfaced error. Always check `/app/components/task/app/api/v2/errors?limit=10` when a workflow stalls. In form workflows, use `@values[...]`, `@submission[...]`, `@results[...]`, `@task[...]`, or literal strings — never `@requested_by`. (`@requested_by` does work in WebAPI contexts where the table above is accurate.)
+
 **Passing data into WebAPI trees:** Use query params, body, or headers:
 ```ruby
 <%= @request_query_params['id'] %>
@@ -306,7 +327,7 @@ Results are accessed by **task name**, then **result key**:
 | `system_tree_call` | Handler used by `<taskDefinition>` for routines | None |
 | `utilities_create_trigger_v1` | Completes or updates a deferred node | `action_type` (required), `deferral_token` (required), `deferred_variables`, `message` |
 | `utilities_defer_v1` | Immediately returns deferral token then defers | `deferral_value` (optional initial value) |
-| `utilities_echo_v1` | Returns its input unchanged (useful for debugging) | `input` (required) |
+| `utilities_echo_v1` | Returns its `input` parameter unchanged. Used for debugging, for stashing computed values under a named handle (downstream nodes read `@results['Echo Name']['output']`), and for running Ruby in the `input` parameter to expose the evaluated string downstream. | `input` (required) |
 | `system_integration_v1` | Executes a Connection/Operation | `connection` (required, ID), `operation` (required, ID) |
 | `system_submission_create_v1` | Creates a submission from workflow | `kappSlug`, `formSlug`, `coreState`, `currentPage`, `origin`, `parent` |
 
@@ -339,6 +360,8 @@ Both reconverge parallel branches, but with different logic:
 - `type: "All"` — waits for every connector to arrive
 - `type: "Any"` — proceeds as soon as one connector arrives
 - `type: "Some"` — proceeds after `number` connectors arrive (set `number` parameter)
+
+> **Runtime gotcha: the `number` parameter must be declared on the node even when `type` is `"All"` or `"Any"`.** The handler definition marks `number` as `required: false` (and only relevant for `type: "Some"`), but at runtime the engine raises `UnknownVariableError raised by the "system_join_v1" handler` if `number` is absent from the node's parameter list. Declare it with empty `value: ""` to satisfy the runtime. This is one instance of a broader handler-parameter-declaration pattern — see "Optional Handler Parameters May Need to Be Declared" further down. The cleanest source-of-truth for any handler is to fetch an existing working tree using that handler and copy its parameter shape verbatim — including `dependsOnId`/`dependsOnValue` metadata.
 
 **`system_junction_v1`** — traces back through **entire branches to a common parent node**:
 - No parameters — evaluates whether each branch is "complete as possible"
@@ -479,14 +502,14 @@ Executes a Connection/Operation pair. **This is the preferred handler for all AP
 
 Each operation defines inputs (path variables, body fields, query params). These become additional node parameters with the `parameters.` prefix. The parameter ID is `parameters.<name>` where `<name>` matches the operation's input name exactly.
 
-Example — an "Update Submission" operation with path `/submissions/{{Submission Id*}}` and body inputs:
+Example — an "Update Submission" operation with path `/submissions/{{Submission Id}}` and body inputs:
 
 ```json
 {
   "parameters": [
     {"id": "connection", "value": "<connection-uuid>"},
     {"id": "operation", "value": "<operation-uuid>"},
-    {"id": "parameters.Submission Id*", "value": "<%= @submission['Id'] %>"},
+    {"id": "parameters.Submission Id", "value": "<%= @submission['Id'] %>"},
     {"id": "parameters.Values [Object]", "value": "{\"Status\": \"Pending Approval\"}"},
     {"id": "parameters.Core State", "value": "Closed"}
   ]
@@ -494,6 +517,8 @@ Example — an "Update Submission" operation with path `/submissions/{{Submissio
 ```
 
 ERB expressions work in parameter values — use them to inject workflow context (`@submission`, `@values`, `@results`, `@task`).
+
+**ERB parameter values must be ASCII-safe.** Non-ASCII characters in parameter ERB — em-dash (`—`), en-dash (`–`), smart quotes (`"` `"` `'` `'`), ellipsis (`…`), accented letters from external API responses — cause `Encoding::UndefinedConversionError` at evaluation time. The Task engine's ERB context appears to default to US-ASCII for parameter values. Sanitize before substitution: `gsub(/[—–]/, '-')`, `gsub(/[""]/, '"')`, or transliterate via `String#unicode_normalize` + ASCII-only filter. Hits often when interpolating user-typed strings or external API content (e.g., country names, vendor descriptions) into a node parameter.
 
 **Results:** Depend on the operation's output mapping. Common outputs: `Id`, `_Error`, `_Status Code`.
 
@@ -523,10 +548,43 @@ Configured with `api_username`, `api_password`, `api_location` properties.
 |-------------|------|----------|------|-------------|
 | `error_handling` | Error Handling | Yes | `Error Message,Raise Error` | How to handle errors |
 | `method` | Method | Yes | `GET,POST,PUT,PATCH,DELETE` | HTTP method (defaults to GET) |
-| `path` | Path | Yes | — | API path (e.g., `/kapps/:kappSlug/forms/:formSlug`) |
+| `path` | Path | Yes | — | API path relative to `api_location` (e.g., `/kapps/:kappSlug/forms/:formSlug`) |
 | `body` | Body | No | — | JSON body for POST/PUT/PATCH |
 
 **Results:** `Response Body`, `Response Code`, `Handler Error Message`
+
+**`Response Code` is returned as a String, not an Integer.** Connector value expressions and ERB comparisons must coerce with `.to_i` or compare against a string literal:
+
+```ruby
+# Works
+@results['API']['Response Code'].to_i == 200
+@results['API']['Response Code'] == '200'
+
+# Silently false (Response Code is the string "200", not the integer 200)
+@results['API']['Response Code'] == 200
+```
+
+The same applies to `Response Code` results from `system_integration_v1` and other HTTP-style handlers.
+
+**`path` is appended to the `api_location` info-value, not used standalone.** The handler builds the request URL as `api_location + path`. If `api_location` is misconfigured (blank, missing scheme, etc.), the URL falls apart and the handler fails with errors like `NoMethodError: undefined method 'include?' for nil:NilClass at addr_port`. Always confirm `api_location` is set to the full API base (`https://<host>/app/api/v1`) before debugging path-level issues.
+
+**Usernames containing `@` need to be URL-encoded in `path`.** Email-style usernames (e.g., `casey.armstrong@kineticdata.com`) appearing in the path — common when calling user-scoped endpoints like `/users/{username}` — must be encoded with `URI.encode_www_form_component`, otherwise the `@` is parsed as a userinfo separator and the request fails. ERB pattern: `<%= "/app/api/v1/users/" + URI.encode_www_form_component(@values['Requestor Username']) %>`.
+
+#### `error_handling` Parameter Behavior — `Error Message` vs `Raise Error`
+
+Multiple handlers (`kinetic_core_api_v1`, `smtp_email_send_v1`, others) have an `error_handling` parameter with menu values `Error Message` and `Raise Error`. The choice changes whether handler failures halt the workflow:
+
+- **`Raise Error`** — handler failure raises an error the engine treats as a node failure. The node's task status goes to an Error/Failed state, the run lands in the error queue, downstream connectors do not fire. Recovery requires `POST /errors/resolve`.
+- **`Error Message`** — handler failure is captured into the node's `Handler Error Message` result. **The node still completes (`status: "Closed"`), and downstream connectors fire normally** — the workflow continues past the failure with no error queue entry. The error message is in `@results['Node Name']['Handler Error Message']` for downstream nodes to inspect.
+
+`Error Message` is a deliberate design lever: notification side-effects (an SMTP send to an unreachable server, a webhook POST that times out) typically shouldn't halt an approval workflow. But the behavior is easy to misread if you assume handler errors always stop progression. To stop progression when the handler fails, set `Raise Error`, OR leave `Error Message` and gate the next connector on the empty-check:
+
+```ruby
+# Connector value — only proceed if the handler did NOT error
+@results['Send Email']['Handler Error Message'].to_s.empty?
+```
+
+This pattern is widely used in routine-composed workflows where the API-call node uses `Error Message` and the success branch is gated on the empty check.
 
 ### Email Handler — `smtp_email_send_v1`
 
@@ -544,7 +602,19 @@ Sends emails via SMTP. Configured with `server`, `port`, `tls`, `username`, `pas
 
 **Results:** `Handler Error Message`, `Message Id`
 
+**Watch out for non-ASCII characters in subject and body.** Email subjects and message bodies are likely places for users to embed pretty Unicode — em-dashes (`—`), en-dashes (`–`), smart quotes (`"` `"` `'` `'`), ellipsis (`…`). These cause `Encoding::CompatibilityError` at runtime. See the ASCII-safe ERB note in the integration-handler section above.
+
 **Tip:** Use `include=parameters,results` on the handlers API to discover parameters for any handler: `GET /handlers/{definitionId}?include=parameters,results`
+
+### Optional Handler Parameters May Need to Be Declared
+
+Handler metadata's `required: false` flag and runtime tolerance can diverge. A node may need to declare ALL parameters listed in the handler definition — including the optional ones — with empty value, even when those parameters wouldn't logically apply. Omitting an optional parameter from the node can cause the handler to raise `UnknownVariableError` at evaluation time, with the workflow stalling on the affected node.
+
+Observed cases (verified May 2026):
+- **`system_join_v1`** — `number` parameter (the count for `type: "Some"`). Required at runtime even when `type` is `"All"` or `"Any"`. Declare as `value: ""`.
+- **`smtp_email_send_v1` and `smtp_email_send_v2`** — `bcc` and `htmlbody` parameters (both `required: false` in handler def). When omitted from the node, the handler raises `UnknownVariableError`; declaring both with `value: ""` resolves it. This is an ERB-evaluation failure that fires before the handler's `error_handling: "Error Message"` catch can engage, so even with the catch enabled, missing optional ERB parameters halt the run. Verified May 2026 — v1 and v2 behave identically on this case.
+
+Until a handler is verified to tolerate omitted optional parameters, **declare every parameter listed in the handler definition on the node**, supplying empty value for ones that don't apply. Fetch the handler definition (`GET /handlers/{definitionId}?include=parameters`) to enumerate the full parameter list; the canonical source-of-truth for parameter-shape conventions is any existing tree on the platform that uses the handler.
 
 ### Routine Calls (subroutines)
 Routine definition IDs follow the pattern: `routine_kinetic_{entity}_{action}_v1`
@@ -563,6 +633,31 @@ routine_handler_failure_error_process_v1
 
 **Identifying subroutines:** Any task with `definition_id` starting with `routine_` is calling another Global Routine.
 
+#### Error-Handling Pattern Inside Routines
+
+Frequently observed across kinetic-shipped routines that wrap Core API calls: the API node has three Complete connectors that branch on the result, with `routine_handler_failure_error_process_v1` on the error path. The shape:
+
+```
+start → API call (kinetic_core_api_v1 or similar)
+              │
+              ├ Complete  [@results['API']['Handler Error Message'].to_s.empty?]
+              │   → return success
+              │
+              ├ Complete  [!@results['API']['Handler Error Message'].to_s.empty? && Response Code != 404]
+              │   → routine_handler_failure_error_process_v1
+              │   → recursive retry (routine calls itself)
+              │   → return-from-error
+              │
+              └ Complete  [!@results['API']['Handler Error Message'].to_s.empty? && Response Code == 404]
+                  → return special "does not exist" result
+```
+
+Notes from observed traffic:
+- All routing uses Complete connectors. Error-vs-success is decided by Ruby `value` expressions, not by separate connector types.
+- `routine_handler_failure_error_process_v1` takes no parameters in observed cases — invoked with default config.
+- The recursive retry is structural: after the error routine logs/processes, control passes to a fresh invocation of the same routine (e.g. inside `Submission_Update`, the retry node is `routine_kinetic_submission_update_v1`).
+- Customer-facing form workflows in observed traffic invoke this error routine **zero times directly** — the error handling lives inside the standard `routine_kinetic_*` library, and composing those routines inherits it. Flag this when reading or generating workflows: if a customer tree directly invokes `routine_handler_failure_error_process_v1`, that's unusual and worth understanding why.
+
 ---
 
 ## Critical Node Flags
@@ -579,20 +674,38 @@ When building treeJson programmatically, every node MUST have these flags set co
 
 **Only Wait and other genuinely deferrable handlers** should have `defers: true, deferrable: true`. The Start node must NEVER be deferrable.
 
-### Node ID Uniqueness Rules
+### Node ID Conventions
 
-Node IDs use the format `{definition_id}_{N}` where N is a sequential integer. Suffixes must be **globally unique across ALL handler types** in a tree:
+Node IDs follow the canonical format `{definition_id}_{N}`, where `N` is taken from a single monotonically-incremented `lastID` counter shared across ALL nodes in the tree. Each new node increments `lastID` and uses the new value as its `_N` suffix:
 
 ```
-CORRECT: system_start_v1_1, utilities_echo_v1_2, system_wait_v1_3
-WRONG:   system_start_v1_1, utilities_echo_v1_1, system_wait_v1_1  (duplicate _1 suffix)
+EXAMPLE: start, utilities_echo_v1_2, system_wait_v1_3, smtp_email_send_v1_4
 ```
 
-Duplicate suffixes cause the workflow builder to **silently drop nodes**. `<lastID>` should equal the highest suffix used.
+The `lastID` (in the tree's top-level metadata) should equal the highest suffix used.
+
+**The Start node is the one structural exception.** Its id is the literal string `"start"`, not the canonical `{definition_id}_{N}` form. Every working tree on the platform — Console-built or programmatically generated — uses `id: "start"` for the `system_start_v1` node. The engine looks up the tree's entry point by exact match on `"start"`. Without that literal id, the initial `BranchHeadTrigger` fails with `java.lang.RuntimeException`, surfacing as an `Unidentified Error` in `/errors` (no `relatedItem2Id` on the error record), and the run spawns zero tasks. Verified May 2026 (vendor-risk-test rebuild): three submissions in a row failed identically with `system_start_v1_1` as the Start id; switching to literal `"start"` and updating connector references resolved cleanly. The canonical `{definition_id}_{N}` rule applies to every other node in the tree.
+
+Two failure modes to keep in mind:
+
+**Numeric suffix collision** — if two nodes end up with the same `_N` (e.g., `system_start_v1_1` and `utilities_echo_v1_1`), the Console workflow builder silently drops one of them. The canonical format avoids this by construction when `lastID` is incremented monotonically; collisions usually arise from hand-edited XML or programmatic generation that doesn't share a counter across handler types.
+
+**Non-canonical IDs and alpha suffixes** — IDs that don't follow `{definition_id}_{N}` (e.g., custom shorthand like `n1`, `n2`, `n13a`, `n13b`), or that use alpha suffixes for branch disambiguation (`n14a`/`n14b` to distinguish parallel branches' close nodes), break the Console workflow builder. The builder strips trailing alpha characters and dedupes by the resulting numeric key — `n13a` and `n13b` both reduce to `n13`, and only one renders. **The runtime engine does NOT have this issue**: the engine processes treeJson IDs as opaque strings and runs all nodes correctly. A tree can pass behavioral tests end-to-end while showing only a fraction of its nodes when opened in the Console.
+
+(Verified May 2026, vendor-risk-test: an 18-node workflow with non-canonical IDs `n1`, `n2`, `n13a`, `n13b`, `n14a`, `n14b`, etc. ran all 18 nodes correctly across two test paths; the Console builder displayed 1 node — the last `n14b` survived the dedupe.)
+
+**Leading zeros in numeric suffixes are tolerated.** `utilities_echo_v1_01`, `_001`, and `_0001` all PUT 200 and execute cleanly through the engine — the runtime treats node IDs as opaque strings. Verified May 2026 on simple Start → Echo flows (loops/parallel/junctions not exhaustively tested). The canonical `_{N}` form remains the recommendation for hygiene and Console-builder compatibility, but a tree using `_01`-style IDs won't fail due to leading zeros alone.
+
+**Practical guidance:**
+- Use the literal `"start"` for the Start node's id — never `system_start_v1_1` or any other canonical-form variant. Connectors and `dependents` references to the start node must also use `"start"` exactly.
+- For programmatic tree generation, follow the canonical `{definition_id}_{N}` pattern with a single shared `lastID` counter.
+- Avoid alpha suffixes for branch disambiguation. Use distinct numeric IDs even for symmetric branches (`system_integration_v1_13` for one branch's close node, `system_integration_v1_14` for the other's).
+- When validating a tree's IDs programmatically, allow `"start"` as the only non-canonical id; require canonical format on every other node.
+- A tree that runs correctly but renders incompletely in the Console builder is almost always an ID-format issue. Fetch a Console-built tree's treeJson to see the format the builder expects, or compare a working tree's IDs to a misbehaving tree's.
 
 ### Deferrable Node Messages
 
-Deferrable nodes need three message types:
+In **treeXml** format, deferrable nodes need three message types:
 ```xml
 <messages>
     <message type="Create"></message>
@@ -601,6 +714,8 @@ Deferrable nodes need three message types:
 </messages>
 ```
 Non-deferrable nodes need only `<message type="Complete">`.
+
+In **treeJson** format, message content is engine-managed: `messages: []` and `messages: [{type: "Create", ...}, ...]` round-trip identically (the engine returns `messages: []` on GET regardless of what was PUT), and deferrable nodes still defer and complete correctly. Verified May 2026 — both shapes PUT 200, and both reached deferred state cleanly. The three-message-types requirement is XML-format-specific; treeJson nodes can omit.
 
 ### Handler Parameter Case Sensitivity
 
@@ -745,7 +860,7 @@ Failed triggers generate error records in the Task engine.
 
 | Method | Endpoint | Purpose |
 |--------|----------|---------|
-| GET | `/errors?include=details&status=Active` | List errors (`include=details` required for `id` field) |
+| GET | `/errors?include=details&status=Active` | List errors (**`include=details` is REQUIRED to get the `id` field needed by `/errors/resolve`** — see callout below) |
 | POST | `/errors/resolve` | Bulk-resolve errors |
 
 ### Error Object Fields
@@ -758,6 +873,8 @@ Failed triggers generate error records in the Task engine.
 | `status` | `Active` or `Handled` |
 | `summary` | Human-readable error description |
 | `type` | Error type (see below) |
+
+> **Always pass `include=details` when listing errors for programmatic resolution.** Without it, `GET /errors` returns objects whose only ID-shaped fields are `relatedItem1Id` (trigger) and `relatedItem2Id` (node) — neither is the error ID. Posting those to `/errors/resolve` returns 404 `Unable to retrieve the error with id`. With `include=details`, the response gains a top-level `id` field; pass those to `/errors/resolve` and they work. Verified empirically (May 2026) — resolving errors `[163, 164]` returned `{"messageType":"success","message":"Resolved task errors [163, 164]"}`.
 
 ### Error Types
 
@@ -812,6 +929,8 @@ Run IDs are **integers**, not UUIDs. The response includes:
 **Note:** Creating submissions on forms that have active workflow trees will automatically generate runs. Plan for this during bulk data creation.
 
 **Note:** Form-triggered workflows (non-WebAPI, non-routine) that have no `system_tree_return_v1` will remain in `Started` status permanently. This is normal — the workflow ran to completion, but the engine only sets `Completed` when a tree_return node executes.
+
+**Run-level status can lag task completion.** Even on workflows that *do* eventually settle to a final status, a run may report `status: "Started"` briefly after all of its tasks have already moved to `Closed`. When verifying that a workflow completed, check the individual task statuses (`tasks[].status`) rather than relying on the run-level `status` field alone — task statuses are the source of truth for "what actually happened."
 
 ### Debugging Workflow Runs
 

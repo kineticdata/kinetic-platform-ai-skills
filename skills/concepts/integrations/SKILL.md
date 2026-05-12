@@ -102,7 +102,7 @@ This metadata can be useful for confirming the token's identity and permissions 
 }
 ```
 
-**Note:** Operation `outputs` is an **object** (keyed by output name), not an array. Each output has a `value` field for mapping expressions. The `config.path` supports `{{variable}}` template syntax for dynamic paths (`{{Param*}}` marks required params).
+**Note:** Operation `outputs` is an **object** (keyed by output name), not an array. Each output has a `value` field for mapping expressions. The `config.path` supports `{{variable}}` Mustache template syntax for dynamic paths. The asterisk-suffixed form `{{Param*}}` is one authoring convention; plain `{{Param}}` is the more common form in observed customer operations (zero of 78 operations in the kinetic-portal example space use the asterisk variant). Both substitute the same way — the asterisk is part of the parameter's literal key, not a Mustache flag. See the Mustache-syntax table further down.
 
 **Connection auth types (observed from live API):**
 
@@ -115,6 +115,29 @@ This metadata can be useful for confirming the token's identity and permissions 
 **Gotcha — secrets are always null in responses:** The API redacts secret values. `"secrets": {"Open API Key": null}` means a secret named "Open API Key" exists but its value is hidden. You must set secrets via POST/PUT, and they will never be readable back.
 
 **NEVER modify connection auth credentials via API.** Connection passwords (especially for the built-in "Kinetic Platform" connection) are set when the system is provisioned and should not be changed. The GET response masks passwords as `null` — if you PUT back `password: null` or a different password, you will **permanently break the connection** with no way to recover the original credentials. Only modify non-auth fields (name, description, operations) via API. Auth changes should only be done through the admin console by someone who knows the current credentials.
+
+### Base URL strategy — bake the common path prefix into the Connection
+
+When an external API has a stable path prefix that every endpoint shares (e.g. `/api/v1`, `/rest/api/3`, `/services/data/v59.0`), put that prefix in the Connection's `baseUrl`, not in every Operation's `path`.
+
+**Why this matters:**
+- Kinetic concatenates `connection.baseUrl + operation.config.path` to form the request URL. If the prefix is in `baseUrl`, every Operation's `path` is short and readable. If you put the prefix in each Operation, you'll repeat `/api/v1` 50 times — every typo or version bump is a global edit.
+- The `testPath` field in the Connection is also relative to `baseUrl`. With the prefix baked in, `testPath` can be a meaningful health-check endpoint like `/employees/directory` rather than `/api/v1/employees/directory`.
+- If a small subset of endpoints lives on a different prefix (e.g. `/api/v1_1/...` revisions), put those in a **separate Connection** rather than mixing prefixes within one. Connections are cheap.
+
+**Examples:**
+
+| External API | `baseUrl` | Sample Operation `path` |
+|--------------|-----------|-------------------------|
+| BambooHR | `https://acme.bamboohr.com/api/v1` | `/employees/{{Employee Id}}` |
+| Kinetic Platform (Core API) | `https://demo.kinops.io/app/api/v1` | `/space`, `/kapps/{{Kapp Slug}}/forms` |
+| ServiceNow | `https://acme.service-now.com/api/now` | `/table/incident/{{Sys Id}}` |
+| Jira Cloud | `https://acme.atlassian.net/rest/api/3` | `/issue/{{Issue Key}}` |
+| Salesforce | `https://acme.my.salesforce.com/services/data/v59.0` | `/sobjects/Account/{{Id}}` |
+
+**Trailing-slash rule:** Don't put a trailing slash on `baseUrl` and always start `path` with a leading `/`. Kinetic concatenates them literally — `https://x/api/v1` + `/employees` → `https://x/api/v1/employees`. A trailing slash on baseUrl combined with a leading slash on path produces a double slash that some servers reject.
+
+**When NOT to bake in a prefix:** APIs whose endpoints span unrelated paths (e.g. one Operation hits `/v1/users` and another hits `/internal/admin/sync`). In that case keep `baseUrl` at the host only and put the full path on each Operation.
 
 ### Operations
 
@@ -140,7 +163,7 @@ POST /app/integrator/api/connections/{connectionId}/operations
   "config": {
     "configType": "http",
     "method": "GET|POST|PUT|PATCH|DELETE",
-    "path": "/your/endpoint/{{PathParam*}}",
+    "path": "/your/endpoint/{{PathParam}}",
     "params": {"queryParam": "{{Query Param}}"},
     "body": {
       "bodyType": "raw",
@@ -161,12 +184,14 @@ POST /app/integrator/api/connections/{connectionId}/operations
 
 **Mustache template syntax for path and body:**
 
+Standard Mustache only — no Kinetic-specific extensions. There is **no** `{{Name*}}` "required" suffix; an asterisk inside a tag is taken literally as part of the parameter name (your input would render as `Name*` in the operation's parameter list). Required-ness is derived from where the variable appears: path variables are always required; body and query variables are optional unless the operation logic enforces them.
+
 | Syntax | Purpose | Example |
 |--------|---------|---------|
-| `{{Name}}` | Escaped parameter value | Path: `/users/{{Username*}}` |
+| `{{Name}}` | HTML-escaped parameter value | Path: `/users/{{Username}}` |
 | `{{{Name}}}` | Unescaped value (for raw JSON objects) | Body: `"data": {{{JSON Payload}}}` |
-| `{{Name*}}` | Required parameter (`*` suffix) | Path variables, required inputs |
 | `{{#Name}}...{{/Name}}` | Conditional block — included only when parameter has a value | Optional body fields |
+| `{{^Name}}...{{/Name}}` | Inverted section — included only when parameter is empty | Default-value fallbacks |
 
 **Output mapping expressions:**
 
@@ -191,6 +216,10 @@ POST /app/integrator/api/connections/{connectionId}/operations
   }
 }
 ```
+
+**`children` use plain string expressions, NOT object wrappers.** Top-level outputs are objects (`{"value": "expression"}`), but `children` entries are bare strings (`"Name": "current.name"`). A common mistake is mirroring the top-level shape inside `children` — `{"Name": {"value": "current.name"}}` does not work. Stick to the asymmetry: top-level = objects with `value` key; `children` = string-to-expression map.
+
+**The `*` suffix is part of the parameter's *key*, not a Mustache flag.** If an operation's path or body uses `{{Year*}}`, the parameter's literal key is `Year*` — every caller (workflow node parameters, form `inputMappings`, direct execute payloads) must use that exact key, asterisk included. Passing `Year` without the asterisk against a `{{Year*}}` placeholder causes a silent miss: the placeholder isn't substituted and the request goes out malformed. The reverse holds for plain placeholders — passing `Year*` against a `{{Year}}` placeholder also misses. Match whatever the operation defines. Across the kinetic-portal example space, zero of 78 operations use the asterisk variant; plain `{{Param}}` is the more frequently observed authoring choice. The asterisk convention is one way to surface required-ness in the placeholder text itself — not a platform-level requirement.
 
 ### Integrator REST API — Detailed Schema
 
@@ -227,6 +256,8 @@ The Integrator API (v6.1.6) is available at `/app/integrator/api/`. Most endpoin
 | POST | `/api/transform/test` | Test output transformation expressions |
 | GET | `/healthz` | Health check (unprotected) |
 | GET | `/version` | Build version info (unprotected) |
+
+**Integrator API list endpoints return bare arrays.** Unlike Core API endpoints — which wrap collections in an envelope object (e.g., `{"connections": [...], "nextPageToken": "..."}`) — Integrator API list endpoints (`GET /connections`, `GET /connections/{id}/operations`, etc.) return the array directly at the top level: `[{"id": "...", "name": "..."}, ...]`. Code that assumes a wrapping object (`response.connections`) will fail; index into the response itself.
 
 #### Connection Schema
 
@@ -340,6 +371,32 @@ POST /api/execute
 - `parameters` provides runtime values for templated inputs.
 - Add `?debug` query param for detailed response: `{ duration, outputs, raw: { statusCode, headers, body } }`.
 
+### Common Connection + Operation Patterns
+
+Customer Integrator usage varies widely. Some spaces have a handful of connections wired to a single SaaS. Others maintain dozens of connections and hundreds of operations as a shared catalog the React portal and workflows pull from over time. Example and demo spaces don't represent that full range — they tend to wire only what's needed for tutorials or specific patterns. The shapes below name common patterns observed across the example spaces we've examined, with brief notes on what each frequently handles. Treat this section as vocabulary; specific spaces will mix, simplify, or extend as their needs require.
+
+**Connection types in observed traffic.** All 9 connections in the kinetic-portal example space are `http`. The Integrator also supports `postgres` and `mssql` adapters (documented in the detailed schema below); they're available, just not represented in this dataset. When you encounter a non-HTTP connection, the `config.configType` field tells you which adapter is in play.
+
+**Auth patterns observed.** Across the 9 kinetic-portal connections:
+- `basic` (5 connections) — username + password, frequently used to wrap API keys for SaaS that accept Basic auth
+- `raw_bearer_token` (2 connections) — a pre-shared bearer token configured on the connection (HubSpot and Litmos in this space)
+- No `auth` block at all (2 connections) — Slack Hooks and a Tenant Deployment endpoint where the auth secret is embedded in the URL itself (Slack incoming-webhook URLs are the archetypal example: `services/T065.../B089.../Jw4Ssjv...`)
+
+OAuth `client_credentials` and `http_bearer_token` (dynamic-token-fetch) flows are available in the Integrator and documented in the detailed schema below; they weren't represented in this observed space. Spaces vary — pick the auth type that matches what the target system expects.
+
+**The "library ahead of need" pattern.** Of 78 operations in the kinetic-portal example space, **53 (68%) are referenced from no workflow and no form**. That's not a sign of stale code — it's a common authoring pattern: operations get defined as a reusable catalog, callable from workflows / forms / direct `executeIntegration` calls as those callsites are built. Treat unused operations as inventory rather than dead code unless other signals (deletion comments, deprecated naming) suggest otherwise.
+
+**Three invocation contexts.** A defined operation can be invoked from any of these:
+1. **Workflows** — via the `system_integration_v1` handler (see `Usage in Workflows` below and `concepts/workflow-xml`).
+2. **Forms** — via field-level `defaultResourceName` / `choicesResourceName`, or page/field event-level `integrationResourceName` (see `Usage in Forms` below).
+3. **Direct `executeIntegration` calls** from React portal code — exposed at the kapp or form level (see `Kapp-Level Integrations` below and `front-end/mutations`).
+
+The same operation can be invoked from any combination of contexts. In the kinetic-portal observation, zero operations were touched from both workflow and form sides — most operations sit firmly on one side or the other — but that's a per-space pattern, not a platform constraint.
+
+**Webhook-URL-embedded auth.** A common shape for outgoing webhook integrations: the connection has no `auth` block, and the secret is part of the connection's `baseUrl` or the operation's `path`. Slack Hooks (`hooks.slack.com/services/{team}/{channel}/{token}`) is the canonical example. The "secret in URL" approach is fine for fire-and-forget webhooks where the URL itself is the credential, but obviously not for any system that requires auth in headers.
+
+---
+
 ### Usage in Forms
 
 Operations appear on forms via the `integrations` array:
@@ -388,6 +445,8 @@ Operations appear on forms via the `integrations` array:
 
 Input mappings can reference field values: `"${values('Department')}"`.
 
+**Form-level `integrations` array is one mechanism; bundle-config aliases are another.** In the kinetic-portal example space, every form's top-level `integrations` array is null/empty — instead, the field-level `defaultResourceName` / `choicesResourceName` strings are aliases defined at the kapp's `bundle.config.integrations` JSX level (the React portal's globals), which maps each name to a real connection+operation pair at runtime. Walking the form JSON alone tells you *which integration names a form references*, not *which operations those names resolve to* — for the latter you need the kapp's bundle config. See `front-end/forms` and `front-end/portal-patterns` for portal-side details. The form-level `integrations` array remains a valid alternative, especially for self-contained forms whose integration use isn't shared across the kapp.
+
 ### Usage in Workflows
 
 Operations are executed via the `system_integration_v1` handler:
@@ -416,9 +475,9 @@ See the Mutations skill (`front-end/mutations`) for the `executeIntegration` hel
 
 ---
 
-## Bridges (Legacy — Non-REST Systems)
+## Bridges
 
-A legacy framework for real-time data lookups in forms. Use only when the target system lacks a REST API.
+Bridges (with their associated Models) are a coexisting integration mechanism alongside Connections + Operations — both are in active use across Kinetic Platform deployments. Bridges shine when a target system benefits from a stable typed data view (forms populating dropdowns from external data), and they're the path for non-REST sources (SQL, LDAP, file systems, Java-SDK-only systems) reached through a custom bridge adapter. The summary below covers the architecture and form-side usage; the detailed treatment — including qualification-query styles (named-structure vs Adhoc), SQL adapter gotchas, cross-form `K.api` calls, and the attachment-name extraction pattern — lives in `concepts/models/SKILL.md`.
 
 ### Architecture
 
@@ -470,9 +529,10 @@ K('bridgedResource[People]').load({
 
 ### When to Use
 
-- Target system requires a Java SDK/library (no REST API)
-- Existing bridge adapters are already deployed
-- Common adapters: LDAP, JIRA (legacy), Kinetic Core, custom databases
+- Target system is reached through a non-REST adapter (SQL, LDAP, custom databases, Java SDK)
+- A bridge for the target system already exists in your space and is the established pattern
+- Form-side dropdown population would benefit from a stable model layer with declared attributes and qualifications
+- Common bridges observed: `kinetic-platform` (internal data — Users, Teams, datastore Submissions), SQL adapters, LDAP, HubSpot via the Adhoc structure
 
 ---
 
