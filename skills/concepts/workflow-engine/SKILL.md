@@ -533,6 +533,8 @@ Note: `Submission Saved` fires on every save (including Draft saves). `Submissio
 }
 ```
 
+**No version history.** `updatedAt` and `updatedBy` are snapshot-of-most-recent-PUT only. The Task API exposes no `/trees/{id}/versions` endpoint, no `/audits` sub-resource, and `?include=versions,history,audits` is silently ignored (no extra keys returned). Once a tree is mutated, the prior `treeJson` body is unrecoverable from the platform side, and there is no record of who made any intermediate change beyond the most recent one. `versionId` increments monotonically per PUT, which lets you detect that something changed but not what or by whom. For change forensics on production-critical workflows, plan an external audit trail — CI artifacts, cached GETs, or build-test transcripts. The same limitation applies to forms (no notes diff history) and submissions (no values diff history beyond the current snapshot). Verified May 2026 against an active playground space.
+
 The `filter` field accepts KSL expressions for conditional triggering. **Critical: use function-call syntax** `values('Field')`, NOT bracket syntax `values["Field"]`.
 
 ```
