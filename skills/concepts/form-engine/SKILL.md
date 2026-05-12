@@ -53,6 +53,15 @@ A form definition retrieved via `GET /kapps/{kapp}/forms/{form}?include=pages,in
 | `attributes` | Key-value metadata (Icon, Assigned Team, Notification Template, etc.) |
 | `securityPolicies` | Access control definitions |
 | `categorizations` | Category assignments for form organization |
+| `notes` | Free-form prose documenting the form's purpose, fields, events, and integrations — see Form Notes below |
+
+### Form Notes
+
+The top-level `notes` field is intended for developer-facing documentation: what the form is for, key fields and their behaviors, events, workflow trigger, integrations consumed. Multi-line ASCII prose round-trips cleanly with no length, escaping, or content issues (verified May 2026 with a 1,149-char multi-line note including newlines, double quotes, slashes, and parentheses).
+
+**Reading `notes` back requires an explicit include parameter.** `GET /forms/{slug}` without `?include=notes` (or `?include=details`) returns the form WITHOUT the `notes` field — it's omitted from the response entirely, not returned as `null`. Agents that PUT a note and then GET to verify will see no notes field and may incorrectly conclude the PUT failed. Always pass `?include=notes,details` (or at minimum `?include=notes`) when round-tripping form documentation.
+
+Populating `notes` is a recommended default for any new form — both for developer onboarding and for the form's own audit trail.
 
 ---
 
