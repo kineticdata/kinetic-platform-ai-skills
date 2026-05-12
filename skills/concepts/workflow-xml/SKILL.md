@@ -694,7 +694,11 @@ Two failure modes to keep in mind:
 
 (Verified May 2026, vendor-risk-test: an 18-node workflow with non-canonical IDs `n1`, `n2`, `n13a`, `n13b`, `n14a`, `n14b`, etc. ran all 18 nodes correctly across two test paths; the Console builder displayed 1 node — the last `n14b` survived the dedupe.)
 
-**Leading zeros in numeric suffixes are tolerated.** `utilities_echo_v1_01`, `_001`, and `_0001` all PUT 200 and execute cleanly through the engine — the runtime treats node IDs as opaque strings. Verified May 2026 on simple Start → Echo flows (loops/parallel/junctions not exhaustively tested). The canonical `_{N}` form remains the recommendation for hygiene and Console-builder compatibility, but a tree using `_01`-style IDs won't fail due to leading zeros alone.
+**Leading zeros in numeric suffixes are runtime-tolerated but Console-hostile.** `utilities_echo_v1_01`, `_001`, and `_0001` all PUT 200 and execute cleanly through the engine — the runtime treats node IDs as opaque strings, and earlier May 2026 testing verified this on simple Start → Echo flows. However, **the Kinetic Console workflow builder normalizes leading-zero suffixes to canonical form on save** (`_01` → `_1`). If any other node in the tree shares that canonical suffix (e.g., `routine_kinetic_submission_update_v1_1` coexisting with `utilities_echo_v1_01`), normalization triggers the numeric-suffix collision above and one of the colliding nodes is silently dropped during the Console's re-serialization. The dropped node's incoming and outgoing connectors may get merged into the surviving node, producing a tree that PUTs/GETs clean but executes broken paths.
+
+Verified May 2026: a two-stage approval workflow was built with `routine_kinetic_submission_update_v1_1` (Set Status) and `utilities_echo_v1_01` (Coalesce) as a deliberate leading-zero peer pair. The tree ran clean through E2E approve+approve and approve+deny test cycles. Some days later, after the tree was opened in the Console builder, the routine update node had been collapsed into the echo node — start's outgoing connector pointed at the echo, the routine update node had vanished, and the workflow halted on a `NoMethodError` because the echo's `input` ERB read from a Stage 1 result that hadn't run yet. The Task API preserves no version diff history, so the corrupted state was only diagnosable by comparing the live tree to the original build artifacts.
+
+**Rule:** use canonical `_N` form (no leading zeros) for every node in any tree that might be opened in the Console. Treat the runtime's leading-zero tolerance as a debugging convenience, not a usable pattern.
 
 **Practical guidance:**
 - Use the literal `"start"` for the Start node's id — never `system_start_v1_1` or any other canonical-form variant. Connectors and `dependents` references to the start node must also use `"start"` exactly.
@@ -734,6 +738,8 @@ A `utilities_echo_v1` node placed in the tree with **no incoming and no outgoing
 Verified May 2026 against the Modification Approval workflow: orphan PUT accepted (HTTP 200), persisted intact across GET round-trips, did not generate a task at runtime, did not perturb other nodes' connectors. The pattern is also visible in real customer-exported workflows (Exercises - Workflow 01 - Submitted contains an orphan `utilities_echo_v1` named "Notes" with a multi-line description).
 
 This is the recommended pattern for documenting workflow purpose, key steps, and any non-obvious decisions inline with the tree itself — rather than relying solely on external context docs.
+
+**Verification caveat — trailing newline strip.** The engine strips a single trailing `\n` from `utilities_echo_v1`'s `input` parameter on PUT. Scripts doing byte-identical round-trip verification should trim the trailing newline from the sent value before comparing to the GET response, or expect `len(sent) == len(received) + 1` when the sent value ends in `\n`. Content otherwise round-trips unchanged. Observed May 2026 across all four annotated workflows in a single batch — consistent, not intermittent.
 
 ### Deferrable Node Messages
 
