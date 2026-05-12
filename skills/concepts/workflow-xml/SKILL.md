@@ -327,7 +327,7 @@ Results are accessed by **task name**, then **result key**:
 | `system_tree_call` | Handler used by `<taskDefinition>` for routines | None |
 | `utilities_create_trigger_v1` | Completes or updates a deferred node | `action_type` (required), `deferral_token` (required), `deferred_variables`, `message` |
 | `utilities_defer_v1` | Immediately returns deferral token then defers | `deferral_value` (optional initial value) |
-| `utilities_echo_v1` | Returns its `input` parameter unchanged. Used for debugging, for stashing computed values under a named handle (downstream nodes read `@results['Echo Name']['output']`), and for running Ruby in the `input` parameter to expose the evaluated string downstream. | `input` (required) |
+| `utilities_echo_v1` | Returns its `input` parameter unchanged. Used for debugging, for stashing computed values under a named handle (downstream nodes read `@results['Echo Name']['output']`), running Ruby in the `input` parameter to expose the evaluated string downstream, and — when orphaned — for inline workflow documentation (see Orphaned Echo Nodes as Notes below). | `input` (required) |
 | `system_integration_v1` | Executes a Connection/Operation | `connection` (required, ID), `operation` (required, ID) |
 | `system_submission_create_v1` | Creates a submission from workflow | `kappSlug`, `formSlug`, `coreState`, `currentPage`, `origin`, `parent` |
 
@@ -702,6 +702,38 @@ Two failure modes to keep in mind:
 - Avoid alpha suffixes for branch disambiguation. Use distinct numeric IDs even for symmetric branches (`system_integration_v1_13` for one branch's close node, `system_integration_v1_14` for the other's).
 - When validating a tree's IDs programmatically, allow `"start"` as the only non-canonical id; require canonical format on every other node.
 - A tree that runs correctly but renders incompletely in the Console builder is almost always an ID-format issue. Fetch a Console-built tree's treeJson to see the format the builder expects, or compare a working tree's IDs to a misbehaving tree's.
+
+### Orphaned Echo Nodes as Notes
+
+A `utilities_echo_v1` node placed in the tree with **no incoming and no outgoing connectors** serves as inline workflow documentation. The engine accepts the node as part of the tree definition, displays it in the Console builder, and ignores it at runtime — no task is created when the workflow executes.
+
+**Convention:**
+- Name the node `Notes` (or another clear identifier)
+- Position above the main flow visually (e.g., `y: -50` so it's separated from the executing nodes)
+- `dependents: []` (no outgoing connectors)
+- No other node lists this node in its `dependents` (no incoming connectors)
+- The `input` parameter contains the documentation prose — multi-line, ASCII-safe, bullet points and section headers welcome
+
+**Example (treeJson shape):**
+
+```json
+{
+  "definitionId": "utilities_echo_v1",
+  "id": "utilities_echo_v1_99",
+  "name": "Notes",
+  "x": 60, "y": -50,
+  "defers": false,
+  "deferrable": false,
+  "visible": true,
+  "parameters": [{"id": "input", "value": "This workflow handles X.\nKey steps:\n- Step 1...\n- Step 2..."}],
+  "messages": [],
+  "dependents": []
+}
+```
+
+Verified May 2026 against the Modification Approval workflow: orphan PUT accepted (HTTP 200), persisted intact across GET round-trips, did not generate a task at runtime, did not perturb other nodes' connectors. The pattern is also visible in real customer-exported workflows (Exercises - Workflow 01 - Submitted contains an orphan `utilities_echo_v1` named "Notes" with a multi-line description).
+
+This is the recommended pattern for documenting workflow purpose, key steps, and any non-obvious decisions inline with the tree itself — rather than relying solely on external context docs.
 
 ### Deferrable Node Messages
 
