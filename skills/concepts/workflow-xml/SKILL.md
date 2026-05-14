@@ -570,6 +570,8 @@ The same applies to `Response Code` results from `system_integration_v1` and oth
 
 **Usernames containing `@` need to be URL-encoded in `path`.** Email-style usernames (e.g., `casey.armstrong@kineticdata.com`) appearing in the path — common when calling user-scoped endpoints like `/users/{username}` — must be encoded with `URI.encode_www_form_component`, otherwise the `@` is parsed as a userinfo separator and the request fails. ERB pattern: `<%= "/app/api/v1/users/" + URI.encode_www_form_component(@values['Requestor Username']) %>`.
 
+**`coreState` is not enforced on submission writes.** `PATCH /submissions/{id}` and `PUT /submissions/{id}` issued through this handler will mutate `values` on a Closed submission with HTTP 200, no error, and no Handler Error Message. If your workflow depends on Closed records being immutable, layer that protection in via a security policy or a connector-value check against `coreState` before the API node — the handler will not block it. See `architectural-patterns/SKILL.md` "Closure Is Not a Write Lock" for the full pattern.
+
 #### `error_handling` Parameter Behavior — `Error Message` vs `Raise Error`
 
 Multiple handlers (`kinetic_core_api_v1`, `smtp_email_send_v1`, others) have an `error_handling` parameter with menu values `Error Message` and `Raise Error`. The choice changes whether handler failures halt the workflow:
@@ -632,6 +634,15 @@ routine_handler_failure_error_process_v1
 ```
 
 **Identifying subroutines:** Any task with `definition_id` starting with `routine_` is calling another Global Routine.
+
+#### `routine_kinetic_submission_update_v1` — PUT Wrapper
+
+The Submission Update routine internally calls `kinetic_core_api_v1` with `method: PUT, path: /submissions/{Id}`. The body assembles conditionally from populated inputs — `{currentPage, origin, parent, values, coreState}` keys appear only when the corresponding inputs are set; unset inputs are omitted rather than nulled. Two consequences worth knowing:
+
+- **It's a PUT, not a PATCH.** Don't reach for this routine expecting PATCH semantics (custom timestamps, validation-free writes, the documented PATCH-specific behaviors in `api-basics`). For those, use `kinetic_core_api_v1` with `method: PATCH` directly against `/submissions/{id}`.
+- **It does not enforce `coreState`.** The routine will mutate `values` on a Closed submission with no error. Same caveat as direct `kinetic_core_api_v1` calls — see "Closure Is Not a Write Lock" in `architectural-patterns/SKILL.md` if you need write protection on closed records.
+
+The routine spawns a child run. The parent task's `results` contain a `Run Id` pointing at the child run; to inspect what the routine actually did from a debugging context, follow that to `/runs/{child-id}/tasks` and read the inner `kinetic_core_api_v1_1` task's `Response Body`, `Response Code`, and `Handler Error Message`. Verified May 2026 across a 12-cell submission-write characterization.
 
 #### Error-Handling Pattern Inside Routines
 
