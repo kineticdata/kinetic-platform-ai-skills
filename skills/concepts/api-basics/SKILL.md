@@ -435,6 +435,14 @@ Once Submitted, a submission can never return to Draft (only a space admin can d
 
 A space admin can use `PATCH /submissions/{id}` to force any state transition (including backwards), bypassing all validation and state rules. PATCH is the escape hatch for data corrections.
 
+### Closed Submissions Are Mutable
+
+The state machine above governs `coreState` transitions only — it does NOT govern value mutations. Closed submissions are fully writable via every documented API path: `PUT /submissions/{id}` with a `values` body, `PATCH /submissions/{id}`, and from workflows via `routine_kinetic_submission_update_v1` (which is a PUT wrapper) and `kinetic_core_api_v1` (any method). All four paths return HTTP 200 with no error, no validation message, and no `coreState` side-effect when mutating values on a Closed submission. Verified May 2026 across a 12-cell test matrix (4 paths × 3 states); every cell mutated `values` successfully and left `coreState` unchanged.
+
+The platform treats `coreState` as a workflow / lifecycle indicator, not as a write-protection state. If your application needs "Closed = immutable" semantics, you must enforce it yourself — via security policies, workflow filters, or a separate audit-trail kapp. The API will not block post-closure mutations. See `architectural-patterns/SKILL.md` "Closure Is Not a Write Lock" for the design options.
+
+Note that this is about value writes, not state transitions. The transitions in the table above (`Closed → Submitted` returning "Unable to put a closed submission in the 'Submitted' core state", etc.) are still enforced on PUT — you cannot move a Closed submission backwards via the regular update endpoint. Only `values` are unguarded; `coreState` itself is still gated by the one-way state machine on PUT, with PATCH as the documented escape hatch.
+
 ## Form and Submission Gotchas
 
 ### Field Must Exist on Form
