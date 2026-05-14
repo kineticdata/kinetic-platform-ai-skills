@@ -57,9 +57,9 @@ A form definition retrieved via `GET /kapps/{kapp}/forms/{form}?include=pages,in
 
 ### Form Notes
 
-The top-level `notes` field is intended for developer-facing documentation: what the form is for, key fields and their behaviors, events, workflow trigger, integrations consumed. Multi-line ASCII prose round-trips cleanly with no length, escaping, or content issues (verified May 2026 with a 1,149-char multi-line note including newlines, double quotes, slashes, and parentheses).
+The top-level `notes` field is intended for developer-facing documentation: what the form is for, key fields and their behaviors, events, workflow trigger, integrations consumed. Multi-line ASCII prose round-trips cleanly with no length, escaping, or content issues (verified May 2026 with multi-line notes up to ~2,500 chars including newlines, double quotes, slashes, and parentheses).
 
-**Reading `notes` back requires an explicit include parameter.** `GET /forms/{slug}` without `?include=notes` (or `?include=details`) returns the form WITHOUT the `notes` field — it's omitted from the response entirely, not returned as `null`. Agents that PUT a note and then GET to verify will see no notes field and may incorrectly conclude the PUT failed. Always pass `?include=notes,details` (or at minimum `?include=notes`) when round-tripping form documentation.
+**Reading `notes` back requires `?include=details`.** `GET /forms/{slug}` without `?include=details` returns the form WITHOUT the `notes` field — the key is omitted from the response entirely, not returned as `null`. Counterintuitively, `?include=notes` alone is silently ignored and produces the same response shape as no include at all; the `notes` keyword is non-functional on this endpoint. Only `details` (the system-metadata include) surfaces the field. Characterized May 2026 across six probes on v1 (`/app/api/v1/kapps/{kapp}/forms/{slug}`); there is no v2 of this endpoint (`/app/api/v2/kapps/.../forms/...` returns 404). Agents that PUT a note and then GET with `?include=notes` to verify will see no notes field and may incorrectly conclude the PUT failed — always use `?include=details` for the verification GET.
 
 Populating `notes` is a recommended default for any new form — both for developer onboarding and for the form's own audit trail.
 
