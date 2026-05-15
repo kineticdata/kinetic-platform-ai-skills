@@ -78,7 +78,7 @@ curl -u "admin:password" \
   "https://myspace.kinops.io/app/oauth/authorize?grant_type=implicit&response_type=token&client_id=system"
 ```
 
-The server responds with a `302 redirect` containing the token in the URL fragment:
+The server responds with a `302` or `303` redirect (both observed across spaces — functionally equivalent for this flow) containing the token in the URL fragment:
 ```
 Location: https://myspace.kinops.io/app/oauth/callback#access_token=<JWT>&token_type=bearer&expires_in=43200&scope=full_access&spaceSlug=demo&displayName=...&iss=kinetic-data&spaceAdmin=true&email=...&username=...
 ```
@@ -87,7 +87,7 @@ Location: https://myspace.kinops.io/app/oauth/callback#access_token=<JWT>&token_
 
 | Parameter | Example Value | Description |
 |-----------|---------------|-------------|
-| `access_token` | JWT token (~350 chars) | The Bearer token for API calls |
+| `access_token` | JWT token (~400-420 chars) | The Bearer token for API calls. Length varies with `spaceSlug`/`displayName`/`email`/`username` payload — observed 350-420 across spaces, treat ~400 as typical |
 | `token_type` | `bearer` | Always `bearer` |
 | `expires_in` | `43200` | Token TTL in seconds (12 hours) |
 | `scope` | `full_access` | Granted scope |
