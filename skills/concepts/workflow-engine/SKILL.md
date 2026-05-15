@@ -485,6 +485,25 @@ The Workflow Engine (Task) is a **separate web app** that runs independently fro
 
 **IMPORTANT:** These are completely separate queries. `GET /kapps/{kapp}/workflows` returns **only kapp-level** workflows — form-level workflows are invisible. To discover ALL workflows in a kapp, you must iterate each form with `GET /kapps/{kapp}/forms/{form}/workflows`. The `platformItemType` field distinguishes them: `"Kapp"` vs `"Form"`.
 
+### `filter` PUT requires the nested URL on form- and kapp-level workflows
+
+The flat `PUT /app/api/v1/workflows/{id}` endpoint **silently no-ops the `filter` field** for form-level and kapp-level workflows. The PUT returns HTTP 200 with the new filter value echoed in the response body, but:
+
+- The form-nested GET (`/kapps/{kapp}/forms/{form}/workflows/{id}`) still shows the OLD filter
+- The runtime engine continues honoring the OLD filter — no gating change takes effect
+
+Other top-level workflow fields PUT via the flat URL **persist correctly**: `name`, `status`, `event` all reflect in the form-nested GET and (where verifiable) take effect at runtime. The `filter` field is the lone exception.
+
+**Use the nested PUT URL to change a filter:**
+
+- **Form-level workflows** (`platformItemType: "Form"`): `PUT /app/api/v1/kapps/{kapp}/forms/{form}/workflows/{id}` with body `{"filter": "..."}`. Verified end-to-end May 2026 — form-nested GET reflects the new value, and the runtime gates submissions correctly.
+- **Kapp-level workflows** (`platformItemType: "Kapp"`): by analogy, `PUT /app/api/v1/kapps/{kapp}/workflows/{id}` should work. Not directly verified in the BT15 probe; treat as expected-but-unverified until tested.
+- **Space-level workflows** (`platformItemType: "Space"`): the flat URL appears to write the filter persistently (flat GET shows the new value), but runtime enforcement was not verified. Treat as expected.
+
+**Why this matters:** the flat-PUT-200-echoes-the-value pattern looks like success in every script log. There's no error, no warning, no audit signal. The bug only surfaces when later runtime behavior doesn't match what the response body said the filter is — typically wasted debugging cycles after several workflow runs fail to gate correctly.
+
+Verified May 2026 across form-level and kapp-level workflows in BT15 (`workflow-filter-put-context.md`). Vendor Onboarding Sub-build A first surfaced the symptom and recommended `DELETE` + recreate to clear a bad filter — that works but is unnecessarily destructive. The simpler and non-disruptive fix is using the nested PUT URL.
+
 ### Why NOT Task API for Workflow Creation
 
 - `PUT /trees/{title}` with XML content returns HTTP 200 and bumps `versionId` but does NOT persist the XML
