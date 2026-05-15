@@ -481,7 +481,7 @@ The Workflow Engine (Task) is a **separate web app** that runs independently fro
 1. **Create** workflow via Core: `POST /app/api/v1/kapps/{kapp}/forms/{form}/workflows` — this creates the tree AND registers it with the form
 2. **Update** workflow (including uploading tree definition) via Core: `PUT /app/api/v1/workflows/{id}` — use `treeXml` or `treeJson` in the body
 3. **Read** tree details, triggers, runs via Core-proxied Task API: `/app/components/task/app/api/v2/trees/{title}`, `/runs`, `/triggers`
-4. **Delete** workflow via Core: `DELETE /app/api/v1/workflows/{id}`
+4. **Delete** workflow via Core: `DELETE /app/api/v1/kapps/{kapp}/forms/{form}/workflows/{id}` — **form-nested URL required**. The flat `DELETE /app/api/v1/workflows/{id}` returns 404 ("Unable to locate the {id} Workflow"), mirroring the no-standalone-GET rule on form-level workflows. Verified May 2026 during vendor-onboarding Sub-build A.
 
 **IMPORTANT:** These are completely separate queries. `GET /kapps/{kapp}/workflows` returns **only kapp-level** workflows — form-level workflows are invisible. To discover ALL workflows in a kapp, you must iterate each form with `GET /kapps/{kapp}/forms/{form}/workflows`. The `platformItemType` field distinguishes them: `"Kapp"` vs `"Form"`.
 
@@ -735,7 +735,7 @@ GET /triggers?runId={id}&status=Failed&count=true
 → count = 0 = likely succeeded (check if all triggers are Closed)
 ```
 
-For UI display, classify runs by checking their triggers rather than trusting `run.status`.
+For UI display, classify runs by checking their triggers rather than trusting `run.status`. Independently confirmed across three build tests (May 2026): BT11's 12-cell mutability matrix, BT12's PATCH characterization, and Sub-build A's vendor-onboarding E2E. In all cases parent runs reported `status: "Started"` while every task inside had `status: "Closed"` and the actual work had completed successfully. **Poll on task statuses or trigger queries — never on `run.status` — for completion detection.**
 
 ### Tree Type Classification via `sourceGroup`
 
