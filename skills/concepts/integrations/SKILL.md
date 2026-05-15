@@ -723,6 +723,50 @@ if (result.status === 'error') {
 }
 ```
 
+**`status: error` is not the same as the Connection being broken.** The test endpoint pings `baseUrl + testPath`. Two common cases produce `status: error` on a working Connection:
+
+- **Empty `testPath` against a `/app/api/v1/` baseUrl** — the bare Core API root doesn't have a route, so the test GETs `https://.../app/api/v1/` and gets a 404. The Connection's auth and Operations still work fine when invoked. For self-pointing Connections, set `testPath` to a known-good GET endpoint (e.g., `"space"` if `baseUrl` ends at `/app/api/v1/`, or `"/space"` if it doesn't).
+- **External APIs with no health endpoint at root** — same issue. Pick a no-side-effect GET that the system actually serves.
+
+The only definitive Connection-level test is invoking a real Operation. Verified May 2026 against a self-pointing Kinetic Platform Connection: `testPath: ""` returned `status: error` even though every workflow run using the Connection's Operations succeeded with 200 responses.
+
+### `submissions-search` requires form-level indexes on every queried field
+
+The `POST /kapps/{kapp}/forms/{form}/submissions-search` endpoint (a common shape for Operations like "Find Vendor by Email" or "Find Submission by Ticket ID") behaves like KQL: every `values[Field]` referenced in the `q` expression must have a form-level index defined AND built. Operations that use this endpoint return 400 with `"The query requires one of the following index definitions to exist: values[<Field>]"` until the index is in place.
+
+Kapp-level indexes don't satisfy form-level queries — and kapp-level indexes cannot reference `values[<Field>]` paths at all (they 500 with "field was not found" because kapp-level indexes are scoped to common columns like `coreState`, `createdBy`, `type`). The index must be on the form.
+
+Setup sequence when defining a submissions-search Operation:
+
+1. Add the field to the form's `indexDefinitions` array (e.g., `[{name: "values[Contact Email]", parts: [{path: "values[Contact Email]"}], unique: false}]`)
+2. PUT the form — the index appears at `status: "New"`
+3. POST a `backgroundJob` of type `"Build Index"` referencing the index name
+4. Wait for the job to complete (status: `Completed`); the index is now queryable
+
+Verified May 2026 — built a `values[Contact Email]` index on a vendor-onboarding form, then `Find Vendor by Email` Operations against it succeeded. Skipping the index build leaves the Operation broken indefinitely. Cross-reference: `kql-and-indexing/SKILL.md` documents the same rule for direct KQL queries.
+
+### `system_integration_v1` has no `error_handling` lever
+
+Unlike `kinetic_core_api_v1` (which has the `error_handling: Error Message | Raise Error` parameter to soft-catch handler failures), `system_integration_v1` has no equivalent. Two failure modes hit the workflow hard:
+
+- **Output expression throws** when the response shape doesn't match what the expression accesses. If an Operation's outputs include `body.submissions[0]?.id` and the response is a 400 error body with no `submissions` field, the chained `[0]?.id` still throws `Cannot read properties of undefined (reading '0')` at the engine. The node fails with `RuntimeError`, lands in `/errors`, and halts the workflow.
+- **4xx/5xx HTTP responses** from the upstream system also surface as `RuntimeError` unless every output expression is defensive enough to survive the error response shape.
+
+**Defensive output expressions are mandatory.** Use `?.` chains on every nested access, and `??` defaults on every value that might be missing:
+
+```js
+// Brittle — throws on a 400 error body
+"id": {"value": "body.submissions[0].id"}
+
+// Defensive — returns null if anything in the chain is missing
+"id": {"value": "body.submissions?.[0]?.id ?? null"}
+
+// Count with default
+"count": {"value": "body.submissions?.length ?? 0"}
+```
+
+Verified May 2026 during vendor-onboarding Sub-build A: a 400 from `/submissions-search` (pre-index) burned a workflow run when an output expression assumed the `submissions` array existed.
+
 ### Handler Properties Format Mismatch
 
 The GET and PUT endpoints use different formats:
