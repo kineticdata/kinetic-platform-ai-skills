@@ -102,7 +102,7 @@ This metadata can be useful for confirming the token's identity and permissions 
 }
 ```
 
-**Note:** Operation `outputs` is an **object** (keyed by output name), not an array. Each output has a `value` field for mapping expressions. The `config.path` supports `{{variable}}` Mustache template syntax for dynamic paths. The asterisk-suffixed form `{{Param*}}` is one authoring convention; plain `{{Param}}` is the more common form in observed customer operations (zero of 78 operations in the kinetic-portal example space use the asterisk variant). Both substitute the same way — the asterisk is part of the parameter's literal key, not a Mustache flag. See the Mustache-syntax table further down.
+**Note:** Operation `outputs` is an **object** (keyed by output name), not an array. Each output has a `value` field for mapping expressions. The `config.path` supports `{{variable}}` Mustache template syntax for dynamic paths. The asterisk-suffixed form `{{Param*}}` is one authoring convention; plain `{{Param}}` is the more common form in observed operations (the asterisk variant is uncommon). Both substitute the same way — the asterisk is part of the parameter's literal key, not a Mustache flag. See the Mustache-syntax table further down.
 
 **Connection auth types (observed from live API):**
 
@@ -219,7 +219,7 @@ Standard Mustache only — no Kinetic-specific extensions. There is **no** `{{Na
 
 **`children` use plain string expressions, NOT object wrappers.** Top-level outputs are objects (`{"value": "expression"}`), but `children` entries are bare strings (`"Name": "current.name"`). A common mistake is mirroring the top-level shape inside `children` — `{"Name": {"value": "current.name"}}` does not work. Stick to the asymmetry: top-level = objects with `value` key; `children` = string-to-expression map.
 
-**The `*` suffix is part of the parameter's *key*, not a Mustache flag.** If an operation's path or body uses `{{Year*}}`, the parameter's literal key is `Year*` — every caller (workflow node parameters, form `inputMappings`, direct execute payloads) must use that exact key, asterisk included. Passing `Year` without the asterisk against a `{{Year*}}` placeholder causes a silent miss: the placeholder isn't substituted and the request goes out malformed. The reverse holds for plain placeholders — passing `Year*` against a `{{Year}}` placeholder also misses. Match whatever the operation defines. Across the kinetic-portal example space, zero of 78 operations use the asterisk variant; plain `{{Param}}` is the more frequently observed authoring choice. The asterisk convention is one way to surface required-ness in the placeholder text itself — not a platform-level requirement.
+**The `*` suffix is part of the parameter's *key*, not a Mustache flag.** If an operation's path or body uses `{{Year*}}`, the parameter's literal key is `Year*` — every caller (workflow node parameters, form `inputMappings`, direct execute payloads) must use that exact key, asterisk included. Passing `Year` without the asterisk against a `{{Year*}}` placeholder causes a silent miss: the placeholder isn't substituted and the request goes out malformed. The reverse holds for plain placeholders — passing `Year*` against a `{{Year}}` placeholder also misses. Match whatever the operation defines. In observed operations the asterisk variant is uncommon; plain `{{Param}}` is the more frequently observed authoring choice. The asterisk convention is one way to surface required-ness in the placeholder text itself — not a platform-level requirement.
 
 ### Integrator REST API — Detailed Schema
 
@@ -375,23 +375,23 @@ POST /api/execute
 
 Customer Integrator usage varies widely. Some spaces have a handful of connections wired to a single SaaS. Others maintain dozens of connections and hundreds of operations as a shared catalog the React portal and workflows pull from over time. Example and demo spaces don't represent that full range — they tend to wire only what's needed for tutorials or specific patterns. The shapes below name common patterns observed across the example spaces we've examined, with brief notes on what each frequently handles. Treat this section as vocabulary; specific spaces will mix, simplify, or extend as their needs require.
 
-**Connection types in observed traffic.** All 9 connections in the kinetic-portal example space are `http`. The Integrator also supports `postgres` and `mssql` adapters (documented in the detailed schema below); they're available, just not represented in this dataset. When you encounter a non-HTTP connection, the `config.configType` field tells you which adapter is in play.
+**Connection types.** HTTP connections are the most common in practice, but the Integrator also supports `postgres` and `mssql` adapters (documented in the detailed schema below). When you encounter a non-HTTP connection, the `config.configType` field tells you which adapter is in play.
 
-**Auth patterns observed.** Across the 9 kinetic-portal connections:
-- `basic` (5 connections) — username + password, frequently used to wrap API keys for SaaS that accept Basic auth
-- `raw_bearer_token` (2 connections) — a pre-shared bearer token configured on the connection (HubSpot and Litmos in this space)
-- No `auth` block at all (2 connections) — Slack Hooks and a Tenant Deployment endpoint where the auth secret is embedded in the URL itself (Slack incoming-webhook URLs are the archetypal example: `services/T065.../B089.../Jw4Ssjv...`)
+**Common auth patterns:**
+- `basic` — username + password, frequently used to wrap API keys for SaaS that accept Basic auth
+- `raw_bearer_token` — a pre-shared bearer token configured on the connection
+- No `auth` block at all — endpoints where the auth secret is embedded in the URL itself (incoming-webhook URLs are the archetypal example, e.g. Slack's `https://hooks.slack.com/services/<T...>/<B...>/<token>`)
 
-OAuth `client_credentials` and `http_bearer_token` (dynamic-token-fetch) flows are available in the Integrator and documented in the detailed schema below; they weren't represented in this observed space. Spaces vary — pick the auth type that matches what the target system expects.
+OAuth `client_credentials` and `http_bearer_token` (dynamic-token-fetch) flows are also available in the Integrator and documented in the detailed schema below. Spaces vary — pick the auth type that matches what the target system expects.
 
-**The "library ahead of need" pattern.** Of 78 operations in the kinetic-portal example space, **53 (68%) are referenced from no workflow and no form**. That's not a sign of stale code — it's a common authoring pattern: operations get defined as a reusable catalog, callable from workflows / forms / direct `executeIntegration` calls as those callsites are built. Treat unused operations as inventory rather than dead code unless other signals (deletion comments, deprecated naming) suggest otherwise.
+**The "library ahead of need" pattern.** In observed spaces, a large share of defined operations are referenced from no workflow and no form. That's not a sign of stale code — it's a common authoring pattern: operations get defined as a reusable catalog, callable from workflows / forms / direct `executeIntegration` calls as those callsites are built. Treat unused operations as inventory rather than dead code unless other signals (deletion comments, deprecated naming) suggest otherwise.
 
 **Three invocation contexts.** A defined operation can be invoked from any of these:
 1. **Workflows** — via the `system_integration_v1` handler (see `Usage in Workflows` below and `concepts/workflow-xml`).
 2. **Forms** — via field-level `defaultResourceName` / `choicesResourceName`, or page/field event-level `integrationResourceName` (see `Usage in Forms` below).
 3. **Direct `executeIntegration` calls** from React portal code — exposed at the kapp or form level (see `Kapp-Level Integrations` below and `front-end/mutations`).
 
-The same operation can be invoked from any combination of contexts. In the kinetic-portal observation, zero operations were touched from both workflow and form sides — most operations sit firmly on one side or the other — but that's a per-space pattern, not a platform constraint.
+The same operation can be invoked from any combination of contexts. In practice, operations often sit firmly on one side or the other (workflow OR form) rather than both — but that's a per-space tendency, not a platform constraint.
 
 **Webhook-URL-embedded auth.** A common shape for outgoing webhook integrations: the connection has no `auth` block, and the secret is part of the connection's `baseUrl` or the operation's `path`. Slack Hooks (`hooks.slack.com/services/{team}/{channel}/{token}`) is the canonical example. The "secret in URL" approach is fine for fire-and-forget webhooks where the URL itself is the credential, but obviously not for any system that requires auth in headers.
 
@@ -445,7 +445,7 @@ Operations appear on forms via the `integrations` array:
 
 Input mappings can reference field values: `"${values('Department')}"`.
 
-**Form-level `integrations` array is one mechanism; bundle-config aliases are another.** In the kinetic-portal example space, every form's top-level `integrations` array is null/empty — instead, the field-level `defaultResourceName` / `choicesResourceName` strings are aliases defined at the kapp's `bundle.config.integrations` JSX level (the React portal's globals), which maps each name to a real connection+operation pair at runtime. Walking the form JSON alone tells you *which integration names a form references*, not *which operations those names resolve to* — for the latter you need the kapp's bundle config. See `front-end/forms` and `front-end/portal-patterns` for portal-side details. The form-level `integrations` array remains a valid alternative, especially for self-contained forms whose integration use isn't shared across the kapp.
+**Form-level `integrations` array is one mechanism; bundle-config aliases are another.** In some portals, forms leave the top-level `integrations` array null/empty — instead, the field-level `defaultResourceName` / `choicesResourceName` strings are aliases defined at the kapp's `bundle.config.integrations` JSX level (the React portal's globals), which maps each name to a real connection+operation pair at runtime. Walking the form JSON alone tells you *which integration names a form references*, not *which operations those names resolve to* — for the latter you need the kapp's bundle config. See `front-end/forms` and `front-end/portal-patterns` for portal-side details. The form-level `integrations` array remains a valid alternative, especially for self-contained forms whose integration use isn't shared across the kapp.
 
 ### Usage in Workflows
 
@@ -532,7 +532,7 @@ K('bridgedResource[People]').load({
 - Target system is reached through a non-REST adapter (SQL, LDAP, custom databases, Java SDK)
 - A bridge for the target system already exists in your space and is the established pattern
 - Form-side dropdown population would benefit from a stable model layer with declared attributes and qualifications
-- Common bridges observed: `kinetic-platform` (internal data — Users, Teams, datastore Submissions), SQL adapters, LDAP, HubSpot via the Adhoc structure
+- Common bridge types: `kinetic-platform` (internal data — Users, Teams, datastore Submissions), SQL adapters, LDAP, and HTTP/REST sources via the Adhoc structure
 
 ---
 
@@ -743,7 +743,7 @@ Setup sequence when defining a submissions-search Operation:
 3. POST a `backgroundJob` of type `"Build Index"` referencing the index name
 4. Wait for the job to complete (status: `Completed`); the index is now queryable
 
-Verified May 2026 — built a `values[Contact Email]` index on a vendor-onboarding form, then `Find Vendor by Email` Operations against it succeeded. Skipping the index build leaves the Operation broken indefinitely. Cross-reference: `kql-and-indexing/SKILL.md` documents the same rule for direct KQL queries.
+Verified May 2026 — built a `values[Contact Email]` index on a form, then `Find by Email` Operations against it succeeded. Skipping the index build leaves the Operation broken indefinitely. Cross-reference: `kql-and-indexing/SKILL.md` documents the same rule for direct KQL queries.
 
 ### `system_integration_v1` has no `error_handling` lever
 
@@ -765,7 +765,7 @@ Unlike `kinetic_core_api_v1` (which has the `error_handling: Error Message | Rai
 "count": {"value": "body.submissions?.length ?? 0"}
 ```
 
-Verified May 2026 during vendor-onboarding Sub-build A: a 400 from `/submissions-search` (pre-index) burned a workflow run when an output expression assumed the `submissions` array existed.
+Observed: a 400 from `/submissions-search` (pre-index) burned a workflow run when an output expression assumed the `submissions` array existed.
 
 ### Handler Properties Format Mismatch
 

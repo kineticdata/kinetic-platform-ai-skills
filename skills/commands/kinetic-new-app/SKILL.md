@@ -20,12 +20,12 @@ Before scaffolding, read:
 Ask the user to confirm (or propose based on description):
 - **Kapp slug** (dash-separated, lowercase) — cannot change after creation
 - **Form definitions** — name, slug, fields (with types), which fields need indexes
-- **User-facing or admin?** → `apps/<name>/` vs `admin_apps/<name>/`
+- **User-facing or admin?** → which area of your portal it belongs in (e.g. a user-facing app directory vs an admin app directory)
 - **Seed data needed?**
 
 ## Step 3: Create Files
 
-Generate these files in `apps/<name>/` (or `admin_apps/<name>/`):
+Generate these files in your portal's app directory (conventionally one folder per app):
 
 ### `setup.mjs`
 - Creates kapp (handle 409 AND `uniqueness_violation` in 400 response)
@@ -51,26 +51,15 @@ Generate these files in `apps/<name>/` (or `admin_apps/<name>/`):
 
 ### `index.html`
 - Single HTML file, all CSS/JS inline — NO npm, NO build step
-- **Topbar pattern** (required for base server injection):
-  - Class: `.topbar` (NOT `.top-bar`)
-  - Contains: `<div class="logo">`, `<div class="spacer">`, `<div class="user-info">`
-  - Logout: `onclick="doLogout()"` (NOT `logout()`)
-- **User-info pattern:** `<strong id="user-display">` + `<button class="logout-btn">`
-- Follow branding.md color scheme and component styles
+- **Topbar / shared chrome** — if your portal injects shared chrome (topbar, logout, user display), match its expected markup contract: the wrapper class, logout handler name, and user-display element id your portal looks for
+- Follow your project's branding/style guide for colors and component styles
 - Client-side pagination: max 25 records per fetch, Prev/Next with pageToken
 - No `collectAll()` — show one page at a time
 - Core API submission lists have no total count — show "Page N" not "Page N of M"
 
-## Step 4: Register in Base Server
+## Step 4: Register in Your Portal (if applicable)
 
-The app needs registration in `apps/base/server.mjs` (or `admin_apps/base/server.mjs`):
-
-1. **APP_REGISTRY** — add entry with `name`, `slug`, `description`
-2. **APPS array** — add entry for the launcher (with `picker: false` unless it's a meta-app)
-3. **APP_ABOUT** — add description for the About modal
-4. **API routes** (if app has custom server endpoints) — add `/api/<slug>/*` route handler
-
-After registration, remind user: **restart port 3011** (or 4000 for admin) — `lsof -ti:3011 | xargs kill; cd apps/base && node server.mjs &`
+If your portal uses a central app registry or launcher, register the new app there per your project's conventions — typically a registry entry (name, slug, description), a launcher entry, an "About" description, and any custom `/api/<slug>/*` route handlers the app needs. Then restart your dev server.
 
 ## Step 5: Provision on Server
 

@@ -18,8 +18,8 @@ Connections/Operations are exposed on forms via the `integrations` array (replac
   "integrations": [
     {
       "name": "Departments",
-      "connectionId": "1415539c-bb98-48bb-ad33-11be25189ad0",
-      "operationId": "7750b186-952a-4b43-bb85-34913951e5fe",
+      "connectionId": "11111111-1111-1111-1111-111111111111",
+      "operationId": "22222222-2222-2222-2222-222222222222",
       "inputMappings": {
         "Include": "attributesMap",
         "Limit [integer]": "1000",
@@ -29,8 +29,8 @@ Connections/Operations are exposed on forms via the `integrations` array (replac
     },
     {
       "name": "Get Team",
-      "connectionId": "1415539c-bb98-48bb-ad33-11be25189ad0",
-      "operationId": "e20b8b5d-da67-410b-a527-bd3ae1cfe07b",
+      "connectionId": "11111111-1111-1111-1111-111111111111",
+      "operationId": "33333333-3333-3333-3333-333333333333",
       "inputMappings": {
         "Slug*": "${values('Department')}",
         "Include": "attributesMap"
@@ -271,7 +271,7 @@ const inputs = document.querySelectorAll('[name="' + fieldName + '"]');
 const wrap = inputs[0] && inputs[0].closest('section.mt-3, .form-group, [data-element-name]');
 ```
 
-Verified June 2026 during GLE SAAR Phase 5: the highlight-on-change feature on the modification form silently failed for every Type of Access / Clearance / Classification field because `K().element()` returned null and the `.field-modified` CSS class never landed.
+Observed on a large modification form: a highlight-on-change feature silently failed for several fields because `K().element()` returned null and the `.field-modified` CSS class never landed.
 
 **`K('field[X]').value([...])` on a checkbox group sets internal K state but does NOT sync the DOM `checked` property of the underlying inputs.** Symptom: `K().value()` immediately afterward returns the new array correctly, but visually no boxes appear checked, and any DOM-level "is this checkbox checked?" inspection sees the old state. The mismatch persists until the user clicks one of the inputs.
 
@@ -342,7 +342,7 @@ The companion bug is wiring high-frequency event listeners that re-evaluate the 
 
 4. **Cache K() lookups** if you'll reference the same field multiple times in a tight loop — `const f = K('field[X]'); f.value(); f.value('Y'); f.on('change', ...);`. K()'s selector machinery walks scopes on every call.
 
-Verified June 2026: a 60-field modification-form Load event populating 4 sibling stage sections froze the GLE SAAR portal tab badly enough that automated screenshots timed out at 30 s. Switched to native setters + debounced recompute; renderer stayed responsive.
+Observed: a Load event populating dozens of fields across several sibling sections froze the portal tab badly enough that automated screenshots timed out (~30 s). Switching to native setters + debounced recompute kept the renderer responsive.
 
 ### Form Methods
 
@@ -552,14 +552,14 @@ Forms can define named integrations that connect to Connection/Operation pairs. 
   "integrations": [
     {
       "name": "States",
-      "connectionId": "1415539c-bb98-48bb-ad33-11be25189ad0",
-      "operationId": "c3453382-4573-4f9f-a487-714f085b6ef5",
+      "connectionId": "11111111-1111-1111-1111-111111111111",
+      "operationId": "44444444-4444-4444-4444-444444444444",
       "inputMappings": {}
     },
     {
       "name": "Counties by State",
-      "connectionId": "1415539c-bb98-48bb-ad33-11be25189ad0",
-      "operationId": "c479c95f-8042-45fa-8cb2-dfde604634e4",
+      "connectionId": "11111111-1111-1111-1111-111111111111",
+      "operationId": "55555555-5555-5555-5555-555555555555",
       "inputMappings": {
         "State Abbr": "${values('State')}"
       }

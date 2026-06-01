@@ -19,10 +19,10 @@ The user provides a kapp slug and form slug. Audit the form's current indexes, i
 
 Search the codebase for queries against this form:
 
-- Grep for the form slug in `apps/`, `admin_apps/`, and server files
+- Grep for the form slug across your project's app/source directories and server files
 - Look for `q=` query parameters, `values[` patterns, KQL strings
 - Look for `list_form_submissions` or `search_submissions` calls with this form
-- Check `seed.mjs`, `server.mjs`, `index.html` files in the app directory
+- Check seed scripts, server files, and HTML/JS in the relevant app directory
 
 ## Step 3: Analyze Index Coverage
 

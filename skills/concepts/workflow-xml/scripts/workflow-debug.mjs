@@ -13,9 +13,9 @@ import { parseArgs } from "node:util";
 
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
-const KINETIC = process.env.KINETIC_URL || "https://phoenix.kinetics.com";
-const USER = process.env.KINETIC_USER || "john";
-const PASS = process.env.KINETIC_PASS || "john1";
+const KINETIC = process.env.KINETIC_URL || "https://your-space.kinops.io";
+const USER = process.env.KINETIC_USER || "your-username";
+const PASS = process.env.KINETIC_PASS || "your-password";
 const AUTH = "Basic " + Buffer.from(`${USER}:${PASS}`).toString("base64");
 
 const { values: args, positionals } = parseArgs({

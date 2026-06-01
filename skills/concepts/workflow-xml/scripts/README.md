@@ -72,9 +72,9 @@ node skills/platform/workflow-xml/scripts/workflow-debug.mjs --watch   # live-ta
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `KINETIC_URL` | `https://phoenix.kinetics.com` | Target space URL |
-| `KINETIC_USER` | `john` | Basic auth username |
-| `KINETIC_PASS` | `john1` | Basic auth password |
+| `KINETIC_URL` | `https://your-space.kinops.io` | Target space URL |
+| `KINETIC_USER` | `your-username` | Basic auth username |
+| `KINETIC_PASS` | `your-password` | Basic auth password |
 | `KINETIC_SKIP_VALIDATION` | unset | Set to `1` to bypass the hook for a single command (rare, intentional). |
 
 ## Bypass a blocked PUT (rare)

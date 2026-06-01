@@ -180,7 +180,7 @@ curl -s -X POST \
 
 Save the operation `id` — it is referenced in workflow tasks and form integration configs.
 
-**You don't need to invoke an operation immediately to be useful.** It's a common authoring pattern to define a catalog of operations against a connection ahead of need — workflows or React portal code wire them up over time. Across the kinetic-portal example space, 53 of 78 operations were referenced from no workflow and no form at the time of the snapshot; that's normal "library ahead of need" rather than dead code. Don't feel obliged to call every operation you define from the recipe — a useful catalog often outpaces the workflows that consume it.
+**You don't need to invoke an operation immediately to be useful.** It's a common authoring pattern to define a catalog of operations against a connection ahead of need — workflows or React portal code wire them up over time. In practice, many defined operations go unreferenced by any workflow or form at a given time; that's normal "library ahead of need" rather than dead code. Don't feel obliged to call every operation you define from the recipe — a useful catalog often outpaces the workflows that consume it.
 
 ### Common Operation Patterns
 

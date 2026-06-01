@@ -39,7 +39,7 @@ Create a generator script at `reports/generate-{topic}.mjs` that:
 import { createReport } from './report-style.mjs';
 
 const { doc, style, colors } = createReport('Report Title', 'reports/output.pdf', {
-  author: 'John Sundberg',
+  author: '<Your Name>',
   subject: 'Brief description'
 });
 

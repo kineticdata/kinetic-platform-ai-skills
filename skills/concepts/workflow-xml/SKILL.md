@@ -48,7 +48,7 @@ Bypass only via `KINETIC_SKIP_VALIDATION=1` for rare intentional cases.
 
 **Base URL pattern:**
 ```
-https://<space>.kinopsdev.io/app/components/task/app/api/v2
+https://<space>.kinops.io/app/components/task/app/api/v2
 ```
 
 **Authentication:** HTTP Basic Auth with Kinetic Platform credentials.
@@ -170,8 +170,8 @@ The `<dependents>` section defines execution flow — which tasks run next:
     <task label="" type="Complete" value="">next_task_id</task>
 
     <!-- Conditional: only if ERB expression is truthy -->
-    <task label="Not a kinops user" type="Complete"
-          value="@user['Username'].match(/.*@kinops.io$/).nil?">
+    <task label="Not an internal user" type="Complete"
+          value="@user['Username'].match(/.*@example.com$/).nil?">
         routine_kinetic_user_password_reset_token_create_v1_7
     </task>
 </dependents>
@@ -198,7 +198,7 @@ The `<dependents>` section defines execution flow — which tasks run next:
 @results['API']['Handler Error Message'].to_s.empty?
 
 # Regex match (nil check)
-@user['Username'].match(/.*@kinops.io$/).nil?
+@user['Username'].match(/.*@example.com$/).nil?
 
 # Hash key existence
 @user_profile_attributes.has_key?('Guided Tour')
@@ -209,7 +209,7 @@ The `<dependents>` section defines execution flow — which tasks run next:
 
 #### Path Selection via Multiple Complete Connectors
 
-A common branching idiom: give a single source node multiple outgoing Complete connectors, each with a Ruby `value` expression that selects exactly one path. Distinct from KSL filters (which gate whether a workflow fires at all), connector value expressions select WHICH downstream branch runs after the source node completes. Observed examples from the kinetic-portal space:
+A common branching idiom: give a single source node multiple outgoing Complete connectors, each with a Ruby `value` expression that selects exactly one path. Distinct from KSL filters (which gate whether a workflow fires at all), connector value expressions select WHICH downstream branch runs after the source node completes. Common examples:
 
 ```xml
 <!-- API node with three mutually-exclusive Complete connectors -->
@@ -584,7 +584,7 @@ The same applies to `Response Code` results from `system_integration_v1` and oth
 
 **`path` is appended to the `api_location` info-value, not used standalone.** The handler builds the request URL as `api_location + path`. If `api_location` is misconfigured (blank, missing scheme, etc.), the URL falls apart and the handler fails with errors like `NoMethodError: undefined method 'include?' for nil:NilClass at addr_port`. Always confirm `api_location` is set to the full API base (`https://<host>/app/api/v1`) before debugging path-level issues.
 
-**Usernames containing `@` need to be URL-encoded in `path`.** Email-style usernames (e.g., `casey.armstrong@kineticdata.com`) appearing in the path — common when calling user-scoped endpoints like `/users/{username}` — must be encoded with `URI.encode_www_form_component`, otherwise the `@` is parsed as a userinfo separator and the request fails. ERB pattern: `<%= "/app/api/v1/users/" + URI.encode_www_form_component(@values['Requestor Username']) %>`.
+**Usernames containing `@` need to be URL-encoded in `path`.** Email-style usernames (e.g., `jane.doe@example.com`) appearing in the path — common when calling user-scoped endpoints like `/users/{username}` — must be encoded with `URI.encode_www_form_component`, otherwise the `@` is parsed as a userinfo separator and the request fails. ERB pattern: `<%= "/app/api/v1/users/" + URI.encode_www_form_component(@values['Requestor Username']) %>`.
 
 **`coreState` is not enforced on submission writes.** `PATCH /submissions/{id}` and `PUT /submissions/{id}` issued through this handler will mutate `values` on a Closed submission with HTTP 200, no error, and no Handler Error Message. If your workflow depends on Closed records being immutable, layer that protection in via a security policy or a connector-value check against `coreState` before the API node — the handler will not block it. See `architectural-patterns/SKILL.md` "Closure Is Not a Write Lock" for the full pattern.
 
@@ -713,7 +713,7 @@ EXAMPLE: start, utilities_echo_v1_2, system_wait_v1_3, smtp_email_send_v1_4
 
 The `lastID` (in the tree's top-level metadata) should equal the highest suffix used.
 
-**The Start node is the one structural exception.** Its id is the literal string `"start"`, not the canonical `{definition_id}_{N}` form. Every working tree on the platform — Console-built or programmatically generated — uses `id: "start"` for the `system_start_v1` node. The engine looks up the tree's entry point by exact match on `"start"`. Without that literal id, the initial `BranchHeadTrigger` fails with `java.lang.RuntimeException`, surfacing as an `Unidentified Error` in `/errors` (no `relatedItem2Id` on the error record), and the run spawns zero tasks. Verified May 2026 (vendor-risk-test rebuild): three submissions in a row failed identically with `system_start_v1_1` as the Start id; switching to literal `"start"` and updating connector references resolved cleanly. The canonical `{definition_id}_{N}` rule applies to every other node in the tree.
+**The Start node is the one structural exception.** Its id is the literal string `"start"`, not the canonical `{definition_id}_{N}` form. Every working tree on the platform — Console-built or programmatically generated — uses `id: "start"` for the `system_start_v1` node. The engine looks up the tree's entry point by exact match on `"start"`. Without that literal id, the initial `BranchHeadTrigger` fails with `java.lang.RuntimeException`, surfacing as an `Unidentified Error` in `/errors` (no `relatedItem2Id` on the error record), and the run spawns zero tasks. Observed: three submissions in a row failed identically with `system_start_v1_1` as the Start id; switching to literal `"start"` and updating connector references resolved cleanly. The canonical `{definition_id}_{N}` rule applies to every other node in the tree.
 
 Two failure modes to keep in mind:
 
@@ -721,7 +721,7 @@ Two failure modes to keep in mind:
 
 **Non-canonical IDs and alpha suffixes** — IDs that don't follow `{definition_id}_{N}` (e.g., custom shorthand like `n1`, `n2`, `n13a`, `n13b`), or that use alpha suffixes for branch disambiguation (`n14a`/`n14b` to distinguish parallel branches' close nodes), break the Console workflow builder. The builder strips trailing alpha characters and dedupes by the resulting numeric key — `n13a` and `n13b` both reduce to `n13`, and only one renders. **The runtime engine does NOT have this issue**: the engine processes treeJson IDs as opaque strings and runs all nodes correctly. A tree can pass behavioral tests end-to-end while showing only a fraction of its nodes when opened in the Console.
 
-(Verified May 2026, vendor-risk-test: an 18-node workflow with non-canonical IDs `n1`, `n2`, `n13a`, `n13b`, `n14a`, `n14b`, etc. ran all 18 nodes correctly across two test paths; the Console builder displayed 1 node — the last `n14b` survived the dedupe.)
+(Observed: an 18-node workflow with non-canonical IDs `n1`, `n2`, `n13a`, `n13b`, `n14a`, `n14b`, etc. ran all 18 nodes correctly across two test paths; the Console builder displayed 1 node — the last `n14b` survived the dedupe.)
 
 **Leading zeros in numeric suffixes are runtime-tolerated but Console-hostile.** `utilities_echo_v1_01`, `_001`, and `_0001` all PUT 200 and execute cleanly through the engine — the runtime treats node IDs as opaque strings, and earlier May 2026 testing verified this on simple Start → Echo flows. However, **the Kinetic Console workflow builder normalizes leading-zero suffixes to canonical form on save** (`_01` → `_1`). If any other node in the tree shares that canonical suffix (e.g., `routine_kinetic_submission_update_v1_1` coexisting with `utilities_echo_v1_01`), normalization triggers the numeric-suffix collision above and one of the colliding nodes is silently dropped during the Console's re-serialization. The dropped node's incoming and outgoing connectors may get merged into the surviving node, producing a tree that PUTs/GETs clean but executes broken paths.
 

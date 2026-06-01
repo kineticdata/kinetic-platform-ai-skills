@@ -68,7 +68,7 @@ Both require **attribute definitions** to be created under Definitions > Attribu
 The `q` parameter supports KQL on the users endpoint:
 
 ```
-GET /users?q=username="james.davies@kineticdata.com"
+GET /users?q=username="jane.doe@example.com"
 GET /users?q=username =* "james"
 ```
 

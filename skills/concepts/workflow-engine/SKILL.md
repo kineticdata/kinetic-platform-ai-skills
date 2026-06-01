@@ -108,21 +108,21 @@ Diagnostic technique: add a `utilities_echo_v1` (Echo) node temporarily, with `i
 
 ```json
 {
-  "name": "Retrieve Original SAAR",
+  "name": "Retrieve Original Submission",
   "definitionId": "routine_kinetic_submission_retrieve_v1",
   "defers": true,            // ← REQUIRED to receive Values JSON / Form Slug / etc.
   "deferrable": true,
   "parameters": [
-    { "id": "Id", "value": "<%= @values['Original SAAR Submission Id'] %>" }
+    { "id": "Id", "value": "<%= @values['Original Submission Id'] %>" }
   ]
 }
 ```
 
 Then downstream nodes can access the routine's outputs:
 ```ruby
-@results['Retrieve Original SAAR']['Values JSON']    # JSON string of submission's values
-@results['Retrieve Original SAAR']['Form Slug']      # which form the submission belongs to
-@results['Retrieve Original SAAR']['Exists']         # whether the submission was found
+@results['Retrieve Original Submission']['Values JSON']    # JSON string of submission's values
+@results['Retrieve Original Submission']['Form Slug']      # which form the submission belongs to
+@results['Retrieve Original Submission']['Exists']         # whether the submission was found
 ```
 
 If `defers: false` is used on a routine call, the downstream nodes see empty / meta-only results — leading to silent failures (integration calls with empty params, JSON.parse on empty strings, etc.). Common naming pattern for the routine node `id` field: `<definitionId>_<num>` (e.g., `routine_kinetic_submission_retrieve_v1_25`). The numeric suffix can be any unique value within the tree but the convention is to increment from `lastId`.
@@ -150,7 +150,7 @@ If `defers: false` is used on a routine call, the downstream nodes see empty / m
    tmpl_subs = (tmpl_response['submissions'] || [])
    tmpl_body = tmpl_subs.length > 0 ? (tmpl_subs[0]['values'] || {})['Body'].to_s : ''
    tmpl_body = tmpl_body.gsub('{{Requestor Name}}', @values['Requested For Name'].to_s)
-   tmpl_body = tmpl_body.gsub('{{SAAR URL}}', @space_attributes['Web Server Url'] + '/kapps/.../' + @submission['Id'])
+   tmpl_body = tmpl_body.gsub('{{Submission URL}}', @space_attributes['Web Server Url'] + '/kapps/.../' + @submission['Id'])
    tmpl_body_html = tmpl_body.gsub("\n", '<br>')
    %><%= tmpl_body_html %>
    ```
@@ -183,11 +183,11 @@ When `Stages Modified = "Part III"`, the supposedly "Part II" branch ALSO fires.
 @values['Stages Modified'].to_s.split(/,\s*/).include?('Part II')
 ```
 
-Verified June 2026 during the GLE SAAR Phase 6 modification-workflow validation: every fork-point connector matched stage names by `String#include?` and routed `Stages Modified='Part III'` through the Part II queue task. Fix: 14 connector conditions patched in `scripts/fix-stages-modified-substring-bug.js`.
+Observed in a multi-stage modification workflow: fork-point connectors matched stage names with `String#include?`, so `Stages Modified='Part III'` also routed through the `Part II` branch. Fix: change the connector conditions to the split + `Array#include?` form shown above.
 
 **`routine_merge_submission_and_descendant_values` does NOT reliably propagate every descendant value onto the parent submission's `@values`.** Despite the name, observed behavior is selective: some keys present on the descendant don't show up on the parent post-merge, especially when the parent form has the field defined but no prior value was ever written to it. Symptom: a connector or downstream node reads `@values['Clearance Level']` immediately after `Merge Part II` and gets empty string, even though the descendant Part II submission has `Clearance Level = "SECRET"`.
 
-**Always read merged-stage values from `@results['<Queue Task Node>']['Fields JSON']` instead of trusting `@values`.** This is the same defensive pattern already used by the project's Record Decision connectors:
+**Always read merged-stage values from `@results['<Queue Task Node>']['Fields JSON']` instead of trusting `@values`.** This is a defensive pattern worth applying wherever a merged-stage value is read downstream:
 
 ```ruby
 # BAD — @values['Clearance Level'] may be empty after Merge Part II even though Part II set SECRET
@@ -197,13 +197,13 @@ Verified June 2026 during the GLE SAAR Phase 6 modification-workflow validation:
 (JSON.parse(@results['Part II']['Fields JSON']) rescue {})['Clearance Level'].to_s.upcase == 'NONE'
 ```
 
-Verified June 2026: in the parent SAAR workflow the Phase 4 clearance gate was reading `@values` and always evaluating as `!= 'NONE'` regardless of what Part II actually picked. Fix in `scripts/fix-parent-workflow-clearance-source.js`. The modification workflow's `@values['Clearance Level']` works correctly there because the modification form has the field directly — so the read source depends on whether the field is owned by the parent form or by a descendant.
+Observed: in a parent workflow a clearance gate read `@values['Clearance Level']` and always evaluated as `!= 'NONE'` regardless of what the descendant `Part II` submission actually picked. In the descendant form's own workflow `@values['Clearance Level']` reads correctly because that form owns the field — so the read source depends on whether the field is owned by the parent form or by a descendant.
 
 **Editing a Ruby hash literal embedded in a `System Input`-style ERB parameter is fragile — respect the trailing comma on the prior entry.** The most common bug when programmatically injecting a new key/value into something like:
 
 ```erb
 <%= {
-  'Endorsement Source Type' => 'Original SAAR',
+  'Endorsement Source Type' => 'Original Submission',
   ...
   'Request Justification' => @values['Justification for Access'].to_s
 }.to_json %>
@@ -221,7 +221,7 @@ si.value = si.value.replace(
 );
 ```
 
-Verified June 2026 in both the parent SAAR and modification workflows — same bug, different whitespace shape, fixed by `scripts/fix-clearance-system-input-syntax.js`.
+Observed across parent and descendant workflows — same bug, different whitespace shape.
 
 **When you add/remove/modify a workflow connector, also update the source node's `dependents.task` array.** The treeJson stores routing information in TWO places:
 
@@ -339,7 +339,7 @@ This dumps variable names, types, and hash keys. Check the Echo node's `output` 
 <%= @results.fetch('Some Node', {}).fetch('Some Field', nil) %>
 ```
 
-Verified May 2026 (vendor-risk-test): `@results.dig('Create Compliance Approval', 'Decision') || @results.dig('Create Procurement Approval', 'Decision') || ''` in an echo node's `input` parameter raised `UnknownVariableError`. Switching to `@results.fetch('Create Compliance Approval', {}).fetch('Decision', nil) || ...` resolved.
+Verified May 2026: `@results.dig('Create Compliance Approval', 'Decision') || @results.dig('Create Procurement Approval', 'Decision') || ''` in an echo node's `input` parameter raised `UnknownVariableError`. Switching to `@results.fetch('Create Compliance Approval', {}).fetch('Decision', nil) || ...` resolved.
 
 **Note:** `@values['FieldName']` does NOT raise IndexError for missing fields — all form fields are present in `@values` (with empty string for unfilled fields). The `.fetch` pattern is needed for `@request_query_params`, `@request_headers`, and other hashes where keys are not guaranteed.
 
@@ -732,7 +732,7 @@ The Workflow Engine (Task) is a **separate web app** that runs independently fro
 1. **Create** workflow via Core: `POST /app/api/v1/kapps/{kapp}/forms/{form}/workflows` — this creates the tree AND registers it with the form
 2. **Update** workflow (including uploading tree definition) via Core: `PUT /app/api/v1/workflows/{id}` — use `treeXml` or `treeJson` in the body
 3. **Read** tree details, triggers, runs via Core-proxied Task API: `/app/components/task/app/api/v2/trees/{title}`, `/runs`, `/triggers`
-4. **Delete** workflow via Core: `DELETE /app/api/v1/kapps/{kapp}/forms/{form}/workflows/{id}` — **form-nested URL required**. The flat `DELETE /app/api/v1/workflows/{id}` returns 404 ("Unable to locate the {id} Workflow"), mirroring the no-standalone-GET rule on form-level workflows. Verified May 2026 during vendor-onboarding Sub-build A.
+4. **Delete** workflow via Core: `DELETE /app/api/v1/kapps/{kapp}/forms/{form}/workflows/{id}` — **form-nested URL required**. The flat `DELETE /app/api/v1/workflows/{id}` returns 404 ("Unable to locate the {id} Workflow"), mirroring the no-standalone-GET rule on form-level workflows. Verified May 2026.
 
 **IMPORTANT:** These are completely separate queries. `GET /kapps/{kapp}/workflows` returns **only kapp-level** workflows — form-level workflows are invisible. To discover ALL workflows in a kapp, you must iterate each form with `GET /kapps/{kapp}/forms/{form}/workflows`. The `platformItemType` field distinguishes them: `"Kapp"` vs `"Form"`.
 
@@ -748,12 +748,12 @@ Other top-level workflow fields PUT via the flat URL **persist correctly**: `nam
 **Use the nested PUT URL to change a filter:**
 
 - **Form-level workflows** (`platformItemType: "Form"`): `PUT /app/api/v1/kapps/{kapp}/forms/{form}/workflows/{id}` with body `{"filter": "..."}`. Verified end-to-end May 2026 — form-nested GET reflects the new value, and the runtime gates submissions correctly.
-- **Kapp-level workflows** (`platformItemType: "Kapp"`): by analogy, `PUT /app/api/v1/kapps/{kapp}/workflows/{id}` should work. Not directly verified in the BT15 probe; treat as expected-but-unverified until tested.
+- **Kapp-level workflows** (`platformItemType: "Kapp"`): by analogy, `PUT /app/api/v1/kapps/{kapp}/workflows/{id}` should work. Not directly verified; treat as expected-but-unverified until tested.
 - **Space-level workflows** (`platformItemType: "Space"`): the flat URL appears to write the filter persistently (flat GET shows the new value), but runtime enforcement was not verified. Treat as expected.
 
 **Why this matters:** the flat-PUT-200-echoes-the-value pattern looks like success in every script log. There's no error, no warning, no audit signal. The bug only surfaces when later runtime behavior doesn't match what the response body said the filter is — typically wasted debugging cycles after several workflow runs fail to gate correctly.
 
-Verified May 2026 across form-level and kapp-level workflows in BT15 (`workflow-filter-put-context.md`). Vendor Onboarding Sub-build A first surfaced the symptom and recommended `DELETE` + recreate to clear a bad filter — that works but is unnecessarily destructive. The simpler and non-disruptive fix is using the nested PUT URL.
+Verified May 2026 across form-level and kapp-level workflows. An earlier approach used `DELETE` + recreate to clear a bad filter — that works but is unnecessarily destructive; the simpler and non-disruptive fix is using the nested PUT URL.
 
 ### Why NOT Task API for Workflow Creation
 
@@ -1005,7 +1005,7 @@ GET /triggers?runId={id}&status=Failed&count=true
 → count = 0 = likely succeeded (check if all triggers are Closed)
 ```
 
-For UI display, classify runs by checking their triggers rather than trusting `run.status`. Independently confirmed across three build tests (May 2026): BT11's 12-cell mutability matrix, BT12's PATCH characterization, and Sub-build A's vendor-onboarding E2E. In all cases parent runs reported `status: "Started"` while every task inside had `status: "Closed"` and the actual work had completed successfully. **Poll on task statuses or trigger queries — never on `run.status` — for completion detection.**
+For UI display, classify runs by checking their triggers rather than trusting `run.status`. Independently confirmed across multiple build tests (May 2026): in all cases parent runs reported `status: "Started"` while every task inside had `status: "Closed"` and the actual work had completed successfully. **Poll on task statuses or trigger queries — never on `run.status` — for completion detection.**
 
 ### Tree Type Classification via `sourceGroup`
 
