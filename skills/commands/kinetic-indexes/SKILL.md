@@ -9,11 +9,15 @@ user-invocable: true
 
 The user provides a kapp slug and form slug. Audit the form's current indexes, identify gaps, and fix them.
 
-## Step 1: Connect and Read Current State
+> **Tooling:** these steps use the raw Core REST API (see the KQL & Indexing and API Basics skills for endpoints and auth). If you have an MCP server that wraps these calls, use its equivalent tools — but the raw API is the source of truth.
 
-1. Connect to the Kinetic Platform using `mcp__kinetic-platform__connect`
-2. Get the form details: `mcp__kinetic-platform__get_form` with `include=indexDefinitions,details`
-3. Note the current index definitions
+See the **KQL & Indexing** and **API Basics** platform skills for the full endpoint, auth, and index-management reference.
+
+## Step 1: Read Current State
+
+1. Get the form details, including its current index definitions:
+   `GET /app/api/v1/kapps/{kapp}/forms/{form}?include=fields,indexDefinitions,attributesMap`
+2. Note the current index definitions (each has a `parts` array of strings, e.g. `{"parts":["values[Status]"]}`)
 
 ## Step 2: Find KQL Queries in Codebase
 
@@ -21,7 +25,7 @@ Search the codebase for queries against this form:
 
 - Grep for the form slug across your project's app/source directories and server files
 - Look for `q=` query parameters, `values[` patterns, KQL strings
-- Look for `list_form_submissions` or `search_submissions` calls with this form
+- Look for submission list/search calls against this form (e.g. `GET /app/api/v1/kapps/{kapp}/forms/{form}/submissions?q=...`)
 - Check seed scripts, server files, and HTML/JS in the relevant app directory
 
 ## Step 3: Analyze Index Coverage
@@ -63,17 +67,20 @@ Actions Needed:
 
 ## Step 5: Fix (if user approves)
 
-Generate or update `build_indexes.mjs` with:
+Apply the changes via the raw Core REST API:
 
-1. **GET current indexes** (preserve all existing, especially the 5 system indexes)
-2. **PUT updated index definitions** (add missing ones)
-3. **POST backgroundJobs** to build each new index
-4. **Poll** until all indexes show status "Built" (not "New")
+1. **GET current index definitions** (preserve all existing, especially the 5 system indexes):
+   `GET /app/api/v1/kapps/{kapp}/forms/{form}?include=fields,indexDefinitions,attributesMap`
+2. **PUT updated index definitions** (add the missing ones to the existing array):
+   `PUT /app/api/v1/kapps/{kapp}/forms/{form}` with body `{"indexDefinitions":[...]}`. Each definition's `parts` is an array of strings, e.g. `{"parts":["values[Status]","values[Priority]"]}`.
+3. **POST a background job** to build the new indexes:
+   `POST /app/api/v1/kapps/{kapp}/forms/{form}/backgroundJobs` with body `{"type":"Build Index","content":{"indexes":[...]}}`
+4. **Poll** the form's index status (re-GET the form with `include=indexDefinitions`) until each new index shows status "Built" (not "New")
 
 ### Critical Rules
 
 - **Always preserve 5 system indexes:** closedBy, createdBy, handle, submittedBy, updatedBy
-- Kinetic **auto-names compound indexes** by joining parts: `"values[Status],values[Priority]"`
+- Kinetic **auto-names compound indexes** by joining parts with commas: `"values[Status],values[Priority]"`
 - New indexes return **empty results** (not errors) until built — easy to miss
-- Build via: `POST /forms/{form}/backgroundJobs` with `{"type":"Build Index","content":{"indexes":["values[Field]"]}}`
-- Poll: `GET /forms/{form}/backgroundJobs/{id}` until status is "Built"
+- Build via: `POST /app/api/v1/kapps/{kapp}/forms/{form}/backgroundJobs` with `{"type":"Build Index","content":{"indexes":["values[Field]"]}}`
+- Poll by re-reading the form (`GET .../forms/{form}?include=indexDefinitions`) until each new index's status is "Built"

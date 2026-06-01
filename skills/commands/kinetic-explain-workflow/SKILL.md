@@ -9,25 +9,29 @@ user-invocable: true
 
 The user wants to understand what a Kinetic workflow does. They provide a tree title or partial name.
 
+> **Tooling:** these steps use the raw Task REST API (see the Workflow XML and Workflow Engine skills for endpoints and auth). If you have an MCP server that wraps these calls, use its equivalent tools — but the raw API is the source of truth.
+
+For tree structure, ERB, and connector-type details, see the `concepts/workflow-xml` and `concepts/workflow-engine` skills.
+
 ## Step 1: Connect and Find the Tree
 
-1. Connect to the Kinetic Platform using `mcp__kinetic-platform__connect`
+1. Authenticate to the Kinetic Platform Task API (see the Workflow XML and Workflow Engine skills for endpoints and auth).
 2. Search for the tree:
-   - Try `list_trees` with `source=Kinetic Request CE` to get all trees
+   - List trees via `GET /app/components/task/app/api/v2/trees` and match the user's search term against tree names/titles
    - Filter by the user's search term (partial match on name or title)
    - If multiple matches, show them and ask the user to pick one
-3. Get tree details: `get_tree` with `include=details`
+3. Get tree details: `GET /app/components/task/app/api/v2/trees/{url-encoded-title}?include=treeJson`
 
 ## Step 2: Export the Tree Definition
 
-Use `export_tree` with the full tree title.
+Fetch the tree with `GET /app/components/task/app/api/v2/trees/{url-encoded-title}?include=treeJson`. There is no separate export endpoint.
 
-**If export fails** (known bug on some servers), fall back to `get_tree` with `include=treeJson`. The `treeJson` field contains the same node/connector data in JSON format.
+**Avoid the known export-endpoint bug** (some servers return a stale tree), so prefer `?include=treeJson`. The `treeJson` field contains the node/connector data in JSON format.
 
 ## Step 3: Classify the Tree Type
 
 Determine the type from `sourceGroup`:
-- **UUID pattern** (e.g., `3d440511-d011-4167-9de4-244a6fc19974`) → **Event-triggered workflow** (fires on form submission events)
+- **UUID pattern** (e.g., `<source-group-uuid>`) → **Event-triggered workflow** (fires on form submission events)
 - **`WebApis > {kapp}`** → **WebAPI tree** (HTTP endpoint)
 - **Other string** → **Routine** (reusable sub-workflow called by other trees)
 

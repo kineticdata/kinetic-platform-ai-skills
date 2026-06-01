@@ -9,22 +9,28 @@ user-invocable: true
 
 The user wants to debug a workflow execution. They may provide a run ID, or say "last failed" / provide no argument (find recent failures automatically).
 
+> **Tooling:** these steps use the raw Task/Core REST API (see the Workflow Engine, Workflow XML, and Troubleshooting skills for endpoints and auth). If you have an MCP server that wraps these calls, use its equivalent tools — but the raw API is the source of truth.
+
+## Step 0: Reference Docs
+
+Before diagnosing, consult the concept skills for endpoint details and failure fingerprints: **Workflow Engine** (run/trigger lifecycle and endpoints), **Workflow XML** (tree/node structure), **Troubleshooting** (diagnostic procedures), and **Known Bugs** (failure fingerprints). The raw API calls below are the source of truth for mechanism.
+
 ## Step 1: Connect
 
-Connect to the Kinetic Platform using `mcp__kinetic-platform__connect`.
+Authenticate to the Kinetic Platform Task API (Core/Task REST API with admin credentials). All endpoints below are relative to the space URL, e.g. `https://{space}.kinops.io`.
 
 ## Step 2: Find the Run
 
 **If run ID provided:** proceed to Step 3.
 
 **If no run ID or "last failed":**
-1. `list_triggers` with `status=Failed`, `limit=10`, `include=details` — find recent failures
+1. Query the Task API: `GET /app/components/task/app/api/v2/triggers?status=Failed` (add `&limit=10` to bound the result) — find recent failures. For surfaced error details, also check `GET /app/components/task/app/api/v2/errors?include=details&status=Active`.
 2. Show the user a summary of recent failed triggers with run IDs, tree names, and timestamps
 3. Ask which run to investigate (or auto-select the most recent)
 
 ## Step 3: Get Run Details
 
-1. Get all triggers for the run: `list_triggers` with `runId={id}`, `include=details`
+1. Get all triggers for the run: `GET /app/components/task/app/api/v2/triggers?runId={id}` (the run record itself is `GET /app/components/task/app/api/v2/runs?include=details`, and per-node detail is `GET /app/components/task/app/api/v2/runs/{runId}/tasks?include=details`)
 2. Note: Run status is always "Started" in the API — derive real status from triggers:
    - All triggers Closed → run completed successfully
    - Any trigger Failed → run failed
@@ -49,7 +55,7 @@ The workflow engine itself failed to execute a node. Common causes:
 ### Missing Handler Error
 - Handler definition ID is wrong or handler is not installed
 - `system_return_v1` → should be `system_tree_return_v1`
-- Check handler exists: `list_handlers` and search for the definition ID
+- Check handler exists: `GET /app/components/task/app/api/v2/handlers?limit=500` and search for the definition ID
 
 ### Node Silently Missing
 - **Duplicate node ID suffixes** — if two nodes share the same suffix (e.g., `utilities_echo_v1_1` and `system_wait_v1_1`), the builder drops one silently
@@ -65,9 +71,9 @@ The workflow engine itself failed to execute a node. Common causes:
 
 ## Step 6: Check Related Resources
 
-- **Active errors:** `list_triggers` with `status=Failed` across all runs for the same tree
-- **Tree definition:** `get_tree` with `include=treeJson` (export endpoint may be broken — use this instead)
-- **Handler details:** `get_handler` with the failing node's `definitionId` to check expected parameters
+- **Active errors:** `GET /app/components/task/app/api/v2/triggers?status=Failed` across all runs for the same tree (and `GET /app/components/task/app/api/v2/errors?include=details&status=Active` for surfaced exceptions)
+- **Tree definition:** `GET /app/components/task/app/api/v2/trees/{url-encoded-title}?include=treeJson` (there is no separate export endpoint — use this)
+- **Handler details:** `GET /app/components/task/app/api/v2/handlers/{definitionId}?include=parameters,results` with the failing node's `definitionId` to check expected parameters
 
 ## Step 7: Report
 

@@ -86,7 +86,7 @@ These skills are the shared knowledge base for **any AI assistant or developer**
 
 ### Commands — Slash-Command Skills (user-invocable)
 
-These are `user-invocable: true` slash-command skills (note they carry extra frontmatter — `argument-hint`, `user-invocable` — beyond `name`/`description`). **Most drive the platform through an MCP server that exposes Kinetic admin/build tools** (creating trees, forms, indexes, submissions, etc.). If no such MCP server is connected, fall back to raw Core/Task API calls per the **API Basics**, **Authentication**, and **Using the API** skills. `kinetic-kql`, `kinetic-policy`, and `kinetic-report` are generation-only and don't require an MCP server.
+These are `user-invocable: true` slash-command skills (note they carry extra frontmatter — `argument-hint`, `user-invocable` — beyond `name`/`description`). They drive the platform through the **raw Core/Task REST API** (see the **API Basics**, **Authentication**, and **Using the API** skills for endpoints and auth); an MCP server that wraps those calls is an optional convenience, not a requirement. `kinetic-kql` and `kinetic-policy` are generation-only (they emit KQL/KSL, no API calls); `kinetic-report` depends on the project's report-style module.
 
 | Skill | Path | Run when you need to... |
 |-------|------|--------------------------|

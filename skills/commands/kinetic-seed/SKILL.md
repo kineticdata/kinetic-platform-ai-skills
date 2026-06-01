@@ -9,12 +9,13 @@ user-invocable: true
 
 The user wants to populate a Kinetic form with realistic test data. Parse the argument for kapp slug, form slug, and optional record count (default: 25).
 
-## Step 1: Connect and Read Form Definition
+> **Tooling:** these steps use the raw Core REST API (see the API Basics and Form Engine skills for endpoints and auth). If you have an MCP server that wraps these calls, use its equivalent tools — but the raw API is the source of truth.
 
-1. Connect to the Kinetic Platform using `mcp__kinetic-platform__connect`
-2. Get form details: `mcp__kinetic-platform__get_form` with `kappSlug`, `formSlug`, `include=details`
-3. Parse the form's pages → sections → elements to extract field names and types
-4. Note any required fields
+## Step 1: Read Form Definition
+
+1. Get the form's fields: `GET /app/api/v1/kapps/{kapp}/forms/{form}?include=fields` (authenticate with the same credentials the seed script uses)
+2. Parse the returned fields to extract field names and types
+3. Note any required fields
 
 ## Step 2: Design Data
 
@@ -51,6 +52,7 @@ const CONCURRENCY = 10;
 
 - **Concurrency control:** process in batches of 10 with `Promise.allSettled`
 - **Progress reporting:** log `Created {n}/{total}` after each batch
+- **Create submissions:** `POST /app/api/v1/kapps/{kapp}/forms/{form}/submissions`
 - **Create as Submitted:** include `coreState: "Submitted"` in POST body (not Draft)
 - **Error handling:** log failures but continue (don't abort on single record failure)
 - **Large datasets:** separate data into `*-data.mjs` file if >20 records of complex content
@@ -78,7 +80,7 @@ async function cleanup() {
 }
 ```
 
-**No bulk delete API** — only `DELETE /submissions/{id}` one at a time. Parallel batches of 10 are ~10x faster than sequential.
+**No bulk delete API** — only `DELETE /app/api/v1/submissions/{id}` one at a time. Parallel batches of 10 are ~10x faster than sequential.
 
 ## Step 4: Run
 

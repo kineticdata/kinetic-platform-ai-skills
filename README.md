@@ -65,7 +65,7 @@ A shareable AI skills library for building on the Kinetic Platform. Organized fo
 
 ### Commands (`skills/commands/`)
 
-User-invocable slash-command skills. Most drive the platform through an MCP server that exposes Kinetic admin/build tools; without one, fall back to raw API calls per the API skills. `kinetic-kql`, `kinetic-policy`, and `kinetic-report` are generation-only.
+User-invocable slash-command skills that drive the platform through the raw Core/Task REST API (an MCP server that wraps those calls is optional). `kinetic-kql` and `kinetic-policy` are generation-only; `kinetic-report` uses the project's report-style module.
 
 | Skill | Description |
 |-------|-------------|

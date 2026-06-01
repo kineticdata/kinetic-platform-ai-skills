@@ -9,54 +9,62 @@ user-invocable: true
 
 Run a comprehensive health check against the connected Kinetic Platform space. No arguments needed.
 
+> **Tooling:** these steps use the raw Core/Task REST API (see the Workflow Engine, Using the API, and Troubleshooting skills for endpoints and auth). If you have an MCP server that wraps these calls, use its equivalent tools — but the raw API is the source of truth.
+
 ## Step 1: Connect
 
-Connect to the Kinetic Platform using `mcp__kinetic-platform__connect`.
+Confirm you have the space URL and admin credentials (space-admin username/password or a bearer token). All calls below are authenticated requests against `{space-url}` — see the Using the API skill for auth setup.
 
 ## Step 2: Run All Checks
 
 Execute these checks in parallel where possible:
 
 ### 1. Space Status
-- `get_space` with `include=details`
+- `GET /app/api/v1/space?include=details`
 - Verify space is accessible, note space slug and name
 
 ### 2. Kapp Inventory
-- `list_kapps`
+- `GET /app/api/v1/kapps`
 - Count kapps, list names
 
 ### 3. User Count
-- `list_users`
+- `GET /app/api/v1/users`
 - Count active users
 
 ### 4. Failed Triggers (Last 24 Hours)
-- `list_triggers` with `status=Failed`, `start={24h ago ISO}`, `limit=25`
+- `GET /app/components/task/app/api/v2/triggers?status=Failed&start={24h ago ISO}&limit=25`
 - Count failures, group by tree name if possible
 
 ### 5. Active Errors
-- `list_triggers` with `status=Failed`, `limit=10`, `include=details`
+- `GET /app/components/task/app/api/v2/errors?include=details&status=Active`
+- Also pull `GET /app/components/task/app/api/v2/runs?include=details` for context
 - Check for patterns (same tree failing repeatedly, etc.)
 
 ### 6. Handler Status
-- `list_handlers` with `include=details`
+- `GET /app/components/task/app/api/v2/handlers?include=details`
 - Check for any Inactive handlers
 
 ### 7. Source Status
-- `list_sources` with `include=details`
+- `GET /app/components/task/app/api/v2/sources?include=details`
 - Check for any Inactive sources
 
 ### 8. Orphaned Workflows
-- For each kapp from step 2, call `list_workflows`
-- Check the `orphaned` and `missing` arrays in the response
-- Orphaned = tree exists but no workflow registration; Missing = workflow registered but tree doesn't exist
+The raw API has no `orphaned`/`missing` arrays — derive integrity by cross-checking Core-API workflow registrations against Task-API trees:
+- List Core-registered workflows. These live in two SEPARATE places per kapp — query both:
+  - Kapp-level: `GET /app/api/v1/kapps/{kapp}/workflows` for each kapp from step 2
+  - Form-level: for each form (`GET /app/api/v1/kapps/{kapp}/forms`), `GET /app/api/v1/kapps/{kapp}/forms/{form}/workflows` — form-level workflows are invisible to the kapp-level call
+- List the backing trees: `GET /app/components/task/app/api/v2/trees`
+- Cross-check:
+  - **Orphaned tree** = a tree whose `guid !== sourceGroup` (the linkage to its source group is broken), or a tree with no matching Core workflow registration. Tree exists but no live registration.
+  - **Missing tree** = a Core workflow registration with no matching tree in the trees list. Registration points at a tree that no longer exists.
 
 ### 9. Team Count
-- `list_teams`
+- `GET /app/api/v1/teams`
 - Count teams
 
 ## Step 3: Generate Report Card
 
-Output a formatted health report:
+Output a formatted health report (illustrative):
 
 ```
 ╔══════════════════════════════════════════╗
@@ -86,7 +94,7 @@ Workflow Integrity:
 
 1. WARN: 3 failed triggers in last 24h
    Trees: "Welcome Email" (2), "Status Update" (1)
-   → Run /debug-run to investigate
+   → Run /kinetic-debug-run to investigate
 
 2. ERROR: Missing workflow tree
    Kapp: services, Workflow: "Auto-Close"
@@ -100,7 +108,7 @@ Workflow Integrity:
 
 For each issue found, provide actionable fix suggestions:
 
-- **Failed triggers** → suggest `/debug-run` with the run ID
+- **Failed triggers** → suggest `/kinetic-debug-run` with the run ID
 - **Inactive handlers** → handler may need reconfiguration or reinstallation
 - **Inactive sources** → source connection details may be wrong
 - **Orphaned trees** → tree exists without workflow registration, harmless but messy

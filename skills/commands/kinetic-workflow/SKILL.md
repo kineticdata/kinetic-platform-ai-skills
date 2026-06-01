@@ -9,6 +9,8 @@ user-invocable: true
 
 The user wants to create a workflow on the Kinetic Platform. The argument describes what the workflow should do.
 
+> **Tooling:** these steps use the raw Core/Task REST API (see the Workflow Engine, Workflow XML, and Authentication skills for endpoints and auth). If you have an MCP server that wraps these calls, you can use its equivalent tools — but the raw API is the source of truth.
+
 ## Step 1: Read Reference Docs
 
 Before generating any workflow definition, read:
@@ -22,15 +24,15 @@ Ask the user (if not clear from the description):
 1. **Event-triggered** — fires on form submission events
    - Needs: kapp slug, form slug (or kapp-level for all forms), event type
    - Events: `Submission Created`, `Submission Updated`, `Submission Closed`
-   - Create via: `create_form_workflow` (form-level) or `create_workflow` (kapp-level)
+   - Create via: `POST /app/api/v1/kapps/{kapp}/forms/{form}/workflows` (form-level) or `POST /app/api/v1/kapps/{kapp}/workflows` (kapp-level)
 
 2. **WebAPI** — HTTP endpoint backed by a workflow tree
    - Needs: kapp slug, WebAPI slug, HTTP method
-   - Create via: `create_webapi` + `create_tree` + `update_tree_json`
+   - Create via: `POST /app/api/v1/kapps/{kapp}/webApis` + `POST /app/components/task/app/api/v2/trees` + `PUT /app/components/task/app/api/v2/trees/{title}` (treeJson)
 
 3. **Routine** — reusable sub-workflow called by other trees
    - Needs: source group name
-   - Create via: `create_tree` + `update_tree_json`
+   - Create via: `POST /app/components/task/app/api/v2/trees` + `PUT /app/components/task/app/api/v2/trees/{title}` (treeJson)
 
 ## Step 3: Build the Tree Definition
 
@@ -70,31 +72,35 @@ Ask the user (if not clear from the description):
 
 ### For Event-Triggered Workflows
 
-Use Core API MCP tools — these properly register the workflow with the platform:
+Call the Core API — this properly registers the workflow with the platform:
 
 ```
-create_form_workflow(kappSlug, formSlug, name, event, treeXml)
+POST /app/api/v1/kapps/{kapp}/forms/{form}/workflows
+body: { name, event, treeXml }
 ```
+
+(Core API registers the workflow and its form linkage.)
 
 Or for kapp-level:
 ```
-create_workflow(kappSlug, name, event, treeXml)
+POST /app/api/v1/kapps/{kapp}/workflows
+body: { name, event, treeXml }
 ```
 
 The `treeXml` must be ONLY the `<taskTree>` inner element — NOT the full `<tree>` wrapper.
 
-**NEVER use `update_tree_json` (Task API v2 PUT) on Core API-registered workflows** — it wipes `event`, `platformItemType`, and `platformItemId`, breaking the kapp linkage. The workflow disappears from the admin UI.
+**NEVER PUT treeJson (Task API v2 PUT `/app/components/task/app/api/v2/trees/{title}`) onto a Core-API-registered workflow** — it wipes `event`, `platformItemType`, and `platformItemId`, breaking the kapp linkage. The workflow disappears from the admin UI.
 
 ### For WebAPI Trees
 
-1. `create_webapi(kappSlug, slug, method)`
-2. `create_tree(sourceName="Kinetic Request CE", sourceGroup="WebApis > {kapp}", name=slug)`
-3. `update_tree_json(title, name, sourceName, sourceGroup, treeJson)` — safe for WebAPI trees
+1. `POST /app/api/v1/kapps/{kapp}/webApis` with body `{ slug, method }`
+2. `POST /app/components/task/app/api/v2/trees` with body `{ sourceName: "Kinetic Request CE", sourceGroup: "WebApis > {kapp}", name: slug }`
+3. `PUT /app/components/task/app/api/v2/trees/{url-encoded-title}` with body including `treeJson` (plus `name`, `sourceName`, `sourceGroup`) — safe for WebAPI trees
 
 ### For Routines
 
-1. `create_tree(sourceName="Kinetic Request CE", sourceGroup="{group}", name=name)`
-2. `update_tree_json(...)` — safe for routines
+1. `POST /app/components/task/app/api/v2/trees` with body `{ sourceName: "Kinetic Request CE", sourceGroup: "{group}", name: name }`
+2. `PUT /app/components/task/app/api/v2/trees/{url-encoded-title}` with body including `treeJson` — safe for routines
 
 ## Step 5: Verify
 
@@ -102,4 +108,4 @@ After creation:
 1. List workflows/trees to confirm it exists
 2. For event trees: create a test submission to trigger it
 3. For WebAPIs: invoke with `?timeout=10` to test synchronously
-4. Check `list_triggers` for any failures
+4. Check `GET /app/components/task/app/api/v2/triggers` (filter `?runId={id}` or `?status=Active`) for any failures
