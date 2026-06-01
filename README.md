@@ -55,6 +55,32 @@ A shareable AI skills library for building on the Kinetic Platform. Organized fo
 | [authentication](skills/api/authentication/SKILL.md) | Authentication patterns for Core, Integrator, and Task APIs |
 | [using-the-api](skills/api/using-the-api/SKILL.md) | Common API usage patterns, request/response conventions |
 
+### Platform (`skills/platform/`)
+
+| Skill | Description |
+|-------|-------------|
+| [handler-development](skills/platform/handler-development/SKILL.md) | Building custom Kinetic Task handlers — architecture, file structure, auth, packaging, handler catalog |
+| [known-bugs](skills/platform/known-bugs/SKILL.md) | Confirmed platform bugs with symptoms, impact, and tested workarounds |
+| [troubleshooting](skills/platform/troubleshooting/SKILL.md) | Diagnosing workflow failures, stuck runs, error management, and common API error patterns |
+
+### Commands (`skills/commands/`)
+
+User-invocable slash-command skills. Most drive the platform through an MCP server that exposes Kinetic admin/build tools; without one, fall back to raw API calls per the API skills. `kinetic-kql`, `kinetic-policy`, and `kinetic-report` are generation-only.
+
+| Skill | Description |
+|-------|-------------|
+| [kinetic-new-app](skills/commands/kinetic-new-app/SKILL.md) | Scaffold a complete application — forms, indexes, seed data, UI |
+| [kinetic-workflow](skills/commands/kinetic-workflow/SKILL.md) | Create a workflow tree (event-triggered, WebAPI, or routine) |
+| [kinetic-debug-run](skills/commands/kinetic-debug-run/SKILL.md) | Debug a workflow execution — find failures and diagnose root causes |
+| [kinetic-explain-workflow](skills/commands/kinetic-explain-workflow/SKILL.md) | Export and explain a workflow tree in human-readable form |
+| [kinetic-health](skills/commands/kinetic-health/SKILL.md) | Comprehensive platform health check |
+| [kinetic-indexes](skills/commands/kinetic-indexes/SKILL.md) | Audit and manage search indexes for a form |
+| [kinetic-kql](skills/commands/kinetic-kql/SKILL.md) | Build KQL queries with index awareness |
+| [kinetic-migrate](skills/commands/kinetic-migrate/SKILL.md) | Copy forms and data between kapps (same or different servers) |
+| [kinetic-policy](skills/commands/kinetic-policy/SKILL.md) | Build KSL security-policy expressions for the ABAC model |
+| [kinetic-report](skills/commands/kinetic-report/SKILL.md) | Generate a branded PDF report |
+| [kinetic-seed](skills/commands/kinetic-seed/SKILL.md) | Generate and load realistic seed data into a form |
+
 ---
 
 ## Usage
@@ -73,7 +99,7 @@ Or globally in `~/.claude/CLAUDE.md`:
 @/path/to/kinetic-platform-ai-skills/CLAUDE.md
 ```
 
-Claude Code follows `@`-imports transitively — referencing `CLAUDE.md` pulls in all 18 skills automatically.
+`CLAUDE.md` is an on-demand index: it lists every skill with a "read when you need to…" description, and the assistant reads only the skill files relevant to the current task (rather than loading them all up front).
 
 To reference individual skills:
 
@@ -189,6 +215,8 @@ These directories are for KD employees and are not intended for customer use:
    - `skills/concepts/` — Core platform concepts, APIs, and architecture topics
    - `skills/api/` — API reference and integration patterns
    - `skills/front-end/` — React portal patterns, UI components, data hooks, state management
+   - `skills/platform/` — Handler development, known bugs, troubleshooting
+   - `skills/commands/` — User-invocable slash-command skills
 
 2. **Create the skill directory and file:**
    ```bash
@@ -196,7 +224,7 @@ These directories are for KD employees and are not intended for customer use:
    touch skills/concepts/my-new-skill/SKILL.md
    ```
 
-3. **Add YAML frontmatter** — only `name` and `description` are supported:
+3. **Add YAML frontmatter** — the core fields are `name` and `description`:
    ```yaml
    ---
    name: my-new-skill
@@ -211,7 +239,8 @@ These directories are for KD employees and are not intended for customer use:
    **Frontmatter rules:**
    - `name` **must match the folder name exactly** (e.g., folder `api-basics/` → `name: api-basics`)
    - `description` should be a single sentence summarizing the skill's scope
-   - Do NOT use `tags`, `version`, or other attributes — they are not supported by the Agent Skills Standard
+   - For most skills, `name` and `description` are the only fields needed — don't add `tags`, `version`, etc.
+   - **Slash-command skills** under `skills/commands/` additionally use the Claude Code fields `user-invocable: true` and `argument-hint: "<...>"`. These are Claude Code command conventions (not part of the core Agent Skills Standard) and apply only to command skills.
 
 4. **Write the content:**
    - Keep each skill under ~500 lines / ~5,000 tokens for progressive disclosure
@@ -220,7 +249,7 @@ These directories are for KD employees and are not intended for customer use:
    - Keep content generic — avoid references to specific project codebases or environments
 
 5. **Register the skill** in these files:
-   - `CLAUDE.md` — add an `@skills/...` import line
+   - `CLAUDE.md` — add a row to the appropriate skill-index table (the index is read on demand; there are no `@`-imports)
    - `README.md` — add a row to the appropriate skills table
    - `.cursor/rules/kinetic-platform.mdc` or `kinetic-front-end.mdc` — add an `@` import
    - `.github/copilot-instructions.md` — add to the skill list at the bottom

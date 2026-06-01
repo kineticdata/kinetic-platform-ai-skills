@@ -76,6 +76,32 @@ These skills are the shared knowledge base for **any AI assistant or developer**
 | Authentication | `skills/api/authentication/SKILL.md` | Authenticate API calls — Basic Auth, OAuth 2.0 for Integrator, SAML SSO |
 | Using the API | `skills/api/using-the-api/SKILL.md` | Understand API conventions — space-level endpoints, request patterns, error shapes |
 
+### Platform — Handlers, Bugs, Troubleshooting
+
+| Skill | Path | Read when you need to... |
+|-------|------|--------------------------|
+| Handler Development | `skills/platform/handler-development/SKILL.md` | Build a custom Task handler — zero-dependency architecture, file structure, auth, packaging, handler catalog |
+| Known Bugs | `skills/platform/known-bugs/SKILL.md` | Check confirmed platform bugs with symptoms, impact, and tested workarounds |
+| Troubleshooting | `skills/platform/troubleshooting/SKILL.md` | Diagnose workflow failures, stuck runs, error management, and common API error patterns |
+
+### Commands — Slash-Command Skills (user-invocable)
+
+These are `user-invocable: true` slash-command skills (note they carry extra frontmatter — `argument-hint`, `user-invocable` — beyond `name`/`description`). **Most drive the platform through an MCP server that exposes Kinetic admin/build tools** (creating trees, forms, indexes, submissions, etc.). If no such MCP server is connected, fall back to raw Core/Task API calls per the **API Basics**, **Authentication**, and **Using the API** skills. `kinetic-kql`, `kinetic-policy`, and `kinetic-report` are generation-only and don't require an MCP server.
+
+| Skill | Path | Run when you need to... |
+|-------|------|--------------------------|
+| `/kinetic-new-app` | `skills/commands/kinetic-new-app/SKILL.md` | Scaffold a complete application — forms, indexes, seed data, UI |
+| `/kinetic-workflow` | `skills/commands/kinetic-workflow/SKILL.md` | Create a workflow tree (event-triggered, WebAPI, or routine) |
+| `/kinetic-debug-run` | `skills/commands/kinetic-debug-run/SKILL.md` | Debug a workflow execution — find failures and diagnose root causes |
+| `/kinetic-explain-workflow` | `skills/commands/kinetic-explain-workflow/SKILL.md` | Export and explain a workflow tree in human-readable form |
+| `/kinetic-health` | `skills/commands/kinetic-health/SKILL.md` | Run a comprehensive platform health check |
+| `/kinetic-indexes` | `skills/commands/kinetic-indexes/SKILL.md` | Audit and manage search indexes for a form |
+| `/kinetic-kql` | `skills/commands/kinetic-kql/SKILL.md` | Build KQL queries with index awareness (generation-only) |
+| `/kinetic-migrate` | `skills/commands/kinetic-migrate/SKILL.md` | Copy forms and data between kapps (same or different servers) |
+| `/kinetic-policy` | `skills/commands/kinetic-policy/SKILL.md` | Build KSL security-policy expressions for the ABAC model (generation-only) |
+| `/kinetic-report` | `skills/commands/kinetic-report/SKILL.md` | Generate a branded PDF report (generation-only; needs the project's report-style module) |
+| `/kinetic-seed` | `skills/commands/kinetic-seed/SKILL.md` | Generate and load realistic seed data into a form |
+
 ## Common Errors → Which Skill to Read
 
 | Error / Situation | Read |

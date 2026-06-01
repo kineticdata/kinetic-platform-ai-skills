@@ -1,5 +1,7 @@
 # Skills Library Gap Analysis (2026-04-08, updated 2026-04-09)
 
+> **Historical snapshot.** This audit covered the 26 skills that existed at the time. The library has since grown (the `commands/` and `platform/` categories were added, among others); newer skills are not represented below. Kept for reference.
+
 Comprehensive audit from three angles: live API testing on demo.kinops.io, `@kineticdata/react` package inspection, and newcomer doc audit of all 26 skill files.
 
 ---

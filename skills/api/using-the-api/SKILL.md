@@ -388,18 +388,16 @@ POST /app/api/v1/userInvitationTokens
 | 404 | Wrong slug, wrong kapp path, or resource doesn't exist |
 | 500 | Submitting values for undefined fields, or malformed request body |
 
-## Working with the MCP Server
+## Working with an MCP Server
 
-When using the Kinetic Platform MCP server, you don't construct API calls directly. Instead:
+If you drive the platform through an MCP server instead of raw HTTP, **the exact tool names and signatures depend on which server is connected — consult that server's own tool list.** There is no single canonical Kinetic MCP interface; servers vary (an end-user "apps / processes / requests" vocabulary, a generic API proxy, build/admin tooling, etc.). What they share is that they wrap the same REST endpoints documented throughout these skills, typically handling auth, base URL, and CSRF for you.
 
-1. Use `discover_space`, `discover_kapp`, `discover_form` to understand what exists
-2. Use `get_api_spec` to get endpoint details for a specific domain
-3. Use `execute_api` to make calls — it handles auth, base URL, and CSRF
+**When no MCP server is connected, everything in these skills is reachable via raw HTTP** using the patterns in `api-basics`, `authentication`, and the endpoint references under `skills/api/`.
+
+A common shape is a generic API proxy that discovers endpoints and then executes a request against a path relative to the Core API base URL (Task and Integrator endpoints prefixed accordingly). Adapt the tool name to whatever your server exposes:
 
 ```
-execute_api({ method: "POST", path: "/kapps/services/forms", body: { slug: "my-form", name: "My Form" } })
+execute({ method: "POST", path: "/kapps/services/forms", body: { slug: "my-form", name: "My Form" } })
+execute({ method: "GET",  path: "/components/task/app/api/v2/runs" })   // Task API
+execute({ method: "GET",  path: "/integrator/api/connections" })       // Integrator API
 ```
-
-The `path` is relative to the Core API base URL. For Task API or Integrator API endpoints, prefix accordingly:
-- Task: `execute_api({ method: "GET", path: "/components/task/app/api/v2/runs" })`
-- Integrator: `execute_api({ method: "GET", path: "/integrator/api/connections" })`

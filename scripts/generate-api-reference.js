@@ -179,10 +179,15 @@ for (const [service, domains] of Object.entries(SERVICE_DOMAINS)) {
 
   for (const domain of domains) {
     const paths = slicePaths(spec, domain);
+    const pathCount = Object.keys(paths).length;
+    if (pathCount === 0) {
+      // Skip empty domains — don't emit a "No endpoints found" stub file.
+      console.log(`  ${service}/${domain}.md — 0 paths (skipped)`);
+      continue;
+    }
     const doc = generateDomainDoc(spec, service, domain, paths);
     const outPath = join(serviceDir, `${domain}.md`);
     writeFileSync(outPath, doc, 'utf-8');
-    const pathCount = Object.keys(paths).length;
     console.log(`  ${service}/${domain}.md — ${pathCount} paths`);
     totalFiles++;
   }
