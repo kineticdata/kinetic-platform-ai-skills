@@ -286,10 +286,10 @@ Invoke any Operation from a workflow using the built-in `system_integration_v1` 
   <parameters>
     <parameter id="connection">1415539c-ab12-4e67-8f2d-000000000001</parameter>
     <parameter id="operation">7750b186-cd34-5f89-a012-000000000003</parameter>
-    <parameter id="parameters.Summary"><%= @submission['values']['Summary'] %></parameter>
-    <parameter id="parameters.Description"><%= @submission['values']['Description'] %></parameter>
-    <parameter id="parameters.Priority"><%= @submission['values']['Priority'] %></parameter>
-    <parameter id="parameters.Assignee"><%= @submission['values']['Assigned Team'] %></parameter>
+    <parameter id="parameters.Summary"><%= @values['Summary'] %></parameter>
+    <parameter id="parameters.Description"><%= @values['Description'] %></parameter>
+    <parameter id="parameters.Priority"><%= @values['Priority'] %></parameter>
+    <parameter id="parameters.Assignee"><%= @values['Assigned Team'] %></parameter>
   </parameters>
 </task>
 ```
@@ -306,7 +306,7 @@ Write these back to the submission so the portal can display them:
 ```xml
 <task definition_id="kinetic_request_ce_submission_update_v1" name="Write Ticket ID to Submission">
   <parameters>
-    <parameter id="submission_id"><%= @submission['id'] %></parameter>
+    <parameter id="submission_id"><%= @submission['Id'] %></parameter>
     <parameter id="Ticket ID"><%= @results['Create External Ticket']['Ticket Id'] %></parameter>
     <parameter id="Ticket URL"><%= @results['Create External Ticket']['Ticket URL'] %></parameter>
   </parameters>

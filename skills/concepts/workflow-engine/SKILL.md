@@ -169,6 +169,85 @@ JSON.parse(@results['Get Requestor']['Attributes'])['Manager']
 
 The `rescue {}` modifier returns an empty hash on ANY exception (parser error, nil method, etc.), letting subsequent `['Manager']`, `.first`, `.to_s` chain operations continue safely (eventually evaluating to `nil`/empty as appropriate). This is critical for connector expressions because they fire BEFORE any error-handling node can intercept — a crashed connector halts the branch outright.
 
+**Ruby `String#include?` is a SUBSTRING check, not array membership — never use it for stage / category / token-list lookups.** This is one of the most common bugs in connector conditions that gate routing on a comma-separated list of stage names:
+
+```ruby
+# BAD — "Part III".include?("Part II") returns TRUE because "Part II" is a substring of "Part III"
+@values['Stages Modified'].to_s.include?('Part II')
+```
+
+When `Stages Modified = "Part III"`, the supposedly "Part II" branch ALSO fires. Same trap with `Part IV` containing `Part I`, `User Admin` containing `User`, etc. The bug is silent — connectors evaluate, runs advance, just to the wrong stage. The fix is to split the string and use Array#include? (which IS exact match):
+
+```ruby
+# GOOD — proper array membership test
+@values['Stages Modified'].to_s.split(/,\s*/).include?('Part II')
+```
+
+Verified June 2026 during the GLE SAAR Phase 6 modification-workflow validation: every fork-point connector matched stage names by `String#include?` and routed `Stages Modified='Part III'` through the Part II queue task. Fix: 14 connector conditions patched in `scripts/fix-stages-modified-substring-bug.js`.
+
+**`routine_merge_submission_and_descendant_values` does NOT reliably propagate every descendant value onto the parent submission's `@values`.** Despite the name, observed behavior is selective: some keys present on the descendant don't show up on the parent post-merge, especially when the parent form has the field defined but no prior value was ever written to it. Symptom: a connector or downstream node reads `@values['Clearance Level']` immediately after `Merge Part II` and gets empty string, even though the descendant Part II submission has `Clearance Level = "SECRET"`.
+
+**Always read merged-stage values from `@results['<Queue Task Node>']['Fields JSON']` instead of trusting `@values`.** This is the same defensive pattern already used by the project's Record Decision connectors:
+
+```ruby
+# BAD — @values['Clearance Level'] may be empty after Merge Part II even though Part II set SECRET
+@values['Clearance Level'].to_s.upcase == 'NONE'
+
+# GOOD — read directly from the queue task's returned fields, which IS reliable
+(JSON.parse(@results['Part II']['Fields JSON']) rescue {})['Clearance Level'].to_s.upcase == 'NONE'
+```
+
+Verified June 2026: in the parent SAAR workflow the Phase 4 clearance gate was reading `@values` and always evaluating as `!= 'NONE'` regardless of what Part II actually picked. Fix in `scripts/fix-parent-workflow-clearance-source.js`. The modification workflow's `@values['Clearance Level']` works correctly there because the modification form has the field directly — so the read source depends on whether the field is owned by the parent form or by a descendant.
+
+**Editing a Ruby hash literal embedded in a `System Input`-style ERB parameter is fragile — respect the trailing comma on the prior entry.** The most common bug when programmatically injecting a new key/value into something like:
+
+```erb
+<%= {
+  'Endorsement Source Type' => 'Original SAAR',
+  ...
+  'Request Justification' => @values['Justification for Access'].to_s
+}.to_json %>
+```
+
+…is anchoring the regex on `\}\.to_json\s*%>` and prepending a new line. The previous entry has no trailing comma (it was the last entry) so the result is two consecutive hash pairs with no separator — a `SyntaxError` that halts the node and never creates the downstream submission. The error surfaces in the `/errors` API with `"could not be evaluated due to a SyntaxError"` and the queue task draft is never created, but everything upstream looks healthy.
+
+Defensive insertion pattern (replace `.to_s<whitespace>'NewKey' =>` with `.to_s,<whitespace>'NewKey' =>` so a trailing comma is added to whatever came before):
+
+```javascript
+// Idempotent — works whether the parameter is multi-line or one-line whitespace
+si.value = si.value.replace(
+  /\.to_s(\s+)'NewKey' =>/,
+  ".to_s,$1'NewKey' =>"
+);
+```
+
+Verified June 2026 in both the parent SAAR and modification workflows — same bug, different whitespace shape, fixed by `scripts/fix-clearance-system-input-syntax.js`.
+
+**When you add/remove/modify a workflow connector, also update the source node's `dependents.task` array.** The treeJson stores routing information in TWO places:
+
+1. The `connectors` array (with `from`, `to`, `label`, `value`, `type`)
+2. Each source node's `dependents.task[]` array (with `label`, `value`, `type`, `content`)
+
+The editor surfaces — and in some places the engine consults — `dependents.task`. If you mutate the connector list without updating dependents, the Tree Builder UI shows stale labels/conditions, and certain runtime paths (notably re-render of trigger generation for compound forks) can read the outdated values. Always patch both in lockstep:
+
+```javascript
+// After splicing a new connector into `connectors`:
+sourceNode.dependents = sourceNode.dependents || { task: [] };
+sourceNode.dependents.task.push({
+  label: '...', type: 'Complete', value: '...', content: targetNode.id
+});
+// And similarly when removing or editing — keep them in sync.
+```
+
+**Email-template lookup nodes commonly throw `htmlbody parameter could not be evaluated due to an IndexError`.** The pattern from the "Dynamic email templates" section above is correct — `(JSON.parse(...)['submissions'] || [])` gracefully handles empty/missing — but the inner field accesses are still vulnerable when a placeholder substitution chain assumes a specific shape:
+
+```erb
+# BAD — IndexError if subs[0] is nil or 'values' key is missing
+tmpl_body = JSON.parse(@results['Fetch Template']['Response Body'])['submissions'][0]['values']['Body']
+```
+
+The error doesn't halt the workflow as a whole (status updates and downstream Submit-event nodes still fire) — but no notification is actually sent. Symptom: `@values['Status']` advances correctly through every stage, but users never receive emails, and `GET /errors?status=Active` keeps accumulating one entry per stage transition. Always guard each step of the chain with `rescue` and explicit `length` / nil checks, and read the placeholder-substitution side-effect once into a local variable before chained `.gsub` calls.
+
 ### Parameters
 
 Each node accepts inputs called parameters. Parameters support:

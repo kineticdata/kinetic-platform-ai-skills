@@ -224,8 +224,8 @@ DELETE /app/api/v1/kapps/{kappSlug}/webhooks/{name}      # Delete
 ```json
 {
   "name": "Notify on Submit",
-  "type": "Submission Submit",
-  "event": "Submission Submit",
+  "type": "Submission Submitted",
+  "event": "Submission Submitted",
   "filter": "values[\"Status\"] != \"\"",
   "url": "https://example.com/webhook-handler"
 }
@@ -238,8 +238,8 @@ DELETE /app/api/v1/kapps/{kappSlug}/webhooks/{name}      # Delete
 {
   "webhook": {
     "name": "Notify on Submit",
-    "type": "Submission Submit",
-    "event": "Submission Submit",
+    "type": "Submission Submitted",
+    "event": "Submission Submitted",
     "filter": "values[\"Status\"] != \"\"",
     "url": "https://example.com/webhook-handler"
   }

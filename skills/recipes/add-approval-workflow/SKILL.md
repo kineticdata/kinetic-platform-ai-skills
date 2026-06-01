@@ -248,7 +248,7 @@ Body (as an ERB string in the node parameter):
     "Assigned Team": "<%= @results['Determine Approver']['Team'] %>",
     "Assigned Individual": "<%= @results['Determine Approver']['Individual'] %>",
     "Deferral Token": "<%= @task['Deferral Token'] %>",
-    "Parent ID": "<%= @values['id'] %>",
+    "Parent ID": "<%= @submission['Id'] %>",
     "Status": "Open"
   },
   "coreState": "Draft"
@@ -313,7 +313,7 @@ Body:
 }
 ```
 
-Where `{submissionId}` is `@source['Id']` (the submission ID from the triggering event).
+Where `{submissionId}` is `@submission['Id']` (the submission ID from the triggering event).
 
 ---
 
@@ -370,7 +370,7 @@ Body:
 { "coreState": "Closed" }
 ```
 
-Where `{approvalSubmissionId}` is `@values['id']` (the approval submission's own ID from the triggering event).
+Where `{approvalSubmissionId}` is `@submission['Id']` (the approval submission's own ID from the triggering event).
 
 ---
 

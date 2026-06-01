@@ -132,8 +132,7 @@ Group fields visually. Support layout via `renderAttributes`:
   "events": [...],
   "omitWhenHidden": null,
   "renderAttributes": {},
-  "rows": 1,
-  "key": "20f8b1836fa244bf8b4947dba9015edb"
+  "rows": 1
 }
 ```
 
@@ -638,6 +637,27 @@ Constraints are **JavaScript expressions** that validate field values at submiss
   - `slug` is the URL identifier referenced by every Task Form Slug workflow parameter, every email URL template (`/kapps/<kapp>/forms/<slug>/submissions/...`), and the export file/folder names. Renaming a slug requires: file rename + folder rename + internal `slug` field update + every workflow `Task Form Slug` parameter + every URL template. **Risk**: in-flight submissions against the old slug become orphaned when the form is re-imported under the new slug — drain or migrate before the rename.
   - `name` is admin/queue display label only. Safe to rename anytime with zero workflow impact.
   - Slugs being inconsistent with display names is normal — `name: "SAAR Part II - Supervisor Endorsement"` paired with `slug: "saar-part-ii"` is the idiomatic combo.
+- **Form attribute definitions live on the kapp, not on individual forms.** Every form's `attributes` (key/value pairs) reference a `formAttributeDefinition` registered on the parent kapp. An import that overwrites a kapp definition list wipes every form's `attributesMap` even though `pages`, `events`, `customHeadContent`, `integrations`, `bridgedResources`, and `securityPolicies` are intact and identical. Symptom: forms render fine, but workflow logic that reads e.g. `@form_attributes['Notification Template']` returns nil, status routing breaks silently. Recovery: re-POST the definitions to `POST /kapps/{kapp}/formAttributeDefinitions`, then re-PUT each form with its `attributesMap` from a known-good source (local export, snapshot, or git). Verified June 2026 during the GLE SAAR accidental-import recovery — diagnosed via structural diff (pages/sections/fields all matched, attributesMap was `{}`) and restored from local exports with `.ingest-review/restore.js`.
+- **`attributesMap` returned by `GET form?include=attributesMap` contains every attribute name in the kapp's `formAttributeDefinitions`** — not just the ones with values on this form. Keys with empty arrays `[]` mean "this kapp defines this attribute but this form doesn't use it"; they're not "missing." You cannot tell which attributes "belong" to a specific form by reading `attributesMap` keys — you only know by reading the values. The output looks redundant across forms but is correct.
+- **Field-name uniqueness is form-WIDE, not section-scoped.** Two fields both named `Clearance Level` in different sections of the same form fails with `400 Invalid Form. Field names must be unique and there are 2 with the name "Clearance Level"`. When repurposing form sections (e.g. mirroring stage forms inside a modification form's embedded sections), pick distinct field names per stage section OR delete the field from the obsolete section before adding it to the new one. The error is total — the entire PUT is rejected — so plan the rename + remove atomically.
+- **When deleting a field or section, audit every event for `K()` references to the deleted element.** Form/page/field-level events that reference `K('section[Deleted]')` or `K('field[Deleted]')` will throw `Cannot read properties of null (reading 'element')` on Load and **prevent the entire form from rendering** — not just the orphaned event. The form sits on the spinner forever and the user gets no error UI. Audit pattern:
+  ```javascript
+  // Grep every event's `code` for K() refs to elements that no longer exist:
+  const exists = new Set();
+  function walk(els) {
+    for (const e of (els||[])) {
+      if (e.type === 'section') exists.add('section[' + e.name + ']');
+      if (e.type === 'field')   exists.add('field['   + e.name + ']');
+      if (e.type === 'content') exists.add('content[' + e.name + ']');
+      if (e.elements) walk(e.elements);
+    }
+  }
+  for (const p of form.pages || []) walk(p.elements);
+  // Then scan event code via regex /K\(['"]?(section|field|content)\[([^\]]+)\]/g
+  // and warn on any kind+name not in `exists`.
+  ```
+  Verified June 2026 during GLE SAAR Phase 1: removing the "Rules Of Behavior Section" left an orphaned page-level `Add Rules of Behavior Signature Widget` Load event that crashed the parent form on every load. Fixed by `scripts/remove-rob-orphan-event.js`.
+- **Checkbox-choice `value` consistency MUST match across forms that share a field name.** Two forms can both have a checkbox named `Need to Know Verified`, but if one stores `value="YES"` and another stores `value="I certify that this user's need-to-know has been verified."`, pre-fill or copy-between-forms patterns silently fail. The receiving checkbox can't find a matching option for the source value, so the box stays unchecked, the submission stores `[]`, and downstream "did anything change?" comparisons see a permanent diff. When designing related forms (e.g., parent + modification + review forms that mirror each other), define the choice `value`s in one place and reuse — or write an explicit value-mapping table and apply it in the pre-fill code. Surfaces in pre-fill / modification flows where one form sources from another.
 
 ---
 
