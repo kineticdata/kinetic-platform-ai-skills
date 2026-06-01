@@ -595,6 +595,16 @@ Constraints are **JavaScript expressions** that validate field values at submiss
 - **Attachment upload is a 2-step process** — (1) `POST /submissions/{id}/files` with multipart form data (`-F "FieldName=@file"`), (2) PUT the returned metadata as JSON string values on the submission. Attachment values are stored as JSON arrays of `{contentType, link, name, size}` objects.
 - **All active workflows matching source/event fire** — not just form-specific ones. If a kapp-level workflow or a workflow from another source group matches the event, it fires too. Plan for unexpected workflow runs when testing.
 - **Expression defaults (`${identity(...)}`, `${form(...)}`) only evaluate in CoreForm** — when creating submissions via REST API, expression-based `defaultValue` fields are NOT evaluated. The values will be empty/null. Set these fields explicitly in the API POST body when not using CoreForm.
+- **`type: "Automated"` forms suppress the default Submit button** — even when the page is `renderType: "submittable"`. Automated forms are intended for workflow-driven completion, so the portal hides the auto-rendered submit button. If a human needs to submit an Automated form (queue tasks, endorsement forms filled by approvers), add an **explicit submit-page button element** to the page: `{"type":"button","renderType":"submit-page","name":"Submit Button","label":"Submit","visible":"!form('review')","enabled":true,"renderAttributes":{}}`. Use `visible: "!form('review')"` so the button hides when the form is rendered as a review subform.
+- **`enabled: false` is read-only, not hidden** — disabled fields:
+  - Block user input in the UI (greyed out, can't type)
+  - Still submit their values with the rest of the form
+  - Still accept programmatic writes via `K('field[X]').value(newValue)` — the setter bypasses the disabled state
+  - Useful for fields that should only be populated by events (signature dates, derived totals, system-set status fields) but still need to round-trip through submission
+- **Form `slug` vs `name` — different scopes, different rename costs:**
+  - `slug` is the URL identifier referenced by every Task Form Slug workflow parameter, every email URL template (`/kapps/<kapp>/forms/<slug>/submissions/...`), and the export file/folder names. Renaming a slug requires: file rename + folder rename + internal `slug` field update + every workflow `Task Form Slug` parameter + every URL template. **Risk**: in-flight submissions against the old slug become orphaned when the form is re-imported under the new slug — drain or migrate before the rename.
+  - `name` is admin/queue display label only. Safe to rename anytime with zero workflow impact.
+  - Slugs being inconsistent with display names is normal — `name: "SAAR Part II - Supervisor Endorsement"` paired with `slug: "saar-part-ii"` is the idiomatic combo.
 
 ---
 

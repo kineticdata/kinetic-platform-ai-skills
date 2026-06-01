@@ -1,0 +1,13 @@
+{
+  "name": "kinetic-data",
+  "owner": {
+    "name": "Kinetic Data"
+  },
+  "plugins": [
+    {
+      "name": "kinetic-platform",
+      "source": "./",
+      "description": "Kinetic Platform development skills: API basics, form engine, workflow XML, integrations, security policies, React portal patterns, the Ruby SDK, and recipes for forms, approvals, lists, and service portals."
+    }
+  ]
+}

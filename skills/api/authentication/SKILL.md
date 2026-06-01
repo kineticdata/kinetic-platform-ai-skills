@@ -1,6 +1,6 @@
 ---
 name: authentication
-description: Authentication patterns for Core, Integrator, and Task APIs — Basic Auth, OAuth 2.0, CSRF tokens, and self-signed certificate handling.
+description: Authentication patterns for Core, Integrator, and Task APIs — Basic Auth, OAuth 2.0, CSRF tokens, self-signed certificate handling, and service-account patterns (the platform does not issue per-user API keys).
 ---
 
 # Authentication
@@ -14,6 +14,16 @@ The Kinetic Platform has three API surfaces, all proxied through the Core server
 | Core API v1 | HTTP Basic Auth | Forms, submissions, kapps, users, teams, spaces, webhooks, WebAPIs |
 | Task API v2 | HTTP Basic Auth | Workflow runs, nodes, trees, handlers, engine operations |
 | Integrator API | OAuth 2.0 Bearer Token | Connections, operations, agents |
+
+## No Platform-Issued API Keys
+
+**The Kinetic Platform does not issue API keys, personal access tokens, or any other per-user credential separate from the user's password.** Specifically:
+
+- There is **no UI or API endpoint to generate an API key** for a user account. `POST /users` and `PUT /users/{username}` accept `password` but expose no `apiKey`, `token`, or `accessToken` field.
+- There is **no "API-key-only" account type**. Every authenticated principal is a regular `user` record with a `username` and a `password`.
+- The "API Key" auth types you see elsewhere in the platform (e.g., the Integrator Connection auth modes `api_key` / `raw_bearer_token`, or handler `info` values) describe credentials for **external systems Kinetic talks to**, not credentials Kinetic issues for itself.
+
+What to do instead — see [Service Accounts](../../concepts/users-teams-security/SKILL.md#service-accounts-no-api-keys) in the users-teams-security skill. The short version: create a regular user, give it a strong password, mark it `enabled: true`, and authenticate API calls with Basic Auth (Core/Task) or the OAuth implicit grant (Integrator) using that username + password. Rotate by `PUT /users/{username}` with a new `password`.
 
 ## SAML SSO
 

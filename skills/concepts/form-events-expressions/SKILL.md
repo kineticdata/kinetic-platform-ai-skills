@@ -71,6 +71,17 @@ Connections/Operations are exposed on forms via the `integrations` array (replac
 | `Change` | Field value changes (user or programmatic) | Field |
 | `Click` | Button clicked | Button |
 
+**This is the complete, closed set of valid event types.** Using anything else (e.g., `"type": "Save"`) crashes the form at load with:
+
+```
+Uncaught TypeError: Cannot read properties of undefined (reading 'push')
+    at Page.self.on (head.js:...)
+```
+
+The form engine maintains a listener bucket per recognized type and pushes the handler into `this.listeners[event.type]`. An unrecognized type means that bucket is `undefined` and `.push()` throws. The form never finishes initializing — **none** of its events register, including the valid ones.
+
+If you want to fire on draft save, there is no separate "Save" event — use `Submit` (which fires for both draft save and full submission depending on the button's `renderType`) or a button-specific `Click` event on a save button.
+
 ### Event Actions
 
 | Action | Description |
@@ -314,6 +325,89 @@ Workflows read this attribute to determine which email template to use.
 ### Form Type for Querying
 
 Set `type: "Approval"` or `type: "Task"` to enable cross-form queries in the UI (e.g., "My Approvals" fetches all submissions where form type is "Approval").
+
+### Auto-fill Date When a Signature Is Captured
+
+Signature widgets (`bundle.widgets.Signature`) save the signed file by calling `field.value(newFile)` on the configured attachment field — which triggers the field's Change events. To auto-fill an adjacent date field when the user signs, add a Change event with `action: "Custom"` to the signature attachment field:
+
+```json
+{
+  "type": "field",
+  "name": "Requestor Signature",
+  "renderType": "attachment",
+  "dataType": "file",
+  "events": [
+    {
+      "name": "Auto-fill Signature Date",
+      "type": "Change",
+      "action": "Custom",
+      "integrationResourceName": null,
+      "integrationResourceProperty": "",
+      "runIf": "values('Requestor Signature') != null && values('Requestor Signature') != ''",
+      "code": "var d = new Date(); var iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); K('field[Requestor Signature Date]').value(iso);"
+    }
+  ]
+}
+```
+
+Pair with `enabled: false` on the date field so users can't manually edit — the auto-fill is the only way to set it (the value() setter bypasses the disabled state). The `runIf` guard prevents the event from clearing the date when the signature is cleared.
+
+### Initialize a Date Field with Today's Date on First Load (Draft-Safe)
+
+Server-side `defaultValue` templates have no built-in `now()` helper. To populate a date field with today's date when the form is first opened — but preserve the original date if the form is saved as draft and reopened later — use a Load event with an "if empty" guard:
+
+```json
+{
+  "name": "Set Initial Form Date",
+  "type": "Load",
+  "action": "Custom",
+  "code": "if (!K('field[Date]').value()) { var d = new Date(); var iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); K('field[Date]').value(iso); }"
+}
+```
+
+Combined with `enabled: false`, this gives you a "form started on" date that:
+- Fills on first load (Draft creation)
+- Persists across draft saves and reopens (the `if (!value())` check)
+- Can't be edited by the user (disabled in UI, but the Load event's `.value()` call still works)
+
+---
+
+## Common Mistakes
+
+### `K.identity()` Does Not Exist
+
+There is no `K.identity()` function. The way to access the current user in client-side code is:
+
+1. **Server-side template in a hidden field** (preferred):
+   ```json
+   { "name": "Approver Username", "defaultValue": "${identity('username')}", "visible": false, "omitWhenHidden": false }
+   ```
+   Read it in events: `K('field[Approver Username]').value()`
+2. **Server-side template in content text or labels**: `${identity('email')}` interpolates at form render
+3. **`/app/api/v1/me`** — extra round-trip, slower; use the hidden field pattern when possible
+
+The `${identity('...')}` syntax is the only documented mechanism for current-user data in client-side form code. Don't fabricate `K.*` or `bundle.*` calls; verify against sibling working forms in the same kapp.
+
+### `bundle.widgets.X({...})` vs `bundle.helpers.X(arg1, arg2)`
+
+Modern kapp bundles only expose `bundle.widgets.X({...obj})` — a single options-object argument. Legacy `bundle.helpers.X(arg1, arg2, cfg)` calls throw `Cannot read properties of undefined (reading 'X')` because `bundle.helpers` doesn't exist in modern bundles. Different namespaces AND different call signatures. Always copy widget usage verbatim from a sibling working form in the same kapp before authoring new code.
+
+### Integration `inputMappings` Must Reference Existing Form Fields
+
+Every `${values('X')}` template inside an integration's `inputMappings` must reference an actual field defined on the form. If `X` doesn't exist, the form returns **HTTP 500 on render** (not a friendlier client-side error). When you don't have a suitable form field for an input mapping, use `${identity('username')}`, `${form('slug')}`, or a literal string instead.
+
+### UTF-8 Mojibake — `â€”` Is an Em-Dash
+
+When forms are imported from systems that encoding-shift between Windows-1252 and UTF-8, you get sequences like `â€”` (which renders as `â€"`). These come from the UTF-8 bytes `0xE2 0x80 0x94` (em-dash —) being interpreted as Windows-1252 then re-encoded. Common patterns:
+
+| Mojibake escape | Renders as | Should be |
+|---|---|---|
+| `â€”` | `â€"` | `—` (em-dash —) |
+| `â€“` | `â€"` | `–` (en-dash –) |
+| `â€™` | `â€™` | `’` (right single quote ') |
+| `â€œ` | `â€œ` | `“` (left double quote ") |
+
+Fix by find/replace of the literal escape sequence text in the form JSON. Validate with `python -c "import json; json.load(open(path))"` after.
 
 ---
 

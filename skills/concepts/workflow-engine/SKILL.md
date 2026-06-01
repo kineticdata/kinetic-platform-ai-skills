@@ -66,6 +66,109 @@ A **connector** links two nodes together. Each connector has a **type**, an opti
 
 **Connector expressions** do NOT use ERB tags — the engine evaluates the expression directly as Ruby (e.g., `@results['Node']['Status'] == 'approved'`).
 
+**`@space`, `@kapp`, `@form`, `@submission`, `@values` etc. are all Ruby Hashes — access via bracket notation, not method calls.** Calling `@space.url` throws `NoMethodError: undefined method 'url' for #<Hash:...>` and halts the parameter evaluation. Use bracket notation: `@form['Slug']` not `@form.slug`, `@submission['Id']` not `@submission.id`, `@kapp['Name']` not `@kapp.name`. The Hash key names are Capitalized words like "Slug", "Id", "Name" — see the full ERB context table earlier in this document for the canonical key names.
+
+**Attributes live in their OWN top-level binding hashes — not nested under `@space['attributes']`.** This is a common mistake:
+
+```ruby
+# WRONG — @space has only Name/Slug; there's no 'attributes' key
+@space['attributes']['Web Server Url']    # raises IndexError "Unable to retrieve hash value for the key \"attributes\""
+@space.url                                # NoMethodError (Hashes don't have .url method)
+
+# CORRECT — attributes are exposed as separate top-level bindings
+@space_attributes['Web Server Url']
+@kapp_attributes['Service Portal Kapp Slug']
+@form_attributes['Manager User Attribute']
+@submitter_attributes['Manager']          # attributes of the user who submitted
+```
+
+**Discover what bindings are available** on a specific workflow via:
+```
+GET /app/api/v1/kapps/<kapp>/forms/<form>/workflows/<id>?include=details
+```
+The response's `bindings` field shows every binding name + template. Look for groups like `Space Attributes`, `Kapp Attributes`, `Submitter`, `Submitter Attributes`, etc. — each maps to its own `@xxx_attributes` binding.
+
+**Do NOT hardcode environment-specific values** (URLs, kapp slugs, system endpoints) as a "temporary" workaround when the binding mechanism isn't working. A hardcoded `https://my-dev-host.example.com` in a workflow template will travel with the workflow on import/export and silently break (or send users to the wrong host) when promoted to staging/prod. The fix is to discover and use the correct binding — or to add a missing attribute to the space/kapp/form so the binding has something to return.
+
+**`@submitter` is `nil` in workflow ERB context — use `@submission['Submitted By']` instead.** Despite appearing in some documentation, the bare `@submitter` variable does NOT resolve in event-triggered workflows. Using it as `<%= @submitter %>` returns empty string, so any integration parameter built from it (e.g., `parameters.Username: <%= @submitter %>` for a Get User lookup) gets called with an empty argument and returns empty results — without raising an error.
+
+```ruby
+# WRONG — @submitter evaluates to nil in the workflow ERB context
+parameters.Username = <%= @submitter %>             # passes empty string to integration
+
+# CORRECT — these are populated by the form-submitted event
+parameters.Username = <%= @submission['Submitted By'] %>   # who submitted this submission
+parameters.Username = <%= @submission['Created By'] %>     # who created the draft
+parameters.Username = <%= @values['Requested For'] %>      # if the form has a "Requested For" field (typical for access-request flows)
+```
+
+Diagnostic technique: add a `utilities_echo_v1` (Echo) node temporarily, with `input` set to e.g. `SUBMITTER=<%= @submitter.inspect %> | SUBMITTED_BY=<%= @submission['Submitted By'].inspect %>` — then read its `results.output` via `GET /runs?...&include=tasks` to see exactly what's populated.
+
+**Routine call nodes need `defers: true` if you want to consume their declared `<results>` downstream.** When you invoke a Global Routine (like `Submission Retrieve`, `Submission Update`, etc.) as a node in your workflow, the routine spawns a sub-run. If the calling node is configured with `defers: false`, the parent run advances immediately and `@results['<Routine Node Name>']` only contains meta fields (`Run Id`, `Source Id`, `Tree Id`) — not the routine's declared output results. The actual outputs live on the sub-run's "Return Results" task and propagate to the parent only after the sub-run closes.
+
+```json
+{
+  "name": "Retrieve Original SAAR",
+  "definitionId": "routine_kinetic_submission_retrieve_v1",
+  "defers": true,            // ← REQUIRED to receive Values JSON / Form Slug / etc.
+  "deferrable": true,
+  "parameters": [
+    { "id": "Id", "value": "<%= @values['Original SAAR Submission Id'] %>" }
+  ]
+}
+```
+
+Then downstream nodes can access the routine's outputs:
+```ruby
+@results['Retrieve Original SAAR']['Values JSON']    # JSON string of submission's values
+@results['Retrieve Original SAAR']['Form Slug']      # which form the submission belongs to
+@results['Retrieve Original SAAR']['Exists']         # whether the submission was found
+```
+
+If `defers: false` is used on a routine call, the downstream nodes see empty / meta-only results — leading to silent failures (integration calls with empty params, JSON.parse on empty strings, etc.). Common naming pattern for the routine node `id` field: `<definitionId>_<num>` (e.g., `routine_kinetic_submission_retrieve_v1_25`). The numeric suffix can be any unique value within the tree but the convention is to increment from `lastId`.
+
+**Dynamic email templates pattern** — to keep email subjects/bodies in a separate template form (e.g., `notification-template` with fields `Name`, `Subject`, `Body`) rather than hardcoded in workflow nodes:
+
+1. **Per email**, add a `kinetic_core_api_v1` lookup node BEFORE the email node:
+   ```json
+   {
+     "definitionId": "kinetic_core_api_v1",
+     "name": "Fetch Template (My Template Name)",
+     "defers": false,
+     "parameters": [
+       {"id": "method", "value": "GET"},
+       {"id": "path",
+        "value": "/kapps/datastore/forms/notification-template/submissions?include=values&limit=1&q=values[Name] = \"My Template Name\""}
+     ]
+   }
+   ```
+
+2. **In the email node's `subject` and `htmlbody`**, use ERB to parse the response and substitute `{{Placeholder}}` tokens:
+   ```erb
+   <%
+   tmpl_response = (JSON.parse(@results['Fetch Template (My Template Name)']['Response Body']) rescue {})
+   tmpl_subs = (tmpl_response['submissions'] || [])
+   tmpl_body = tmpl_subs.length > 0 ? (tmpl_subs[0]['values'] || {})['Body'].to_s : ''
+   tmpl_body = tmpl_body.gsub('{{Requestor Name}}', @values['Requested For Name'].to_s)
+   tmpl_body = tmpl_body.gsub('{{SAAR URL}}', @space_attributes['Web Server Url'] + '/kapps/.../' + @submission['Id'])
+   tmpl_body_html = tmpl_body.gsub("\n", '<br>')
+   %><%= tmpl_body_html %>
+   ```
+
+This separates content from logic: business users can edit email copy without touching the workflow tree. Placeholders use `{{X}}` (mustache-style) to be obvious in the template editor and not collide with ERB `<%= %>` syntax in the workflow.
+
+**Always wrap `JSON.parse` of integration results in `rescue`** — integration result fields can be empty string, nil, or malformed JSON depending on whether the lookup found anything. A bare `JSON.parse('')` throws `JSON::ParserError: unexpected token at ''` and the connector fails to evaluate, halting the workflow. Defensive pattern:
+
+```ruby
+# BAD — crashes when Attributes is empty/nil/malformed
+JSON.parse(@results['Get Requestor']['Attributes'])['Manager']
+
+# GOOD — degrades to empty hash on any parse failure
+(JSON.parse(@results['Get Requestor']['Attributes'].to_s) rescue {})['Manager']
+```
+
+The `rescue {}` modifier returns an empty hash on ANY exception (parser error, nil method, etc.), letting subsequent `['Manager']`, `.first`, `.to_s` chain operations continue safely (eventually evaluating to `nil`/empty as appropriate). This is critical for connector expressions because they fire BEFORE any error-handling node can intercept — a crashed connector halts the branch outright.
+
 ### Parameters
 
 Each node accepts inputs called parameters. Parameters support:
@@ -223,6 +326,50 @@ Deferred nodes pause workflow execution while waiting for external processes to 
 - **Results** — XML structure: `<results><result name="Key">Value</result></results>`
 - **Messages** — plain text notifications
 
+### Queue Task Pattern (Parent Workflow ↔ Child Submission Deferral)
+
+The canonical pattern for "create a child submission, wait for someone to approve/decision it, then continue" in Kinetic Service Portal apps. Used for endorsement chains, approval routing, multi-stage tasks.
+
+**The end-to-end flow:**
+
+1. **Parent workflow** calls a "Queue Task Create" routine (typically `routine_queue_task_create_with_custom_activity_label` or `routine_queue_task_create`) with `defers: true`. The routine internally:
+   - Creates a Draft child submission via `system_integration_v1` Submissions Create, passing values including a generated `Deferral Token` field
+   - (Optional) Creates an Activity record on the originating submission so the requestor sees the pending task
+   - Hits a `Retrieve Submission` node with `defers: true` that waits on the Deferral Token
+   - When the deferral is Completed, retrieves the now-Submitted child submission and returns `Fields JSON` (all child values) + `Submission Id` to the parent
+2. **Child queue task form** must have:
+   - A `Deferral Token` field (the routine stamps a token into it during creation)
+   - Form attribute `"Custom Submission Workflow": ["Submitted"]` so the submission-submitted workflow fires
+   - A `submission-submitted` workflow tree (see below)
+3. **Child's submission-submitted workflow** fires when the approver/assignee submits the queue task. It must complete the parent's deferral:
+
+```json
+{
+  "name": "Complete Deferral",
+  "definitionId": "utilities_create_trigger_v1",
+  "parameters": [
+    { "id": "action_type",        "value": "Complete" },
+    { "id": "deferral_token",     "value": "<%= @values['Deferral Token']%>" },
+    { "id": "deferred_variables", "value": "<%= \"<results><result name=\\\"Fields JSON\\\">#{@values.to_json}</result></results>\" %>" },
+    { "id": "message",            "value": "" }
+  ]
+}
+```
+
+4. **Parent reads child decision** via `JSON.parse(@results['<Stage Node Name>']['Fields JSON'])['Decision']` on outgoing connectors:
+
+```
+"value": "JSON.parse(@results['Part II']['Fields JSON'])[\"Decision\"].to_s.downcase != \"denied\""
+```
+
+**Critical gotchas in this pattern:**
+
+- **Routine must wire `Return` off the deferred `Retrieve Submission` node's Complete output.** Common breakage: `Return` is wired off `Submission Create` (the synchronous create step) — routine fires Return immediately with empty/Draft values, parent sees `Decision == ""` and takes whichever branch matches empty. Fix: trace the routine in Task admin; ensure the path is Start → Submission Create → (optional Activity Create) → Retrieve Submission [defers] → Return.
+- **`Custom Submission Workflow` form attribute is mandatory.** Without it, no submission-submitted workflow fires, the trigger is never sent, the parent's deferral never completes, and the workflow hangs forever.
+- **Multiple `.json` files in `workflows/submission-submitted/` ALL fire** — there's no "primary" workflow. If a legacy tree sits next to the active one, both run on every submit, often creating duplicate child stages or duplicate completions. **Delete legacy workflow files** rather than relying on them being ignored.
+- **`system_integration_v1` Submission Update's `parameters.Values` must be valid JSON** — empty string `""` fails with `HTTP 400 "Unable to parse JSON content."` Use `"{}"` (empty JSON object literal) when you want to update other fields (e.g., Core State) without modifying values.
+- **Don't reuse a child submission across parent runs** — the Deferral Token in the child is tied to the specific parent run that created it. Re-submitting an old child sends the trigger to a parent run that may already be Complete or Error, and the new parent run never gets the signal. Always trigger a fresh parent submission for end-to-end testing.
+
 ### Looping
 
 Uses **Loop Head** and **Loop Tail** system handlers. Loop iterations execute in **parallel** (not sequentially). For sequential iteration, use recursive routines.
@@ -290,6 +437,31 @@ A **handler** is a small program that performs a unit of work. Handlers are Ruby
 - `properties` — Configuration key-value pairs (info values)
 - `parameters` — Input parameter definitions
 - `results` — Output result definitions
+
+### Debugging Handlers: Read the Source
+
+Handlers in a space export live as `.zip` files under `task/handlers/`. Unlike routine XML exports (which can be stale/placeholder content — see "Export integrity" below), **handler zips are accurate** and contain the actual Ruby + XML the engine runs. When a handler throws a cryptic error, unzip and read `handler/init.rb` and `process/info.xml` directly — Ruby is straightforward and tells you the actual URL/auth/payload construction.
+
+**Example: `kinetic_core_api_v1` `addr_port` error.** The fingerprint `NoMethodError: undefined method 'include?' for nil:NilClass at addr_port` from this handler always means the URL has no host. The handler source (`init.rb`) builds the URL as:
+
+```ruby
+@api_location = @info_values["api_location"]
+@api_location.chomp!("/")
+api_route = "#{@api_location}#{@path}"
+RestClient::Request.execute(method: @method, url: api_route, ...)
+```
+
+The handler has **no per-task URL override** — the only parameters are `error_handling`, `method`, `path`, `body`. The URL prefix is always `@info['api_location']`. If `api_location` is empty string or scheme-less (e.g., just `/app/api/v1` with no `https://host`), `api_route` parses to a hostless URI and Net::HTTP errors at `addr_port` when checking `host.include?(":")` for IPv6.
+
+**Fix:** Set the handler's `API Location` info value to a full URL like `https://your-host.example.com/app/api/v1` in Task admin → Settings → Handlers → `kinetic_core_api_v1`.
+
+This pattern generalizes: when a handler errors, the fastest path to root cause is reading 50 lines of Ruby in `init.rb` — not guessing at config from the outside.
+
+### Export Integrity Warning
+
+The Kinetic Task **routine XML export is known to produce stale placeholder content** in some configurations. Symptom: every file in `task/routines/*.xml` is the same byte size and contains an identical, unrelated tree (e.g., "Employee Offboarding Submitted") regardless of what the routine actually does on the server. When this happens, the export is useless for diagnosing routine bodies — the Task admin UI is the source of truth. Handler zips are NOT affected by this bug.
+
+**Quick check:** `ls -la task/routines/*.xml` — if all sizes are identical, the export is stale.
 
 ---
 

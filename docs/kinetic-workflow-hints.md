@@ -331,7 +331,7 @@ Results are accessed by **task name**, then **result key**:
 | `system_join_v1` | Coordinates multiple incoming connectors. Params: `type` (menu: All/Any/Some), `number` |
 | `system_junction_v1` | Looks backward through branches to common parent. No params. |
 | `system_loop_head_v1` | Loop entry. Params: `data_source` (required), `loop_path` (required), `var_name`. Iterations execute in parallel. |
-| `system_loop_tail_v1` | Loop exit. Params: `type` (menu: All/Any/Some), `number`. Must be directly connected to Loop Head. |
+| `system_loop_tail_v1` | Loop exit. Params: `type` (menu: All/Any/Some), `number`. **Include `number` even for `type=All`** (omitting it raises `UnknownVariableError`). Tail must receive head + exactly one body connector; a branching body must reconverge via a `system_junction_v1` first (3+ feeders → `RuntimeError`). |
 | `system_tree_call` | Handler used by `<taskDefinition>` |
 
 ### Critical Node Flags (treeJson)
@@ -725,6 +725,7 @@ POST /errors/resolve
 | `Source Error` | Source data could not be processed (e.g., NoMethodError) | **Do Nothing only** |
 | `Tree Error` | Tree-level error (e.g., node already completed) | **Do Nothing only** |
 | `Missing Handler Error` | Handler definition not found on server | Retry Task, Skip Task, Do Nothing |
+| `Connector Error` | A `<dependents>` connector condition (branch ERB) raised at evaluation (e.g. `IndexError`/`JSON.parse(nil)`/missing `@results` key) | **None accepted** — Retry/Skip/Do Nothing all rejected; fix the tree and re-run, or leave (stale ones are harmless) |
 
 #### Available Actions
 

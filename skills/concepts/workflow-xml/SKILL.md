@@ -364,6 +364,12 @@ Loops iterate over data using paired **Loop Head** and **Loop Tail** nodes.
 - `type` (menu: All/Any/Some) — when the loop completes
 - `number` — for "Some" type, how many iterations must complete
 
+**CRITICAL: include the `number` parameter even when `type=All`.** The handler reads `number` unconditionally; if the parameter is absent from the node it raises `UnknownVariableError` ("The 'End Loop' node could not be executed...") and the loop never initializes. Leave it empty for All/Any:
+```xml
+<parameter id="type" ...>All</parameter>
+<parameter dependsOnId="type" dependsOnValue="Some" id="number" label="Number:" menu="" required="false" tooltip="If some, how many?"></parameter>
+```
+
 **Critical:** Loop iterations execute **in parallel**, not sequentially. There is no `for` loop or `do while` concept. For sequential processing, use recursive routines instead.
 
 **Critical: Loop connector pattern.** The loop_head MUST have **two outgoing Complete connectors**:
@@ -376,6 +382,13 @@ The loop body nodes also connect to the loop_tail. This means the loop_tail rece
 loop_head ──→ body_node ──→ loop_tail
     │                           ↑
     └───────────────────────────┘  (direct connector)
+```
+
+**CRITICAL: a branching loop body must reconverge through a single `system_junction_v1` before the tail.** The loop_tail must receive exactly TWO incoming connectors: the direct one from loop_head, and ONE from the body. If the body branches conditionally (e.g. needs-patch vs no-change) and BOTH branch endpoints connect directly to the tail (3+ feeders), the tail handler raises `RuntimeError` during loop setup and no iterations run. Insert a `system_junction_v1` ("Merge", no params) that all body branches connect to, then junction → tail:
+```
+loop_head ──→ compute ──[needs patch]──→ patch ──┐
+    │              └──────[no change]────────────→ junction ──→ loop_tail
+    └─────────────────────────────────────────────────────────────↑
 ```
 
 **Loop head results:**
@@ -415,7 +428,8 @@ loop_head ──→ body_node ──→ loop_tail
      ]}},
     {"name": "End Loop", "definitionId": "system_loop_tail_v1",
      "parameters": [
-       {"id": "type", "value": "All"}
+       {"id": "type", "value": "All"},
+       {"id": "number", "value": ""}
      ]}
   ]
 }
@@ -528,6 +542,8 @@ Configured with `api_username`, `api_password`, `api_location` properties.
 
 **Results:** `Response Body`, `Response Code`, `Handler Error Message`
 
+**Single-submission GET/PATCH path:** use the top-level `/submissions/{id}` (the handler prepends `/app/api/v1`). The form-scoped path `/kapps/{kapp}/forms/{form}/submissions/{id}` returns **HTTP 404** for a single submission — only the list/query variant (`/kapps/.../forms/.../submissions?q=...`) works form-scoped. A `PATCH /submissions/{id}` with `{"values":{...}}` patches values without triggering field validations, core-state conditions, or webhooks.
+
 ### Email Handler — `smtp_email_send_v1`
 
 Sends emails via SMTP. Configured with `server`, `port`, `tls`, `username`, `password` properties.
@@ -562,6 +578,8 @@ routine_handler_failure_error_process_v1
 ```
 
 **Identifying subroutines:** Any task with `definition_id` starting with `routine_` is calling another Global Routine.
+
+**CRITICAL: a routine-call node must set `defers: true` and `deferrable: true` to capture the routine's returned results.** A Global Routine call (`system_tree_call`) spawns a child run. With `defers: false`, the calling node fires the routine and immediately continues — the routine's declared `<results>` are NOT merged onto the node before its dependents/parameters evaluate. The node's results show only `{Run Id, Source Id, Tree Id}`, and any downstream `@results['<Call Node>']['<ResultName>']` raises **`IndexError`** (the routine returns the value, just too late). With `defers: true` the node waits for the child run and merges the returned results, so `@results['<Call Node>']['<ResultName>']` is available to all downstream nodes. Returned result names come from the routine's `<results><result name="X">` plus a `system_tree_return_v1` node that populates them.
 
 ---
 
@@ -768,6 +786,7 @@ Failed triggers generate error records in the Task engine.
 | `Source Error` | Source data processing error | Do Nothing only |
 | `Tree Error` | Tree-level error | Do Nothing only |
 | `Missing Handler Error` | Handler not found on server | Retry Task, Skip Task, Do Nothing |
+| `Connector Error` | A `<dependents>` connector condition (ERB on a branch) raised at evaluation (e.g. `IndexError` from `JSON.parse(nil)` or a missing `@results` key) | **None of Retry/Skip/Do Nothing are accepted** — cannot be resolved via `/errors/resolve`; fix the tree and re-run, or leave (stale errors are harmless) |
 
 ### Resolve Request
 
@@ -880,4 +899,8 @@ GET /runs/{runId}?include=details,triggers,triggers.details,tasks,tasks.details,
 - **WebAPI Return node requires `headers_json`** — omitting this parameter causes RuntimeError at runtime even though it appears optional
 - **Do NOT add `system_tree_return_v1` to form-triggered workflows** — tree_return is ONLY for: (1) WebAPIs that need to return a response, (2) Routines where the parent workflow awaits results. Form-triggered trees complete naturally when all nodes finish. Adding tree_return causes `ENGINE Run Error` because it expects WebAPI/routine context.
 - **Loop head must connect to BOTH body AND tail** — the `system_loop_head_v1` node needs two outgoing Complete connectors: one to the loop body and one directly to `system_loop_tail_v1`. Without the direct connector to the tail, the engine cannot track loop completion.
+- **Loop tail needs the `number` parameter even for `type=All`** — omitting it raises `UnknownVariableError` and the loop never initializes. Leave it empty for All/Any.
+- **A branching loop body must reconverge via one `system_junction_v1` before the tail** — multiple body branches connecting directly to the tail (3+ feeders) raises `RuntimeError` at loop setup. Merge through a junction so the tail has exactly head + one body connector.
+- **A routine-call node must be `defers: true`/`deferrable: true` to capture the routine's results** — with `defers: false` the returned `<results>` aren't merged before dependents evaluate, so `@results['Call Node']['Result']` raises `IndexError`.
+- **Single-submission GET/PATCH uses top-level `/submissions/{id}`** — the form-scoped `/kapps/.../forms/.../submissions/{id}` 404s; only list/query is form-scoped.
 - **JSONPath uses `$[*]` not `$.[*]`** — no dot between `$` and `[`. For nested extraction: `$[*].user.username`

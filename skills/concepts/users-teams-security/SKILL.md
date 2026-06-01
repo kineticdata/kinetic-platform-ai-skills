@@ -197,6 +197,47 @@ DELETE /app/api/v1/users/jane.doe@example.com
 - **No user search** — the `q` parameter is not supported on the users list endpoint. You must paginate through all users
 - **PUT replaces attributes entirely** — if you PUT `attributes: [{"name":"A","values":["1"]}]`, any previously-set attributes B, C, etc. are removed. Include all attributes in every PUT
 
+### Service Accounts (No API Keys)
+
+**The platform does not issue API keys, personal access tokens, or any other per-user credential separate from the password.** There is no "API-key-only" user type and no endpoint to mint a key for an existing user. Specifically:
+
+- `POST /users` and `PUT /users/{username}` accept `password` but expose **no** `apiKey` / `token` / `accessToken` field.
+- The user object returned by `GET /users/{username}` has no key field.
+- The Integrator Connection auth types named `api_key` / `raw_bearer_token` describe credentials for **external systems**, not credentials issued by Kinetic for Kinetic.
+
+**Service-account pattern** — to give an automation, integration, or scheduled job its own identity, create a regular user:
+
+```json
+POST /app/api/v1/users
+{
+  "username": "eam-integration",
+  "displayName": "EAM Integration Service",
+  "email": "platform-ops@example.com",
+  "enabled": true,
+  "spaceAdmin": false,
+  "password": "<long-random-string>",
+  "memberships": [
+    {"team": {"name": "Role::EAM Integration"}}
+  ]
+}
+```
+
+Then authenticate API calls as that user — Basic Auth for Core/Task, OAuth implicit grant for Integrator. The service-account's username is what `identity('username')` returns inside security policies, so policies can be locked to it directly:
+
+```js
+// On a WebAPI's Execution security policy:
+identity('username') == "eam-integration"
+```
+
+**Rotation:** there is no separate key-rotation primitive. To rotate, `PUT /users/{username}` with a new `password` — every running integration using the old password breaks immediately, so coordinate the cutover.
+
+**Best practices:**
+
+- Use a dedicated user per integration (not a shared "service" user) so revocation and audit work.
+- Disable interactive login risk by setting an email no human reads, and a password that exists only in the integration's secret store.
+- Constrain blast radius via role-team membership + security policies, not by setting `spaceAdmin: true`.
+- For IP-restricted environments, set `allowedIps` on the service-account user (e.g., `"10.0.0.0/8"`) so a leaked password is unusable from outside the integration's network.
+
 ---
 
 ## Teams

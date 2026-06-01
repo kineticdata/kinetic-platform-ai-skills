@@ -1,0 +1,16 @@
+{
+  "name": "kinetic-platform",
+  "version": "0.1.0",
+  "description": "Kinetic Platform development skills — REST API, form engine, workflow XML, integrations, security policies, React portal patterns, the Ruby SDK, and step-by-step recipes for building on the Kinetic Platform.",
+  "author": {
+    "name": "Kinetic Data"
+  },
+  "skills": [
+    "./skills/api",
+    "./skills/commands",
+    "./skills/concepts",
+    "./skills/front-end",
+    "./skills/platform",
+    "./skills/recipes"
+  ]
+}

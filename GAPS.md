@@ -100,6 +100,7 @@ Comprehensive audit from three angles: live API testing on demo.kinops.io, `@kin
 | 55 | **`direction` parameter contradiction** — some files said it doesn't exist, others said it does | api-basics, data-fetching, copilot-instructions | **FIXED** — reconciled across all files |
 | 56 | **`hasIntersection` nature contradicted** — one file said built-in, another said inline JS | form-engine, users-teams-security | **FIXED** — reconciled as inline JS helper |
 | 57 | **`pattern` property contradicted** — one section said not implemented, another showed working syntax | form-engine | **FIXED** — reconciled as object format |
+| 58 | **Platform-issued API keys absence undocumented** — no skill stated that the platform does not issue per-user API keys / PATs and that there is no API-key-only account type; readers were left to infer the service-account pattern (regular user + password + Basic Auth) | authentication, users-teams-security | **FIXED** — "No Platform-Issued API Keys" callout added to authentication skill; "Service Accounts (No API Keys)" subsection added to users-teams-security skill |
 
 ---
 

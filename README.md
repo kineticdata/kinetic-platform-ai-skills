@@ -25,6 +25,7 @@ A shareable AI skills library for building on the Kinetic Platform. Organized fo
 | [workflow-xml](skills/concepts/workflow-xml/SKILL.md) | XML/treeJson schema, task nodes, flow control, system handlers, return node rules, critical node flags, error management API, triggers API |
 | [decision-frameworks](skills/concepts/decision-frameworks/SKILL.md) | Integration type selection, data storage patterns, workflow execution model |
 | [architectural-patterns](skills/concepts/architectural-patterns/SKILL.md) | Deferral pattern, approvals, fulfillment, work routing, SLA tracking, external system sync, bulk operations |
+| [robots](skills/concepts/robots/SKILL.md) | Scheduled automation — robot definition/execution/next-execution forms, the execution routine, robot tree pattern, scheduling, and gotchas |
 | [form-engine](skills/concepts/form-engine/SKILL.md) | Form JSON schema, field types, events, expressions, K() JavaScript API, bundle.config overrides |
 | [integrations](skills/concepts/integrations/SKILL.md) | Connections/Operations, Bridges, Handlers, File Resources — when to use each |
 | [webapis-and-webhooks](skills/concepts/webapis-and-webhooks/SKILL.md) | WebAPIs (custom REST endpoints), Webhooks (event triggers), security, callback patterns |

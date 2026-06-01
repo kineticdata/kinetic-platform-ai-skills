@@ -50,6 +50,7 @@ These skills are the shared knowledge base for **any AI assistant or developer**
 | Integrations | `skills/concepts/integrations/SKILL.md` | Set up Connections/Operations (preferred), Bridges, or Handlers. Read when wiring up external system calls. |
 | Decision Frameworks | `skills/concepts/decision-frameworks/SKILL.md` | Choose between approaches — which integration type, where to store data, workflow vs real-time |
 | Architectural Patterns | `skills/concepts/architectural-patterns/SKILL.md` | Implement approvals, deferrals, fulfillment queues, SLA tracking, external system sync |
+| Robots | `skills/concepts/robots/SKILL.md` | Scheduled automation — robot-definitions/executions/next-execution forms, the execution routine, robot tree pattern, creating/scheduling a robot, gotchas |
 | WebAPIs & Webhooks | `skills/concepts/webapis-and-webhooks/SKILL.md` | Create custom REST endpoints (WebAPIs) or event-driven triggers (webhooks) |
 | Users & Teams | `skills/concepts/users-teams-security/SKILL.md` | Manage users/teams — CRUD, memberships, management patterns |
 | Security Policies | `skills/concepts/security-policies/SKILL.md` | KSL security expressions, policy definitions, binding functions, attribute definitions, activities, access control |
