@@ -82,6 +82,8 @@ The form engine maintains a listener bucket per recognized type and pushes the h
 
 If you want to fire on draft save, there is no separate "Save" event — use `Submit` (which fires for both draft save and full submission depending on the button's `renderType`) or a button-specific `Click` event on a save button.
 
+**Form events fire only when the form renders in CoreForm.** Submissions created directly via the REST API (`POST /app/api/v1/kapps/{kapp}/forms/{form}/submissions`) bypass form-side JavaScript entirely — Load, Change, Submit, and Click events do not run, and `defaultValue`, `visible`, and `required` expressions are not evaluated. The submission is created from whatever JSON the POST body contains. This matters for testing: form-JS behavior must be verified by rendering the form in a browser, not by API submission.
+
 ### Event Actions
 
 | Action | Description |
@@ -125,14 +127,22 @@ Mappings can also set `visible` (show/hide the target field).
 
 ### Page Load Event (Custom DOM Manipulation)
 
+A common pattern for review pages: a Custom Load event reads field values from previous pages and injects formatted HTML into a content element on the current page.
+
 ```json
 {
   "type": "Load",
   "action": "Custom",
-  "name": "Load Summary Review",
-  "code": "const displaySection = K('section[Summary Review Data]').element();\nconst reviewTarget = K('content[Summary Review HTML]').element();\n// ... build HTML from hidden fields and inject into content element"
+  "name": "Build Review",
+  "code": "const target = K('content[Review HTML]').element().querySelector('#review-target');\nconst fmt = v => v == null ? '<em>—</em>' :\n  Array.isArray(v) ? v.map(o => o && o.name ? o.name : o).join(', ') :\n  typeof v === 'object' ? JSON.stringify(v) : String(v);\nconst rows = [\n  ['Requestor', K('submission').value('Requestor Name')],\n  ['Department', K('submission').value('Department')],\n  ['Category', K('submission').value('Service Category')],\n  ['Priority', K('submission').value('Priority')],\n  ['Attachments', K('submission').value('Attachments')]\n];\ntarget.innerHTML = '<dl>' + rows.map(([k, v]) => `<dt>${k}</dt><dd>${fmt(v)}</dd>`).join('') + '</dl>';"
 }
 ```
+
+The pattern requires three pieces working together:
+
+1. **Anchor `<div>` inside the content element.** The content element's `htmlContent` should contain `<div id="review-target"></div>` (or any stable selector) — this gives the JS a guaranteed injection point that survives re-renders.
+2. **Cross-page reads via `K('submission').value()`.** Field-level `K('field[Name]').value()` only reaches fields on the current page. For values from previous pages, use `K('submission').value('Field Name')`.
+3. **Defensive value formatting.** `value()` returns different shapes by field type: strings for text/dropdown, JSON arrays for checkbox/multi-select, arrays of `{name, size}` objects for attachment fields. Naive coercion produces `[object Object]` for the attachment case. The `fmt()` helper above handles `null`, arrays (mapping objects with a `name` property to that name), and primitives.
 
 ### Submit Event (Async Pattern)
 
@@ -196,6 +206,37 @@ The `K()` function provides runtime access to form objects in Custom event code.
 | `K('space')` | Current space |
 | `K('bridgedResource[Name]')` | Bridged resource by name |
 
+### Data Selectors vs. Wrapped Selectors
+
+The selectors fall into two distinct shapes — and the asymmetry is a common trap.
+
+**Data selectors** return plain JavaScript objects. Access via property notation; method calls throw `TypeError: K(...).property is not a function`:
+
+| Selector | Properties (observed) |
+|----------|----------------------|
+| `K('identity')` | `anonymous`, `attributes`, `authenticated`, `displayName`, `email`, `groups`, `profileAttributes`, `sessionToken`, `spaceAdmin`, `teams`, `username` |
+| `K('kapp')` | `name`, `slug`, `attributes` |
+| `K('space')` | `name`, `slug`, `attributes` |
+
+```javascript
+K('identity').username        // 'someone@example.com'   ✓
+K('identity').username()      // TypeError                ✗
+K('kapp').slug                // 'service-portal'         ✓
+```
+
+**Wrapped selectors** return AngularJS `$scope` objects with method APIs. Use parentheses:
+
+```javascript
+K('field[Status]').value()           // get
+K('field[Status]').value('Active')   // set
+K('submission').value('Department')  // cross-page read
+K('form').serialize()                // current page values
+```
+
+Wrapped selectors include `K('field[X]')`, `K('section[X]')`, `K('content[X]')`, `K('button[X]')`, `K('page')`, `K('submission')`, `K('form')`, and `K('bridgedResource[X]')`. `K('form')` and `K('page')` expose Angular internals like `$watch`, `$digest`, `$apply`, confirming the underlying scope mechanism.
+
+In expression contexts (visible, required, defaultValue, mapping values), use the binding form instead of `K()` — `${identity('username')}`, `${kapp('slug')}`, `${space('name')}`. Bindings work in expressions; `K()` works in Custom event JavaScript.
+
 ### Field Methods
 
 | Method | Description |
@@ -211,8 +252,97 @@ The `K()` function provides runtime access to form objects in Custom event code.
 | `required()` | Whether required |
 | `visible()` | Whether visible |
 | `enabled()` | Whether enabled |
-| `options()` | Available choices (dropdown/radio/checkbox) |
+| `options()` | Available choices (dropdown/radio/checkbox) — see note below |
 | `on(event, callback)` | Attach event listener |
+
+**`options()` returns a live array reference, but mutating it does not re-render the dropdown.** Pushing/replacing entries in the array (`opts.length = 0; opts.push(...)`) updates the in-memory array but the rendered choices do not change, even when the mutation is wrapped in `K('form').$apply()`. The K() field API has no `setOptions`, `refresh`, or equivalent method for replacing choices at runtime.
+
+For cascading dropdowns (where choices depend on another field's value), the working pattern is multiple separate dropdown fields, each with its own static options and a `visible` expression gating which one shows. See the form-engine skill's Conditional Visibility section.
+
+**`K('field[X]').element()` returns null/undefined for radio and checkbox groups.** These render as multiple `<input>` elements with no single wrapper that the K widget tracks. Trying `K('field[Radio Field]').element().closest('.form-group')` throws `Cannot read properties of null (reading 'closest')` and silently halts whatever script needed the wrapper. The K widget DOES return an element for single-input fields (text, textarea, date, file) — the asymmetry is the trap.
+
+For grouped inputs, fall back to native DOM:
+
+```javascript
+// WORKS for any field type — finds the actual input(s)
+const inputs = document.querySelectorAll('[name="' + fieldName + '"]');
+// Walk up to a layout-meaningful wrapper. In Kinetic's current portal
+// bundle, top-level field rows are <section class="mt-3 p-2">.
+const wrap = inputs[0] && inputs[0].closest('section.mt-3, .form-group, [data-element-name]');
+```
+
+Verified June 2026 during GLE SAAR Phase 5: the highlight-on-change feature on the modification form silently failed for every Type of Access / Clearance / Classification field because `K().element()` returned null and the `.field-modified` CSS class never landed.
+
+**`K('field[X]').value([...])` on a checkbox group sets internal K state but does NOT sync the DOM `checked` property of the underlying inputs.** Symptom: `K().value()` immediately afterward returns the new array correctly, but visually no boxes appear checked, and any DOM-level "is this checkbox checked?" inspection sees the old state. The mismatch persists until the user clicks one of the inputs.
+
+For programmatic pre-fill of checkboxes (e.g., copying values from a parent submission into a child or modification form), set the DOM directly and dispatch native events so any listeners — K's internal change detector, React-managed wrappers, jQuery handlers — pick up the change:
+
+```javascript
+function setNativeChecked(input, checked) {
+  if (input.checked === checked) return false;
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'checked').set;
+  setter.call(input, checked);
+  input.dispatchEvent(new Event('click', { bubbles: true }));
+  input.dispatchEvent(new Event('change', { bubbles: true }));
+  return true;
+}
+
+// For a checkbox group:
+const wanted = Array.isArray(value) ? value : [value];
+document.querySelectorAll('input[type="checkbox"][name="' + fieldName + '"]').forEach((i) => {
+  setNativeChecked(i, wanted.indexOf(i.value) >= 0);
+});
+```
+
+The same trap applies — though less severely — to radio groups: `K().value('X')` syncs the selected input most of the time, but if the form is using a custom radio renderer the radio markers can lag the K state. The native-setter + click+change dispatch pattern works for both.
+
+**Page-level events vs field-level events vs form-level events.** Three distinct event-attachment points, all using the same schema (`{name, type, action, code, runIf, ...}`):
+
+| Attached to | JSON path | Common types | Examples |
+|---|---|---|---|
+| **Form** | `form.events[]` | Rarely used in practice; mostly empty arrays | — |
+| **Page** | `form.pages[i].events[]` | `Load`, `Submit` | Pre-fill from API, render review widgets, install autocomplete handlers, set computed submit-time fields |
+| **Field** | `form.pages[i].elements[...].events[]` (anywhere inside the page tree) | `Change`, `Click`, `Load` | Auto-fill signature date on Change, custom Submit-button Click validators |
+
+When auditing or modifying a form, **always traverse all three locations**. A form's "Load behavior" is most often a Page-level Load event in `form.pages[0].events`, NOT in form-level `form.events`. Field-level Load events exist but are less common — they fire when the field renders, useful for one-time widget initialization on the field itself.
+
+```javascript
+// Pattern for auditing every event on a form
+for (const ev of (form.events || [])) { /* form-level */ }
+for (const page of form.pages || []) {
+  for (const ev of (page.events || [])) { /* page-level */ }
+  function walk(els) {
+    for (const e of (els || [])) {
+      for (const ev of (e.events || [])) { /* field/section/button-level */ }
+      if (e.elements) walk(e.elements);
+    }
+  }
+  walk(page.elements);
+}
+```
+
+**Heavy Load-event JavaScript can hang the renderer enough to time out screenshots and lock interaction.** The K widget's `value()` setter has non-trivial overhead per call (DOM update + Angular `$apply` propagation + any field-level Change events that fire as side effects). Doing 60+ sequential `K('field[X]').value(v)` calls in a tight loop — common when pre-filling a wide form from an API response — can freeze the browser for several seconds, sometimes long enough that browser-automation screenshot tools timeout.
+
+The companion bug is wiring high-frequency event listeners that re-evaluate the world: e.g., a Change handler that calls a `recomputeAll()` function which iterates every field via `K().value()` on every keystroke. On a 60-field form that's 60 K() reads per character typed.
+
+**Defensive patterns:**
+
+1. **Debounce the heavy work in change listeners** — defer to the next tick or a 150 ms window:
+   ```javascript
+   if (window.__recomputeTimer) clearTimeout(window.__recomputeTimer);
+   window.__recomputeTimer = setTimeout(recomputeAll, 150);
+   ```
+
+2. **Defer the initial pre-fill DOM writes** off the Load handler so the browser can paint first:
+   ```javascript
+   setTimeout(() => populateAllFields(values), 0);
+   ```
+
+3. **Bypass `K().value(...)` when you don't need K's lifecycle hooks** — use the native setter + event dispatch directly (see checkbox pattern above). Much faster than going through K when you're already iterating large field sets.
+
+4. **Cache K() lookups** if you'll reference the same field multiple times in a tight loop — `const f = K('field[X]'); f.value(); f.value('Y'); f.on('change', ...);`. K()'s selector machinery walks scopes on every call.
+
+Verified June 2026: a 60-field modification-form Load event populating 4 sibling stage sections froze the GLE SAAR portal tab badly enough that automated screenshots timed out at 30 s. Switched to native setters + debounced recompute; renderer stayed responsive.
 
 ### Form Methods
 
@@ -240,6 +370,8 @@ All support: `name()`, `element()`, `show()`, `hide()`. Buttons also support `en
 |--------|-------------|
 | `id()` | Submission ID (null for new) |
 | `value(fieldName)` | Field value from a previous page (cross-page access) |
+
+**`K('submission')` does not expose `coreState` or other submission-level metadata.** Form-side JavaScript can only read `id()` and field values — `K('submission').coreState` returns `undefined`. To check submission state (`Draft` / `Submitted` / `Closed`), fetch the submission via the Core API.
 
 ### Bridged Resource Methods
 

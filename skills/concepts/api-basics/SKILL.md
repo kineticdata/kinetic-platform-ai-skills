@@ -206,7 +206,7 @@ Content-Type: application/json
 | `closedAt` | No* | ISO 8601 timestamp — when the submission was closed |
 | `closedBy` | Conditional | **Required when `coreState` is `"Closed"`** |
 
-*`createdBy`, `updatedAt`, and `updatedBy` are always required. `submittedBy` is required when coreState is `"Submitted"` or `"Closed"`. `closedBy` is required when coreState is `"Closed"`. Omitting required fields returns a 400 error listing all missing fields.
+*`createdBy`, `updatedAt`, and `updatedBy` are always required when **creating** a submission via PATCH (`PATCH /kapps/{kapp}/forms/{form}/submissions`). They are **not** required when **updating** an existing submission via PATCH (`PATCH /submissions/{id}`) — see "updatedAt and updatedBy on Update PATCH" below for the behavior on update. `submittedBy` is required when coreState is `"Submitted"` or `"Closed"`. `closedBy` is required when coreState is `"Closed"`. Omitting required fields returns a 400 error listing all missing fields.
 
 ### Key Behaviors
 
@@ -214,6 +214,21 @@ Content-Type: application/json
 - **No webhooks**: No event triggers fire (unlike POST/PUT)
 - **No core state evaluation**: State transitions are not validated
 - **Ideal for**: data migrations, seeding test data, bulk imports, backfilling historical records
+
+### `updatedAt` and `updatedBy` on Update PATCH — Client-Writable, Not Server-Generated
+
+When PATCHing an existing submission (`PATCH /submissions/{id}`), `updatedAt` and `updatedBy` are **client-writable, not server-generated**. The server does not auto-bump either field on PATCH writes:
+
+- **If the PATCH body omits `updatedAt`/`updatedBy`,** the stored values remain pinned to whatever the previous write left there. For a submission that has never been PUT — only PATCHed since creation — that means `updatedAt` stays equal to `createdAt`, even after multiple PATCH writes that successfully mutate `values`. Repeated PATCHes do not eventually advance the timestamp.
+- **If the PATCH body includes `updatedAt`/`updatedBy`,** the server stores the client-supplied strings verbatim. A PATCH that sends `updatedAt: "2026-05-14T22:00:00.000Z"` (an hour in the future relative to wall-clock) persists exactly that timestamp; a PATCH that sends `updatedBy: "patch-probe"` stores that username regardless of the authenticated caller.
+
+**Implications:**
+
+1. **Audit / change-feed pipelines keyed on `updatedAt` will miss PATCH-driven changes** unless callers cooperate by setting `updatedAt` themselves. A polling consumer asking "submissions where `updatedAt >= T`" will not see any submission whose values were PATCHed since `T` without an explicit timestamp in the PATCH body. This applies to PATCH through both the direct API and `kinetic_core_api_v1` with `method: PATCH`.
+2. **`updatedAt` and `updatedBy` cannot be trusted as a server-asserted record of who-last-changed-what on the PATCH path.** Any caller with PATCH permission can backdate, futuredate, or impersonate the author of a change. Optimistic-concurrency schemes that compare `updatedAt` across reads are unsafe against PATCH writers.
+3. **PUT bumps `updatedAt` server-side normally.** Route through `PUT /submissions/{id}` (or through `routine_kinetic_submission_update_v1`, which is a PUT wrapper around the same handler) if you need server-asserted timestamps.
+
+Verified May 2026 via a focused six-probe characterization (BT12) including direct PATCH variations, repeated PATCH, and PATCH with explicit `updatedAt`/`updatedBy`. PUT and routine paths continue to bump `updatedAt` server-side as expected (control comparisons confirmed). PATCH is currently the only HTTP method exposed on `/submissions/{id}` for partial updates — `/forms/{slug}` and `/kapps/{slug}` return 405 on PATCH, so the client-writable-timestamp behavior is `/submissions/{id}`-specific by virtue of PATCH itself being submissions-specific on the Core API.
 
 ## Task API v2 Endpoints (Workflows)
 
@@ -434,6 +449,14 @@ Only three valid coreState values: `"Draft"`, `"Submitted"`, `"Closed"`. Custom 
 Once Submitted, a submission can never return to Draft (only a space admin can do this via PATCH). **Closed** is typically set by workflow to mark a submission as done. Its usage is implementation-specific — some customers archive closed submissions after a retention period.
 
 A space admin can use `PATCH /submissions/{id}` to force any state transition (including backwards), bypassing all validation and state rules. PATCH is the escape hatch for data corrections.
+
+### Closed Submissions Are Mutable
+
+The state machine above governs `coreState` transitions only — it does NOT govern value mutations. Closed submissions are fully writable via every documented API path: `PUT /submissions/{id}` with a `values` body, `PATCH /submissions/{id}`, and from workflows via `routine_kinetic_submission_update_v1` (which is a PUT wrapper) and `kinetic_core_api_v1` (any method). All four paths return HTTP 200 with no error, no validation message, and no `coreState` side-effect when mutating values on a Closed submission. Verified May 2026 across a 12-cell test matrix (4 paths × 3 states); every cell mutated `values` successfully and left `coreState` unchanged.
+
+The platform treats `coreState` as a workflow / lifecycle indicator, not as a write-protection state. If your application needs "Closed = immutable" semantics, you must enforce it yourself — via security policies, workflow filters, or a separate audit-trail kapp. The API will not block post-closure mutations. See `architectural-patterns/SKILL.md` "Closure Is Not a Write Lock" for the design options.
+
+Note that this is about value writes, not state transitions. The transitions in the table above (`Closed → Submitted` returning "Unable to put a closed submission in the 'Submitted' core state", etc.) are still enforced on PUT — you cannot move a Closed submission backwards via the regular update endpoint. Only `values` are unguarded; `coreState` itself is still gated by the one-way state machine on PUT, with PATCH as the documented escape hatch.
 
 ## Form and Submission Gotchas
 

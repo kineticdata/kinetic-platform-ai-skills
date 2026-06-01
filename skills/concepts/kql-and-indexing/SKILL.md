@@ -177,6 +177,8 @@ Content-Type: application/json
 
 **IMPORTANT:** The PUT replaces ALL index definitions. Always include the existing system indexes (`closedBy`, `createdBy`, `handle`, `submittedBy`, `updatedBy`) alongside your new ones, or they will be removed.
 
+**Auto-created per-field indexes:** When fields are added to a form (via builder UI or POST/PUT to the form), the platform automatically creates single-field `values[FieldName]` indexes for them. These auto-created indexes are convenient — but an explicit `indexDefinitions` PUT replaces them along with everything else. If you rely on auto-created indexes, make sure to fetch the current `indexDefinitions` first and include them in any subsequent PUT, or build a fresh definition list that explicitly contains every index you need.
+
 ### Compound (Multi-Part) Indexes
 
 When a KQL query uses `AND` to combine multiple fields (e.g., `values[Status] = "Active" AND values[Category] = "Hardware"`), Kinetic requires a **compound index** covering those fields together. Single-field indexes are NOT sufficient for multi-field AND queries.

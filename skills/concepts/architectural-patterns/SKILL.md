@@ -210,6 +210,8 @@ For team queues where members pick up unassigned work:
 - **Unclaimed work query:** `values[Assigned Team] = "IT Support" AND values[Assigned Individual] = null`
 - **Claiming:** Update the submission's `Assigned Individual` field to the claimer's username
 
+**Team-name resolution gotcha.** When using a queue task routine (e.g., `routine_kinetic_queue_task_create_v1`) with an `Assignee Team` input, the inner `Queue Assignment Validate` step has been observed to silently fall back to the `Default` team when the supplied team name does not resolve to an existing team. The task is created and assigned, but to the wrong queue — no error, no warning. Validate the team-name input upstream (e.g., a workflow node that fetches the team and errors on miss) when correct routing matters.
+
 ### UI Patterns
 
 | View | Query Pattern |
@@ -332,3 +334,19 @@ For ongoing status sync (not just one-time callback):
 3. Use POST (submit) only when you want workflows to fire for each record
 4. Consider temporarily deactivating trees during bulk import if using POST
 5. Bulk creation triggers active workflows — if trees are bound to "Submission Created," every PATCH-less POST generates a workflow run
+
+---
+
+## Closure Is Not a Write Lock
+
+The `coreState` lifecycle (`Draft` → `Submitted` → `Closed`) is a workflow indicator, not a write-protection mechanism. Closed submissions remain fully mutable via every documented API surface: direct `PUT`/`PATCH /submissions/{id}`, `routine_kinetic_submission_update_v1` from workflows, and `kinetic_core_api_v1` workflow calls. All accept value writes against `coreState: "Closed"` records with HTTP 200, no error, and no audit signal — verified May 2026 across a 12-cell test matrix.
+
+This matters for any pattern that relies on closure as a signal that the record is immutable — audit trails, compliance archives, signed approvals, regulatory hold. **None of those are enforced by the platform automatically.** A common anti-pattern is assuming `coreState: "Closed"` plus a status field like `values['Status'] == 'Approved'` gives a tamper-evident approval record. It does not — both the coreState and the Status field can be silently mutated by any workflow or admin API call afterwards, with no audit entry in the platform's standard responses.
+
+If your design needs real post-closure immutability, choose one of:
+
+- **Security policies (most robust).** Write a KSL policy that denies update permissions when `submission.coreState == 'Closed'`. The policy is platform-evaluated and blocks both direct API and workflow writes. See `security-policies/SKILL.md` for the policy definition syntax and binding model.
+- **Separate audit kapp.** When a submission closes, snapshot the relevant values into a dedicated audit-trail kapp via workflow. Make the audit kapp's submissions effectively read-only via a security policy that denies updates. The original kapp's submission can still be mutated for downstream business needs without compromising the audit record.
+- **Workflow filters (limited).** For workflows that update submissions, gate the update behind a `coreState != 'Closed'` filter or connector expression. This only protects against workflow-driven writes — direct API calls still bypass it — but is useful when workflow mutations are the only realistic write path.
+
+For workflows that legitimately need to mutate Closed submissions (post-closure corrections, audit-trail-by-mutation patterns), `routine_kinetic_submission_update_v1` and `kinetic_core_api_v1` both work cleanly without any platform resistance. The unenforced behavior is by design for these cases; it's the implicit "Closed = locked" assumption that's incorrect.

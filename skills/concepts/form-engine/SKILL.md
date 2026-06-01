@@ -47,12 +47,21 @@ A form definition retrieved via `GET /kapps/{kapp}/forms/{form}?include=pages,in
 | `slug` | URL-safe identifier |
 | `type` | Classification (e.g., "Service", "Approval", "Task") — queryable for UI views |
 | `status` | "Active" or "Inactive" |
-| `anonymous` | Whether unauthenticated submissions are allowed |
+| `anonymous` | Whether unauthenticated submissions are allowed — **must be a JSON boolean (`true`/`false`)**; passing a string (`"false"`) is rejected at PUT |
 | `submissionLabelExpression` | Template for submission display labels using expression syntax |
 | `customHeadContent` | Custom HTML/JS injected into form head |
 | `attributes` | Key-value metadata (Icon, Assigned Team, Notification Template, etc.) |
 | `securityPolicies` | Access control definitions |
 | `categorizations` | Category assignments for form organization |
+| `notes` | Free-form prose documenting the form's purpose, fields, events, and integrations — see Form Notes below |
+
+### Form Notes
+
+The top-level `notes` field is intended for developer-facing documentation: what the form is for, key fields and their behaviors, events, workflow trigger, integrations consumed. Multi-line ASCII prose round-trips cleanly with no length, escaping, or content issues (verified May 2026 with multi-line notes up to ~2,500 chars including newlines, double quotes, slashes, and parentheses).
+
+**Reading `notes` back requires `?include=details`.** `GET /forms/{slug}` without `?include=details` returns the form WITHOUT the `notes` field — the key is omitted from the response entirely, not returned as `null`. Counterintuitively, `?include=notes` alone is silently ignored and produces the same response shape as no include at all; the `notes` keyword is non-functional on this endpoint. Only `details` (the system-metadata include) surfaces the field. Characterized May 2026 across six probes on v1 (`/app/api/v1/kapps/{kapp}/forms/{slug}`); there is no v2 of this endpoint (`/app/api/v2/kapps/.../forms/...` returns 404). Agents that PUT a note and then GET with `?include=notes` to verify will see no notes field and may incorrectly conclude the PUT failed — always use `?include=details` for the verification GET.
+
+Populating `notes` is a recommended default for any new form — both for developer onboarding and for the form's own audit trail.
 
 ---
 
@@ -306,7 +315,21 @@ Change `renderType` to `"datetime"` or `"time"` as needed. No type-specific prop
 {"type": "button", "name": "Submit", "label": "Submit", "visible": true, "enabled": true, "renderType": "submit-page", "renderAttributes": {}}
 ```
 
-Button `renderType` values: `"submit-page"`, `"save"`, `"previous-page"`, `"custom"`. Custom buttons also need `"events": []`.
+Button `renderType` values:
+
+| `renderType` | Behavior |
+|--------------|----------|
+| `"submit-page"` | Advance to the next page (use on intermediate pages of multi-page forms) |
+| `"submit"` | Final form submission — transitions `coreState` to `Submitted` (use on the final page) |
+| `"save"` | Save current state without submitting (submission stays in `Draft`) |
+| `"previous-page"` | Navigate back to the previous page |
+| `"custom"` | Arbitrary behavior via attached `events` |
+
+**Multi-page forms require explicit button elements on each page.** The platform does not auto-render Submit buttons. A page with `renderType: "submittable"` is structurally submittable (programmatic `K('form').submitPage()` works), but no UI button appears unless an explicit button element exists in the page's `elements` array. Pages without an explicit button can leave the user with no affordance to advance or submit.
+
+**Use `submit-page` on intermediate pages and `submit` on the final page.** A multi-page form whose final page has a `submit-page` button (or no button) can never transition `coreState` from `Draft` to `Submitted` — the user clicks through, the submission saves as Draft, and any `Submission Submitted` workflow never fires.
+
+**`events` is only allowed on `renderType: "custom"` buttons.** PUTting a button with `events: []` and any other `renderType` returns HTTP 400 with `"The 'events' property of the '<name>' submit button is not supported."` Custom buttons require `events: []` (or populated); other renderTypes must omit the key entirely.
 
 **`renderAttributes: {}` is required on buttons** — omitting it causes a 400 error.
 
@@ -315,6 +338,8 @@ Button `renderType` values: `"submit-page"`, `"save"`, `"previous-page"`, `"cust
 ```json
 {"type": "section", "renderType": null, "name": "Section Name", "title": "Display Title", "visible": true, "omitWhenHidden": null, "renderAttributes": {}, "elements": [...]}
 ```
+
+**Section schema is strict.** All four of `renderType`, `omitWhenHidden`, `renderAttributes`, and `events` must be present at PUT (each may be `null` or empty), even when the section has no events and no special rendering. Omitting any of them returns HTTP 400. The `events: []` shape applies to sections that don't define any — include the empty array, don't drop the key.
 
 #### Page Elements
 
@@ -353,6 +378,8 @@ Use a hidden section with `omitWhenHidden: false` to store fields whose values s
 **`omitWhenHidden: true`** = explicitly omit values when hidden (same as default).
 
 The specific field names you put in hidden sections are implementation-specific — the platform pattern is the technique of `visible: false` + `omitWhenHidden: false` + expression `defaultValue`.
+
+**Page placement is irrelevant on multi-page forms.** Hidden system-field sections work identically on any page. Workflows and security policies access field values by name, not by page; place hidden fields on whichever page is most convenient (typically Page 1, since it always renders).
 
 ### Pattern Validation
 
@@ -512,6 +539,8 @@ Constraints are **JavaScript expressions** that validate field values at submiss
 }
 ```
 
+**`required: true` is enforced even when `visible: false`.** A hidden field with literal `required: true` still produces an "is required" validation error on page submit, blocking the user even though the field is not visible to fill in. When a field's visibility depends on a condition, its `required` should use the same expression (as in the example above) — not a literal `true` — so the requirement only applies when the field is shown.
+
 ### Default Values with Expressions
 
 ```json
@@ -580,6 +609,10 @@ Constraints are **JavaScript expressions** that validate field values at submiss
 - **API requires ALL field properties in POST/PUT** — missing properties cause 400 "Invalid Form". When creating forms via API, provide every property for each field (even if `null`). Different field types have different required property sets (see Render Type Property Rules above).
 - **`events: []` is required** — even when empty, the events array must be present on forms, pages, and fields in API payloads.
 - **Section `renderType` must be present** — `null` is valid, but omitting it causes API errors.
+- **Section `title` is required** — sections need both `renderType: null` AND a `title` property; omitting `title` causes a 400. Use the section `name` as the title if no separate display label is needed.
+- **`rows` is required on `text` fields and forbidden on `date`/`datetime`/`time`/`dropdown`/`radio`/`checkbox`/`attachment` fields** — both directions cause 400 errors. Text fields without `rows` fail with "Invalid Form"; non-text fields with `rows` fail the same way. The "Type-Specific Property Summary" table above is authoritative; double-check before PUTting.
+- **Field names: only letters, numbers, hyphens, and spaces.** Other characters — slashes (`/`), underscores (`_`), dots (`.`), or punctuation — are rejected with 400 `Invalid Form. The "<name>" field is invalid: Name may only contain letters, numbers, hyphens, and spaces`. Hit on attempts like `Make/Model` or `Asset_Tag`. Choose names accordingly; if you need to convey a slash, use a space (`Make Model`) or hyphen.
+- **Page `type` is round-trip-asymmetric.** GET responses return page entries with `"type": "page"`. But PUTting a freshly-POSTed form skeleton with `"type": "page"` returns `"Type must be confirmation or submittable"` — and PUTting `"submittable"` works only on a fresh skeleton, not after edits. The reliable workaround: **fetch a working form's full page structure and use it as your PUT template, replacing only the `elements` array**. Don't construct page JSON from scratch.
 - **Checkbox values: write as JSON string, read as native array** — submitting `"[\"A\",\"B\"]"` (string) reads back as `["A", "B"]` (array). Use `indexOf()` not `===` for membership checks.
 - **`K('field[X]').value(newValue)` triggers Change events** — can create infinite loops if the Change event sets the same field. Guard with `runIf` conditions.
 - **`hide()`/`show()` can conflict with builder conditions** — the form engine self-corrects, overriding programmatic changes.

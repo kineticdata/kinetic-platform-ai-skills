@@ -245,14 +245,22 @@ Create an Echo node right after Start with this input to see every variable avai
 ```
 This dumps variable names, types, and hash keys. Check the Echo node's `output` result in Activity Monitor.
 
-**ERB Hash access pitfall:** In the Task engine ERB context, Ruby Hash `[]` raises `IndexError` for missing keys (unlike standard Ruby which returns `nil`). Always use `.fetch('key', 'default')` for optional parameters:
+**ERB Hash access pitfall:** In the Task engine ERB context, Ruby Hash `[]` raises `IndexError` for missing keys (unlike standard Ruby which returns `nil`). The standard Ruby `.dig()` safe-access method is **also unavailable** — calling it on `@results` or other Hash-like proxies raises `UnknownVariableError` at evaluation time, even on the simplest case. Use `.fetch(key, default)` exclusively for safe missing-key access; for nested access, chain `.fetch` calls:
 ```ruby
 # BAD — raises IndexError if key missing:
 <%= @request_query_params['personId'] %>
 
+# BAD — raises UnknownVariableError; .dig() is unavailable in this ERB context:
+<%= @results.dig('Some Node', 'Some Field') %>
+
 # GOOD — returns empty string if missing:
 <%= @request_query_params.fetch('personId', '') %>
+
+# GOOD — chain .fetch for nested access:
+<%= @results.fetch('Some Node', {}).fetch('Some Field', nil) %>
 ```
+
+Verified May 2026 (vendor-risk-test): `@results.dig('Create Compliance Approval', 'Decision') || @results.dig('Create Procurement Approval', 'Decision') || ''` in an echo node's `input` parameter raised `UnknownVariableError`. Switching to `@results.fetch('Create Compliance Approval', {}).fetch('Decision', nil) || ...` resolved.
 
 **Note:** `@values['FieldName']` does NOT raise IndexError for missing fields — all form fields are present in `@values` (with empty string for unfilled fields). The `.fetch` pattern is needed for `@request_query_params`, `@request_headers`, and other hashes where keys are not guaranteed.
 
@@ -264,6 +272,22 @@ A **routine** is a reusable workflow with explicitly defined inputs and outputs.
 - Sending standardized notifications
 - Computing due dates based on SLA attributes
 - Executing standard data lookups
+
+### Common Workflow Components
+
+Customer workflows in production Kinetic spaces vary widely in size, complexity, and idiom. Some are three or four nodes that fire a single API call; others are dozens or hundreds of nodes orchestrating multi-stage approval, notification, and fulfillment. Demo spaces don't represent that full range — they tend to optimize for clarity and pedagogy over realism. The components below name building blocks frequently observed across multiple spaces, with brief notes on what each commonly handles. Treat this section as vocabulary for talking about workflows, not a prescription for shape.
+
+**The standard `routine_kinetic_*` library.** New Kinetic environments ship with a library of Global Routines wrapping common Core API operations: `routine_kinetic_submission_retrieve_v1`, `routine_kinetic_submission_update_v1`, `routine_kinetic_submission_update_status_v1`, `routine_kinetic_email_template_notification_send_v1`, `routine_kinetic_user_create_v1`, `routine_kinetic_finish_v1`, and many more. Customer-built routines extend this library; spaces vary in how heavily they extend it. A workflow composed primarily of `routine_kinetic_*` calls (plus glue) is a frequently-observed style — see "Routine composition" below.
+
+**Error-handling routine.** `routine_handler_failure_error_process_v1` is the building block invoked when a handler raises an error. In observed traffic, it is wired *inside* individual routines — not in the caller's code. A typical Core-API-wrapping routine has the API node connecting to three Complete connectors with mutually-exclusive Ruby conditions on `@results['API']['Handler Error Message']`: success path, real-error path (which routes to `routine_handler_failure_error_process_v1`, then a recursive retry, then return), and special-case 404 path. Form-attached workflows that compose the standard library inherit this error handling without wiring it themselves. See `concepts/workflow-xml` for the connector-level structure.
+
+**`utilities_echo_v1` for value storage and computed results.** Beyond debugging, echo nodes are commonly used as named result-stash points: an echo node titled "Approval Task Id" with `input` set to a computed value exposes that value downstream as `@results['Approval Task Id']['output']`. Echo can also run Ruby in its `input` parameter and surface the evaluated string for downstream use. Treat echo as a flexible utility, not strictly a debugging aid.
+
+**Parallel work — `system_join_v1` and `system_junction_v1`.** Both reconverge multiple branches into a single downstream path. Join evaluates only its immediate incoming connectors (with `type: All`/`Any`/`Some`); Junction traces back to a common parent node and proceeds when each branch is "complete as possible" (including branches that conditionally short-circuited). Junction is observed more often in routine-composed workflows that branch on submission state and rejoin; Join is more common when the branch count is fixed and known (parallel approvals). See `concepts/workflow-xml` for parameter and connector details.
+
+**Callback workflows on deferred subforms.** When a workflow node defers (`defers: true, deferrable: true`) and creates a subform submission carrying a deferral token, the subform's own `Submission Submitted` workflow handles the resume. These callback trees are commonly small — three nodes is frequently sufficient: `start` → `utilities_create_trigger_v1` (which reads the token from `@values['Deferral Token']` and passes any decision data back via `deferred_variables`) → close-own-submission. The shape repeats across approval forms, fulfillment subtasks, and any other deferred-handoff pattern. See `recipes/add-approval-workflow` for a worked example.
+
+**Routine composition as a workflow style.** A frequently-observed customer pattern is a form-attached workflow built almost entirely from `routine_kinetic_*` calls plus connectors with Ruby `value` expressions for branching, plus `utilities_echo_v1` nodes to stash IDs, plus `system_junction_v1` to converge after conditional branches. The error-handling routine and Core API calls live inside the routines being called, so the customer code stays readable. This is one approach among several — direct `system_integration_v1` workflows and mixed styles are equally valid depending on what each step needs.
 
 ---
 
@@ -295,11 +319,11 @@ Workflows fire based on coreState transitions — not field value changes. The t
 | Workflow Event | When it fires | coreState after |
 |----------------|---------------|-----------------|
 | Submission Created | Any new submission is created (via POST) | Draft or Submitted (depends on whether `coreState:"Submitted"` was in the POST body) |
-| Submission Submitted | Draft → Submitted transition (via submit action) | Submitted |
+| Submission Submitted | A submission becomes Submitted — either POST with `coreState:"Submitted"` or PUT Draft → Submitted | Submitted |
 | Submission Updated | Any PUT that modifies values on a Submitted record | Submitted |
 | Submission Closed | coreState transitions to Closed (via PUT with `coreState:"Closed"`) | Closed |
 
-**Important:** Creating a submission with `coreState:"Submitted"` in the POST body fires "Submission Created" — NOT "Submission Submitted". The "Submitted" event only fires on the explicit submit action transitioning a Draft to Submitted.
+**Both `Submission Created` and `Submission Submitted` fire on a single POST with `coreState:"Submitted"`.** Verified empirically (May 2026) — registering both event workflows on the same form and POSTing once produces one run of each. Earlier versions of this skill claimed that POSTing with `coreState:"Submitted"` only fired `Submission Created`, not `Submission Submitted`; that was wrong. If you need to suppress `Submission Submitted` until a deliberate approval action (for example, when creating an approval-form submission inside another workflow), POST with `coreState:"Draft"` and submit later via a separate PUT — both events still fire, but at the times you choose.
 
 ---
 
@@ -597,6 +621,10 @@ The component path (`/app/components/task/...`) is what the Kinetic Console uses
 | PUT | `/app/api/v1/kapps/{kapp}/workflows/{id}` | Update workflow / upload tree definition |
 | DELETE | `/app/api/v1/kapps/{kapp}/workflows/{id}` | Soft-delete workflow |
 
+**No standalone `GET /workflows/{id}` exists.** A 404 is returned for `GET /app/api/v1/workflows/{id}` (without the kapp/form scoping). To read a single workflow's metadata, either:
+- Use the kapp- or form-nested list: `GET /app/api/v1/kapps/{kapp}/workflows` or `GET /app/api/v1/kapps/{kapp}/forms/{form}/workflows`, then filter by `id`, OR
+- Use the Task API by tree title: `GET /app/components/task/app/api/v2/trees/{url-encoded-title}` (see `concepts/workflow-creation` for the title format).
+
 ### Two-Step Creation
 
 1. **Create:** `POST /workflows` with `{name, event, type:"Tree", status:"Active"}`
@@ -606,6 +634,10 @@ The component path (`/app/components/task/...`) is what the Kinetic Console uses
 2. **Upload definition:** `PUT /workflows/{id}` with `{"treeXml": "<taskTree>...</taskTree>"}`
    - Must be ONLY the `<taskTree>` inner element — NOT the full `<tree>` wrapper
    - Server adds the wrapper automatically
+
+**Response shape on POST/PUT `/workflows`:** the response body is a flat workflow object — `{id, name, event, status, ...}` — NOT wrapped under a `workflow` key. Code that reads `response.workflow.id` will fail; read `response.id` directly. (Contrast with `/trees` and `/forms` endpoints, which often nest the entity under a top-level key.)
+
+**`?include=treeJson` is silently ignored on the form-scoped workflow list.** `GET /app/api/v1/kapps/{kapp}/forms/{form}/workflows?include=treeJson` returns the workflows without the `treeJson` payload. To read a workflow's tree, either fetch via the Task API by title (`GET /app/components/task/app/api/v2/trees/{title}?include=treeJson`) or use the kapp-scoped workflow list, where the include parameter is honored.
 
 ### Kapp-Level vs Form-Level Workflows
 
@@ -621,9 +653,28 @@ The Workflow Engine (Task) is a **separate web app** that runs independently fro
 1. **Create** workflow via Core: `POST /app/api/v1/kapps/{kapp}/forms/{form}/workflows` — this creates the tree AND registers it with the form
 2. **Update** workflow (including uploading tree definition) via Core: `PUT /app/api/v1/workflows/{id}` — use `treeXml` or `treeJson` in the body
 3. **Read** tree details, triggers, runs via Core-proxied Task API: `/app/components/task/app/api/v2/trees/{title}`, `/runs`, `/triggers`
-4. **Delete** workflow via Core: `DELETE /app/api/v1/workflows/{id}`
+4. **Delete** workflow via Core: `DELETE /app/api/v1/kapps/{kapp}/forms/{form}/workflows/{id}` — **form-nested URL required**. The flat `DELETE /app/api/v1/workflows/{id}` returns 404 ("Unable to locate the {id} Workflow"), mirroring the no-standalone-GET rule on form-level workflows. Verified May 2026 during vendor-onboarding Sub-build A.
 
 **IMPORTANT:** These are completely separate queries. `GET /kapps/{kapp}/workflows` returns **only kapp-level** workflows — form-level workflows are invisible. To discover ALL workflows in a kapp, you must iterate each form with `GET /kapps/{kapp}/forms/{form}/workflows`. The `platformItemType` field distinguishes them: `"Kapp"` vs `"Form"`.
+
+### `filter` PUT requires the nested URL on form- and kapp-level workflows
+
+The flat `PUT /app/api/v1/workflows/{id}` endpoint **silently no-ops the `filter` field** for form-level and kapp-level workflows. The PUT returns HTTP 200 with the new filter value echoed in the response body, but:
+
+- The form-nested GET (`/kapps/{kapp}/forms/{form}/workflows/{id}`) still shows the OLD filter
+- The runtime engine continues honoring the OLD filter — no gating change takes effect
+
+Other top-level workflow fields PUT via the flat URL **persist correctly**: `name`, `status`, `event` all reflect in the form-nested GET and (where verifiable) take effect at runtime. The `filter` field is the lone exception.
+
+**Use the nested PUT URL to change a filter:**
+
+- **Form-level workflows** (`platformItemType: "Form"`): `PUT /app/api/v1/kapps/{kapp}/forms/{form}/workflows/{id}` with body `{"filter": "..."}`. Verified end-to-end May 2026 — form-nested GET reflects the new value, and the runtime gates submissions correctly.
+- **Kapp-level workflows** (`platformItemType: "Kapp"`): by analogy, `PUT /app/api/v1/kapps/{kapp}/workflows/{id}` should work. Not directly verified in the BT15 probe; treat as expected-but-unverified until tested.
+- **Space-level workflows** (`platformItemType: "Space"`): the flat URL appears to write the filter persistently (flat GET shows the new value), but runtime enforcement was not verified. Treat as expected.
+
+**Why this matters:** the flat-PUT-200-echoes-the-value pattern looks like success in every script log. There's no error, no warning, no audit signal. The bug only surfaces when later runtime behavior doesn't match what the response body said the filter is — typically wasted debugging cycles after several workflow runs fail to gate correctly.
+
+Verified May 2026 across form-level and kapp-level workflows in BT15 (`workflow-filter-put-context.md`). Vendor Onboarding Sub-build A first surfaced the symptom and recommended `DELETE` + recreate to clear a bad filter — that works but is unnecessarily destructive. The simpler and non-disruptive fix is using the nested PUT URL.
 
 ### Why NOT Task API for Workflow Creation
 
@@ -648,7 +699,7 @@ The Workflow Engine (Task) is a **separate web app** that runs independently fro
 - **Kapp-level workflows** — Submission + Form events (fires for all forms in the kapp)
 - **Space-level workflows** — All events (Space, User, Team, plus Submission/Form across all kapps)
 
-Note: `Submission Saved` fires on every save (including Draft saves), while `Submission Submitted` only fires on the transition to `coreState: "Submitted"`. `Form Restored` and `Team Restored` fire when a soft-deleted entity is restored.
+Note: `Submission Saved` fires on every save (including Draft saves). `Submission Submitted` fires when a submission becomes `Submitted` — either via a POST with `coreState:"Submitted"` or a PUT transitioning Draft → Submitted (see the callout in "Workflow Events and coreState" above). `Form Restored` and `Team Restored` fire when a soft-deleted entity is restored.
 
 ### Workflow Response Shape
 
@@ -673,6 +724,8 @@ Note: `Submission Saved` fires on every save (including Draft saves), while `Sub
 }
 ```
 
+**No version history.** `updatedAt` and `updatedBy` are snapshot-of-most-recent-PUT only. The Task API exposes no `/trees/{id}/versions` endpoint, no `/audits` sub-resource, and `?include=versions,history,audits` is silently ignored (no extra keys returned). Once a tree is mutated, the prior `treeJson` body is unrecoverable from the platform side, and there is no record of who made any intermediate change beyond the most recent one. `versionId` increments monotonically per PUT, which lets you detect that something changed but not what or by whom. For change forensics on production-critical workflows, plan an external audit trail — CI artifacts, cached GETs, or build-test transcripts. The same limitation applies to forms (no notes diff history) and submissions (no values diff history beyond the current snapshot). Verified May 2026 against an active playground space.
+
 The `filter` field accepts KSL expressions for conditional triggering. **Critical: use function-call syntax** `values('Field')`, NOT bracket syntax `values["Field"]`.
 
 ```
@@ -693,6 +746,24 @@ The `filter` field accepts KSL expressions for conditional triggering. **Critica
 - **Space-level workflows** (User/Team events) — filter can use `identity()`, `space('slug')` but NOT `values()`, `form()`, or `kapp()` (no form/kapp context)
 
 The filter is evaluated by the Core API before triggering the Task engine. If the filter returns false, the workflow is silently skipped — no run is created.
+
+**Change-detection in filters is NOT supported.** `values_previous()` is NOT a valid KSL binding even though `@values_previous` is available in node ERB. The filter accepts `values_previous('Status') != "X"` at registration but the binding returns nil/empty at runtime, so the filter never matches change-detection conditions. Workflow appears inert; no run created, no entry in `/errors`.
+
+**Pattern: KSL filter + ERB connector guard.** Do the gross check in the filter on the current state, then guard the side-effect node inside the tree with a connector condition that uses `@values_previous`:
+
+```json
+// Workflow registration
+{ "event": "Submission Updated",
+  "filter": "values('Status') == \"In Repair\"" }
+```
+
+```json
+// Connector inside the tree (start → side-effect node)
+{ "from": "start", "to": "n1", "type": "Complete",
+  "value": "@values_previous['Status'] != 'In Repair'" }
+```
+
+The KSL filter creates the run only when the current state matches; the connector blocks the side-effect node when it's a no-op update (Status was already "In Repair"). Empty runs (only `start` Closed) are produced for no-op PUTs but no external side effect fires.
 
 The GET response also includes diagnostic arrays: `{ "migratable": [], "missing": [], "orphaned": [], "workflows": [...] }`
 
@@ -855,7 +926,7 @@ GET /triggers?runId={id}&status=Failed&count=true
 → count = 0 = likely succeeded (check if all triggers are Closed)
 ```
 
-For UI display, classify runs by checking their triggers rather than trusting `run.status`.
+For UI display, classify runs by checking their triggers rather than trusting `run.status`. Independently confirmed across three build tests (May 2026): BT11's 12-cell mutability matrix, BT12's PATCH characterization, and Sub-build A's vendor-onboarding E2E. In all cases parent runs reported `status: "Started"` while every task inside had `status: "Closed"` and the actual work had completed successfully. **Poll on task statuses or trigger queries — never on `run.status` — for completion detection.**
 
 ### Tree Type Classification via `sourceGroup`
 
@@ -883,15 +954,11 @@ POST /app/components/task/app/api/v2/runs/{runId}/triggers
 
 This creates a downstream trigger to resume execution from the specified node.
 
-### NEVER Use Task API PUT on Core API-Registered Workflows
+### Task API PUT on Core API-Registered Workflows
 
-**Critical:** Using `PUT /trees/{title}` (Task API v2) on a workflow created via the Core API (`POST /kapps/{kapp}/workflows`) **wipes** the `event`, `platformItemType`, and `platformItemId` fields. The workflow disappears from the Kinetic admin UI and stops firing on form events.
+The v7 docs warn that `PUT /trees/{title}` (Task API v2) on a workflow created via the Core API wipes `event`, `platformItemType`, and `platformItemId`, causing the workflow to disappear from the admin UI and stop firing. **This claim does not replicate on the current platform.** Verified May 2026: three different PUT body shapes (`{treeJson}` alone; `+event`; `+platformItemType+platformItemId`) all preserved registration metadata across consecutive PUTs, and the workflow continued to fire on subsequent submissions in each case.
 
-Task API v2 PUT is **only safe** for:
-- WebAPI trees (no Core API registration)
-- Routines (no Core API registration)
-
-For event-triggered workflows, always use the Core API: `PUT /kapps/{kapp}/workflows/{id}` with `{treeXml: "..."}` or use `update_workflow_tree`.
+For event-triggered workflows, the Core API path remains the recommended idiom: `PUT /kapps/{kapp}/workflows/{id}` with `{treeXml: "..."}` or `{treeJson: {...}}`. The Task API path is also reliable in current-platform tests but isn't the recommended idiom — leave it for WebAPI trees and routines, which don't have Core registration metadata to risk.
 
 ---
 

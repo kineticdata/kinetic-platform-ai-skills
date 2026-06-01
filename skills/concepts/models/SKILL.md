@@ -198,15 +198,19 @@ Models power integration-driven dropdowns and lookups on forms. Reference a mode
 
 See the Form Engine concept skill (`concepts/form-engine`) for full integration-driven choices syntax.
 
-## When to Use Models vs Connections
+## Models, Bridges, and Connections — Coexisting Mechanisms
 
-| Use Case | Approach |
-|----------|----------|
-| **Read** external data (populate dropdowns, lookup records) | Models + Bridge Adapters |
-| **Write** to external systems (create tickets, update records) | Connections + Operations |
-| **Both read and write** | Models for reads, Connections for writes |
+Bridges (with their associated Models) and Connections + Operations are both valid integration mechanisms in active use across Kinetic Platform deployments. They coexist in customer spaces — frequently within the same kapp, sometimes within the same form — and pick different tradeoffs. Bridges work well when a target system needs a stable typed data view that forms can populate dropdowns against; Operations work well when individual write actions or stateful API calls need workflow-side handlers. The same external system can appear behind both mechanisms simultaneously — for example, in observed environments HubSpot has been reachable both as a Bridge with model qualifications and as a Connection with REST operations. Spaces vary in how heavily they lean on each. Choose based on what the integration needs and your team's existing patterns, not on a "modern vs legacy" framing — both are actively maintained.
 
-Models are the legacy approach for data access. For new REST API integrations, prefer Connections & Operations which handle both read and write in a unified way. Models are still relevant for non-REST data sources (LDAP, custom databases) accessed through bridge adapters.
+The mechanisms have different sweet spots:
+
+| Use Case | Common Choice |
+|----------|---------------|
+| **Read** external data — populate dropdowns, lookup records | Bridges + Models |
+| **Write** to external systems — create tickets, update records | Connections + Operations |
+| **Both read and write on the same system** | Either, or both — observed in practice |
+| **Non-REST sources** — SQL, LDAP, file systems, Java-SDK-only systems | Bridges (a custom adapter wraps the access pattern) |
+| **Modern REST APIs that the Integrator covers** | Either; many spaces choose by team familiarity |
 
 ## Live Example: Users Model (from `kinetic-core` bridge)
 
@@ -251,3 +255,81 @@ Models are the legacy approach for data access. For new REST API integrations, p
 ```
 
 **Note:** The mapping `qualifications[].query` uses KQL-like syntax for the `kinetic-core` bridge. The `=*` operator is starts-with, and `null` query returns all results. Mapping queries use `${parameters('Name')}` to inject qualification parameters.
+
+## Bridge Patterns and Gotchas
+
+### Two Qualification-Query Styles: Named-Structure vs Adhoc
+
+The Live Example above shows the **named-structure** pattern: the bridge knows the target structure (`Users`, `Teams`, `Submissions > kapp > form`), and the qualification's `query` is a filter against that structure. Internal Kinetic-platform bridge mappings frequently use this style — `q=email=*"${parameters('Email')}"` is a typical shape, with `=*` as starts-with and `=` as exact match.
+
+A second style is **Adhoc** — the mapping declares `structure: "Adhoc"` and the qualification's `query` is a free-form HTTP path (or path + body) that the bridge passes through to the target API. Bridges fronting external REST APIs often use this style. An observed HubSpot example:
+
+```json
+{
+  "structure": "Adhoc",
+  "qualifications": [
+    { "name": "All Active Companies",
+      "query": "/crm/v3/objects/companies?accessor=results&archived=false" },
+    { "name": "Search by Status",
+      "query": "/crm/v3/objects/companies/search?accessor=results&body={\"filterGroups\":[...]}" }
+  ]
+}
+```
+
+The `accessor=` query parameter tells the bridge how to extract records from the target's response (e.g., `accessor=results` pulls `body.results`). Adhoc qualifications use the same `${parameters('Name')}` substitution as named-structure ones; the bridge interpolates before issuing the request.
+
+### Qualification Parameter Substitution
+
+Both query styles use `${parameters('Name')}` to inject values into the query string at call time. Two patterns worth knowing:
+
+**Submission ID** — pass the current submission's ID as a parameter:
+```
+${submission('id')}
+```
+Useful for "fetch records related to this submission" qualifications when the bridged resource is invoked from a form that has an active submission context.
+
+**Attachment file names** — extract the first attachment's filename from an attachment field, returning empty string when no attachment is present:
+```
+${JSON.parse(fields("values[Attachments]") || "[]").length > 0 ? JSON.parse(fields("values[Attachments]"))[0]['name'] : ""}
+```
+Used in mapping `attributes[].structureField` to surface attachment metadata to the model layer.
+
+### SQL Adapter Quoting Gotcha
+
+For SQL bridge adapters (Oracle, generic SQL, custom JDBC):
+
+**Don't wrap `${parameters('Name')}` in SQL quotes.** The adapter handles parameter quoting and SQL injection escaping itself — quoting the substitution doubles up.
+
+```
+-- Works: adapter quotes the value
+LAST_NAME = ${parameters('Last Name')}
+
+-- Breaks: quotes get duplicated
+LAST_NAME = '${parameters('Last Name')}'
+```
+
+**Wildcards / LIKE — use CONCAT** to combine the parameter and the wildcard pattern:
+```
+LAST_NAME LIKE CONCAT(${parameters('Last Name')}, '%')
+```
+
+On adapters that support it, the `||` concatenation operator works similarly: `${parameters('Last Name')} || '%'`.
+
+### Cross-Form Bridge Calls via K.api
+
+When one form needs to call a bridged resource defined on a different form (a common pattern is a kapp's shared-resources form that hosts reusable bridges), use `K.api` against the bridge endpoint:
+
+```js
+K.api({
+  method: 'GET',
+  url: '<kappSlug>/<sharedResourcesFormSlug>/bridgedResources/<bridgedResourceName>',
+  data: { values: { 'Email': 'someone@example.com' } },
+  success: function(data) { /* ... */ }
+});
+```
+
+This lets a kapp consolidate bridge definitions on one shared-resources form and call them from any other form in the kapp without re-declaring the `bridgedResources` entry on each consumer.
+
+### Library Ahead of Need
+
+Models can be defined ahead of when forms or workflows actually consume them. In one observed environment, half the model catalog had zero form references at snapshot time — those models were available for workflow-side calls (via the legacy `bridge_v1` handler) and for direct React portal lookups, but no form's `bridgedResources` array referenced them yet. Treat unreferenced models as inventory rather than dead code unless other signals (deletion comments, deprecated naming) suggest otherwise.
