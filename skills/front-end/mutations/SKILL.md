@@ -135,15 +135,22 @@ if (error) {
 ```
 
 **coreState transition:**
+
+`updateSubmission` updates field **values** only — it sends just `{ values }`. A `coreState`/`submission` argument is silently ignored, so the state never transitions. To change `coreState` outside a CoreForm:
+
+- Let CoreForm's `completed`/save flow set the state (the normal path), or
+- Issue a direct `PUT /app/api/v1/submissions/{id}` with the target state:
+
 ```js
-// Close a submission
-const { error } = await updateSubmission({
-  id: submissionId,
-  submission: { coreState: 'Closed' },
+// Transition coreState via the Core API directly (NOT updateSubmission)
+await fetch(`${bundle.apiLocation()}/submissions/${submissionId}`, {
+  method: 'PUT',
+  headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': getCsrfToken() },
+  body: JSON.stringify({ coreState: 'Submitted' }),
 });
 ```
 
-**Gotcha:** `updateSubmission` wraps `PUT /submissions/{id}`. Required field validation runs on coreState transitions (e.g., Draft → Submitted enforces required fields including attachments).
+See the API Basics skill for the full `coreState` transition rules (Draft → Submitted enforces required fields including attachments).
 
 ### Delete (with confirmation)
 

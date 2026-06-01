@@ -102,6 +102,17 @@ Only `name` and `status` are required. `status` must be `"Active"` or `"Inactive
 
 A minimal model with no attributes, qualifications, or mappings is valid — you can add them later via sub-resource endpoints or a subsequent PUT.
 
+### Create Mapping — Minimum Required
+
+```json
+POST /app/api/v1/models/{name}/mappings
+{ "name": "My Mapping", "agentSlug": "system", "bridgeSlug": "kinetic-core", "structure": "Users" }
+```
+
+A mapping requires `name`, `agentSlug`, `bridgeSlug`, and `structure`. The `attributes` and `qualifications` collections can be empty initially and added later via the mapping sub-resource endpoints (`/mappings/{mappingName}/attributes`, `/mappings/{mappingName}/qualifications`).
+
+**DON'T — `bridgeSlug` and `agentSlug` must reference an already-deployed agent + bridge.** Inventing a `bridgeSlug` (or `agentSlug`) that doesn't exist on the platform will fail — the mapping has no adapter to route queries to. Confirm the agent is deployed and the bridge slug exists before referencing it in a mapping.
+
 ### Response Wrapping
 
 - **List:** `{ "models": [...] }`
@@ -122,6 +133,8 @@ A minimal model with no attributes, qualifications, or mappings is valid — you
 ## Executing Model Queries (Bridged Resources)
 
 To execute a model qualification, you must first **expose it as a Bridged Resource on a form**. The platform enforces access control through forms — if a user can view the form, they can execute its bridged resources.
+
+**Layering note — "legacy" applies to the form array, not to Bridges:** the `bridgedResources` ARRAY on a form definition is legacy (superseded by the form `integrations` array — see `concepts/form-events-expressions`). That is a different layer from Bridges/Bridge Models themselves, which remain a current, actively-maintained data-access mechanism (see "Models, Bridges, and Connections — Coexisting Mechanisms" below). Don't read "legacy `bridgedResources` array" as "Bridges are deprecated" — only the form-level array wiring is being phased out, not the underlying Bridge mechanism.
 
 ### Setup
 

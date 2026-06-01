@@ -98,6 +98,8 @@ The Integrator SDK uses JWT bearer tokens for space-level access. `oauth_client_
 | `ssl_ca_file` | `nil` | PEM certificate path for SSL verification |
 | `export_directory` | `nil` | Directory for import/export operations |
 
+> **Caution:** `ssl_verify_mode: "none"` disables TLS certificate verification — fine for local/dev against self-signed certs, but production should use `"peer"`.
+
 ---
 
 ## Response Object

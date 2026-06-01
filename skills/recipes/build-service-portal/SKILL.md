@@ -698,7 +698,7 @@ function ActivityTimeline({ activities }) {
 
 **Key patterns:**
 - `include: 'activities,activities.details'` — `activities.details` is required for work note content; without it, `activity.details` is `null`
-- `usePoller(pollFn)` polls with exponential backoff (5s → 10s → 20s → 60s max). Pass `undefined` to stop polling when the request is closed
+- `usePoller(pollFn)` polls with exponential backoff (5s → 10s → 20s → 40s → 60s max). Pass `undefined` to stop polling when the request is closed
 - `review={true}` on `CoreForm` / `KineticForm` renders the form in read-only mode
 - Draft submissions get a live form so users can continue editing; submitted/closed ones get review mode
 

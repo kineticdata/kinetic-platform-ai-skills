@@ -71,6 +71,8 @@ Where:
 
 ## Creating Trees via API
 
+> **Use the Core API for event-triggered form/kapp workflows — NOT this Task API route.** The `POST /app/components/task/app/api/v2/trees` route below is for **routines and WebAPI trees** only. Event-triggered form and kapp workflows must be created through the Core API (`POST /app/api/v1/kapps/{kapp}/forms/{form}/workflows` or `POST /app/api/v1/kapps/{kapp}/workflows`). A tree created directly via the Task API for a form/kapp event becomes **orphaned**: its `guid` won't match a `sourceGroup`, it's missing the `event`/`platformItemType`/`platformItemId` bindings the Core API sets, it won't appear in the admin UI, and it may be garbage-collected. See the Workflow Engine skill for the full event-binding flow.
+
 ### POST to Create
 
 ```

@@ -23,7 +23,7 @@ For new portals, the [momentum-portal](https://github.com/kineticdata/momentum-p
 
 ### What to use from the package
 
-The package exports 150+ components, but most are for Kinetic's internal admin consoles. **For portal development, use:**
+The package exports 815+ symbols, but most are for Kinetic's internal admin consoles. **For portal development, use:**
 
 | Export | Purpose |
 |--------|---------|
@@ -48,7 +48,7 @@ The SDK wraps the platform APIs so that if the underlying API changes, customers
 
 Use `@kineticdata/react` as the API client for all Kinetic interactions in portal code. Bootstrap patterns must start with `KineticLib` and data access should use library primitives (`fetch*`, `searchSubmissions`). Only fall back to `bundle.apiLocation()` + `getCsrfToken()` if an endpoint has no exported helper.
 
-`useData` is **not** exported by `@kineticdata/react` — it is a project-local hook that wraps fetch functions with `{ loading, response }` state. See the [Portal Patterns skill](../portal-patterns/SKILL.md#usedata-hook) for the implementation.
+`useData` is **not** exported by `@kineticdata/react` — it is a project-local hook that wraps fetch functions with `{ initialized, loading, response, actions }` state (where `actions: { reloadData }`). See the [Data Fetching skill](../data-fetching/SKILL.md) for the canonical implementation, or the [Portal Patterns skill](../portal-patterns/SKILL.md#usedata-hook).
 
 ---
 

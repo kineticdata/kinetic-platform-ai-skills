@@ -198,9 +198,9 @@ Content-Type: application/json
 | `values` | No | Form field values as key-value pairs |
 | `coreState` | No | `"Draft"`, `"Submitted"`, or `"Closed"` |
 | `createdAt` | No* | ISO 8601 timestamp — when the submission was created |
-| `createdBy` | **Yes** | Username of the creator (e.g., `"admin"`) |
-| `updatedAt` | **Yes** | ISO 8601 timestamp — last update time |
-| `updatedBy` | **Yes** | Username of the last updater |
+| `createdBy` | **Create only*** (required on create-via-PATCH; optional on update) | Username of the creator (e.g., `"admin"`) |
+| `updatedAt` | **Create only*** (required on create-via-PATCH; optional on update) | ISO 8601 timestamp — last update time |
+| `updatedBy` | **Create only*** (required on create-via-PATCH; optional on update) | Username of the last updater |
 | `submittedAt` | No* | ISO 8601 timestamp — when the submission was submitted |
 | `submittedBy` | Conditional | **Required when `coreState` is `"Submitted"` or `"Closed"`** |
 | `closedAt` | No* | ISO 8601 timestamp — when the submission was closed |
@@ -332,7 +332,7 @@ All responses are JSON. Resources are wrapped in a key matching the resource typ
 | Property | Type | Description |
 |----------|------|-------------|
 | `id` | UUID | Unique submission identifier |
-| `handle` | string | Short identifier (last 6 chars of UUID, uppercase). Useful for human-readable references, but NOT guaranteed unique. |
+| `handle` | string | Short identifier — the last 6 characters of the submission's UUID (lowercase hex, as stored) — e.g. `617570`. Useful for human-readable references, but NOT guaranteed unique. |
 | `coreState` | string | `"Draft"`, `"Submitted"`, or `"Closed"` |
 | `currentPage` | string | Name of the page the submission is on (tracks UI progress, not data completeness) |
 | `displayedPage` | object | `{index, name, type}` — the page shown to users |

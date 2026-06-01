@@ -70,6 +70,14 @@ class HandlerNameV1
 end
 ```
 
+**Helper: `escape`** — Results are returned as an XML string, so any value placed inside a `<result>` element must be XML-escaped or special characters (`&`, `<`, `>`, `"`) will break the result document. Define a minimal zero-dependency helper and use it on every interpolated value:
+
+```ruby
+def escape(str)
+  str.to_s.gsub('&', '&amp;').gsub('<', '&lt;').gsub('>', '&gt;').gsub('"', '&quot;')
+end
+```
+
 ### `process/node.xml` — Parameter & Result Definitions
 
 ```xml
@@ -133,13 +141,13 @@ Handlers use Java's `HttpURLConnection` directly — no external HTTP libraries:
 
 ```ruby
 java_import java.net.HttpURLConnection
-java_import java.net.URI
+java_import java.net.URL
 java_import java.io.BufferedReader
 java_import java.io.InputStreamReader
 java_import java.io.OutputStreamWriter
 
 def make_request(method, url, body = nil, headers = {})
-  conn = URI.new(url).toURL.openConnection
+  conn = java.net.URL.new(url).openConnection
   conn.setRequestMethod(method)
   conn.setDoOutput(true) if body
 

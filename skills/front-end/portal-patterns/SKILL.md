@@ -180,37 +180,9 @@ See the State Management skill for the full `appActions` and `themeActions` defi
 
 ## useData Hook
 
-`useData` must be implemented in the project — it is not exported by `@kineticdata/react`. Place it in `src/hooks/useData.js`:
+`useData` must be implemented in the project — it is not exported by `@kineticdata/react`. Place it at `portal/src/helpers/hooks/useData.js`.
 
-See the Data Fetching skill for the full `useData` implementation with timestamp-based stale response rejection and `actions.reloadData`. The simplified version below shows the core concept:
-
-```js
-import { useState, useEffect } from "react";
-
-export function useData(fetchFn, params) {
-  const [state, setState] = useState({ loading: params !== null, response: null });
-
-  useEffect(() => {
-    if (params === null) {
-      setState({ loading: false, response: null });
-      return;
-    }
-
-    let active = true;
-    setState({ loading: true, response: null });
-
-    fetchFn(params).then(response => {
-      if (active) setState({ loading: false, response });
-    });
-
-    return () => { active = false; };
-  }, [fetchFn, params]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  return state;
-}
-```
-
-The production version in the Data Fetching skill adds `initialized`, `actions.reloadData`, and race condition safety via timestamps. Use that version in real projects.
+It returns `{ initialized, loading, response, actions: { reloadData } }` and includes timestamp-based stale response rejection. See the Data Fetching skill for the canonical implementation — use that version in real projects.
 
 Gate fetches on previous data by passing `null` as params until prerequisites are ready (see App Context Fetching above). Use `useMemo` for param objects to keep referential stability.
 
@@ -228,8 +200,9 @@ src/
 ├── api/
 │   └── kinetic.js       <- re-exports from @kineticdata/react + any custom fetch wrappers
 ├── components/          <- shared, reusable UI components (header, nav, avatar, etc.)
-├── hooks/
-│   └── useData.js       <- project-local data fetching hook
+├── helpers/
+│   └── hooks/
+│       └── useData.js   <- project-local data fetching hook
 └── pages/               <- one file per route
 ```
 

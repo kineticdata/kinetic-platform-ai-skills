@@ -903,7 +903,8 @@ With `include=details`:
 **Key observations:**
 - **Always use `include=details`** when you need run IDs or timestamps — without it you cannot identify or sort runs
 - `id` is a numeric integer, not a string/UUID
-- `status` values observed: `"Started"`, `"Complete"`, `"Error"`
+- `status` values observed in the raw payload: `"Started"`, `"Complete"`, `"Error"` — but **do NOT use `run.status` for completion detection.** The field is unreliable: parent runs typically report `status: "Started"` even after every task inside has finished. Derive run state from task statuses or trigger queries instead (see "Run Status Is Misleading" below).
+- **Run status — canonical guidance:** `run.status` is authoritative only for the `"Error"` case; for "did this run complete?" derive state from task statuses (`"Closed"`) or trigger queries, never from `run.status`.
 - `tree.title` format: `"SourceName :: SourceGroup :: TreeName"` — the full title is used in API paths
 - `tree.name` is the short/friendly name
 - `createdBy` is often `"SYSTEM"` when triggered by webhooks
@@ -1006,6 +1007,8 @@ GET /triggers?runId={id}&status=Failed&count=true
 ```
 
 For UI display, classify runs by checking their triggers rather than trusting `run.status`. Independently confirmed across multiple build tests (May 2026): in all cases parent runs reported `status: "Started"` while every task inside had `status: "Closed"` and the actual work had completed successfully. **Poll on task statuses or trigger queries — never on `run.status` — for completion detection.**
+
+Note the vocabulary distinction: the trigger `status=Failed` and task `status: "Closed"` above are *trigger/task* statuses, not run statuses. The run object's own `status` enum (`"Started"`/`"Complete"`/`"Error"`) is the unreliable field — this is the single authoritative statement; the Run Object key observations above cross-reference back to it.
 
 ### Tree Type Classification via `sourceGroup`
 

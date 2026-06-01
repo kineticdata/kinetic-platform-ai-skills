@@ -84,12 +84,14 @@ Space-level definitions cannot be applied within a Kapp.
 
 | Type | Available Bindings |
 |------|-------------------|
-| Space | `identity()`, `space()`, `team()`, `user()` |
+| Space | `identity()`, `space()` |
 | Kapp | `identity()`, `space()`, `kapp()` |
 | Form | `identity()`, `space()`, `kapp()`, `form()` |
 | Submission | `identity()`, `space()`, `kapp()`, `form()`, `values()`, `submission()` |
-| Team | `identity()`, `team()` |
-| User | `identity()`, `user()` |
+| Team | `identity()`, `space()`, `team()` |
+| User | `identity()`, `space()`, `user()` |
+
+**Note:** This table mirrors the "Definition Types and Scopes" tables above — `identity()` is available everywhere; a definition's scope determines which context bindings it adds (`space()` everywhere a space exists, plus `team()`/`user()`/`kapp()`/`form()`/`values()`/`submission()` per scope).
 
 ### KSL Core Functions
 
@@ -105,7 +107,8 @@ Space-level definitions cannot be applied within a Kapp.
 | `form('slug')` | `string` | Form property |
 | `kapp('slug')` | `string` | Kapp property |
 | `space('slug')` | `string` | Space property |
-| `hasIntersection(a, b)` | `boolean` | True if arrays share any element (inline JS helper, not a platform built-in) |
+
+> **`hasIntersection(a, b)`** is NOT a platform built-in — it is an inline JS helper (returns `true` if two arrays share any element) commonly defined within expressions. It is listed separately from the table above for this reason. See the "`hasIntersection` Helper" section below.
 
 > **Not a valid binding: `values_previous()`.** `@values_previous` exists in workflow-node ERB context (see `workflow-engine`), but `values_previous(...)` is NOT a valid KSL binding for security policies or workflow filters. The Core API accepts the expression at registration time without complaint, but at runtime it returns nil/empty, so any change-detection filter using it never matches. For change detection in workflow filters, see the workaround pattern in `workflow-engine`.
 
