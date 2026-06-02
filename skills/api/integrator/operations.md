@@ -1,10 +1,12 @@
 <!-- AUTO-GENERATED from OpenAPI spec. Do not edit manually. -->
 <!-- Source: oas/integrator.json -->
-<!-- Regenerate: node scripts/generate-api-reference.js -->
+<!-- Regenerate: node scripts/generate-api-reference.mjs -->
 
 # Operations API Reference
 
 Source: Kinetic Integrator REST API v6.1.7
+
+> Generated from the OpenAPI spec — endpoints + parameters only. For base URLs, authentication, pagination, `include` conventions, and worked examples see `concepts/api-basics`, `api/authentication`, and `api/using-the-api`.
 
 ### `GET /api/connections/{connection_id}/operations`
 **Operation:** `IntegratorWeb.OperationController.index`

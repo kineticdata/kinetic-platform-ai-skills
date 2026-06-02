@@ -1,10 +1,12 @@
 <!-- AUTO-GENERATED from OpenAPI spec. Do not edit manually. -->
 <!-- Source: oas/core.json -->
-<!-- Regenerate: node scripts/generate-api-reference.js -->
+<!-- Regenerate: node scripts/generate-api-reference.mjs -->
 
 # Security API Reference
 
 Source: Kinetic Core REST API v6.1
+
+> Generated from the OpenAPI spec — endpoints + parameters only. For base URLs, authentication, pagination, `include` conventions, and worked examples see `concepts/api-basics`, `api/authentication`, and `api/using-the-api`.
 
 ### `GET /kapps/{kappSlug}/securityPolicyDefinitions`
 **Operation:** `listKappSecurityPolicyDefinitions`
@@ -12,8 +14,8 @@ Kapp Security Policy Definition List
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
@@ -25,8 +27,8 @@ Kapp Security Policy Definition Create
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Request body (required):** The content for the security policy definition properties
 
@@ -41,9 +43,9 @@ Kapp Security Policy Definition Retrieve
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
-| `name` (string) | path | Yes | The name of the security policy definition  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
+| `name` (string) | path | Yes | The name of the security policy definition |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
@@ -55,9 +57,9 @@ Kapp Security Policy Definition Update
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
-| `name` (string) | path | Yes | The name of the security policy definition  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
+| `name` (string) | path | Yes | The name of the security policy definition |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Request body (required):** The content for the security policy definition properties to update
 
@@ -74,9 +76,9 @@ Kapp Security Policy Definition Delete
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
-| `name` (string) | path | Yes | The name of the security policy definition  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
+| `name` (string) | path | Yes | The name of the security policy definition |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
@@ -88,7 +90,7 @@ Space Security Policy Definition List
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
@@ -100,7 +102,7 @@ Space Security Policy Definition Create
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Request body (required):** The content for the security policy definition properties
 
@@ -115,8 +117,8 @@ Space Security Policy Definition Retrieve
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `name` (string) | path | Yes | The name of the security policy definition  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `name` (string) | path | Yes | The name of the security policy definition |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
@@ -128,8 +130,8 @@ Space Security Policy Definition Update
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `name` (string) | path | Yes | The name of the security policy definition  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `name` (string) | path | Yes | The name of the security policy definition |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Request body (required):** The content for the security policy definition properties to update
 
@@ -146,8 +148,8 @@ Space Security Policy Definition Delete
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `name` (string) | path | Yes | The name of the security policy definition  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `name` (string) | path | Yes | The name of the security policy definition |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 

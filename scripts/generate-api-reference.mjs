@@ -51,16 +51,25 @@ function loadSpec(service) {
   return JSON.parse(readFileSync(specPath, 'utf-8'));
 }
 
-function slicePaths(spec, domain) {
-  const keywords = DOMAIN_KEYWORDS[domain] || [domain];
-  const matched = {};
-  for (const [path, methods] of Object.entries(spec.paths || {})) {
-    const segments = path.toLowerCase().split('/');
-    if (keywords.some(kw => segments.some(seg => seg.includes(kw.toLowerCase())))) {
-      matched[path] = methods;
+// Assign a path to its MOST SPECIFIC domain — the rightmost path segment that
+// matches a domain keyword — so each endpoint is documented in exactly one file.
+// Without this, every `/kapps/{kappSlug}/forms/{formSlug}/submissions` path would
+// land in kapps.md AND forms.md AND submissions.md (the old behaviour, which made
+// kapps.md ~1400 lines of duplicated content).
+function domainForPath(service, path) {
+  const domains = SERVICE_DOMAINS[service] || [];
+  const segments = path.toLowerCase().split('/');
+  let best = null, bestIdx = -1;
+  for (const domain of domains) {
+    const keywords = DOMAIN_KEYWORDS[domain] || [domain];
+    for (let i = segments.length - 1; i >= 0; i--) {
+      if (keywords.some(kw => segments[i].includes(kw.toLowerCase()))) {
+        if (i > bestIdx) { bestIdx = i; best = domain; }
+        break;
+      }
     }
   }
-  return matched;
+  return best;
 }
 
 function resolveRef(spec, ref) {
@@ -107,7 +116,7 @@ function formatOperation(spec, method, path, op, pathItem) {
     lines.push('|-----------|----------|----------|-------------|');
     for (const p of params) {
       const req = p.required ? 'Yes' : 'No';
-      const desc = (p.description || '').replace(/\|/g, '\\|').replace(/\n/g, ' ');
+      const desc = cellDesc(p.description);
       const type = p.schema?.type ? ` (${p.schema.type})` : '';
       lines.push(`| \`${p.name}\`${type} | ${p.in} | ${req} | ${desc} |`);
     }
@@ -139,15 +148,24 @@ function capitalize(s) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+// Collapse whitespace, escape table-breaking pipes, and cap length so a multi-
+// paragraph OpenAPI description doesn't become a multi-thousand-char single cell.
+function cellDesc(desc) {
+  const oneLine = (desc || '').replace(/\s+/g, ' ').replace(/\|/g, '\\|').trim();
+  return oneLine.length > 200 ? oneLine.slice(0, 197) + '…' : oneLine;
+}
+
 function generateDomainDoc(spec, service, domain, paths) {
   const lines = [];
   lines.push(`<!-- AUTO-GENERATED from OpenAPI spec. Do not edit manually. -->`);
   lines.push(`<!-- Source: oas/${service}.json -->`);
-  lines.push(`<!-- Regenerate: node scripts/generate-api-reference.js -->`);
+  lines.push(`<!-- Regenerate: node scripts/generate-api-reference.mjs -->`);
   lines.push('');
   lines.push(`# ${capitalize(domain)} API Reference`);
   lines.push('');
   lines.push(`Source: ${spec.info.title} v${spec.info.version}`);
+  lines.push('');
+  lines.push('> Generated from the OpenAPI spec — endpoints + parameters only. For base URLs, authentication, pagination, `include` conventions, and worked examples see `concepts/api-basics`, `api/authentication`, and `api/using-the-api`.');
   lines.push('');
 
   const sortedPaths = Object.entries(paths).sort(([a], [b]) => a.localeCompare(b));
@@ -177,8 +195,17 @@ for (const [service, domains] of Object.entries(SERVICE_DOMAINS)) {
   const serviceDir = join(OUTPUT_DIR, service);
   mkdirSync(serviceDir, { recursive: true });
 
+  // Group each path under exactly one (most-specific) domain.
+  const byDomain = {};
+  for (const [path, methods] of Object.entries(spec.paths || {})) {
+    const domain = domainForPath(service, path);
+    if (!domain) continue;
+    if (!byDomain[domain]) byDomain[domain] = {};
+    byDomain[domain][path] = methods;
+  }
+
   for (const domain of domains) {
-    const paths = slicePaths(spec, domain);
+    const paths = byDomain[domain] || {};
     const pathCount = Object.keys(paths).length;
     if (pathCount === 0) {
       // Skip empty domains — don't emit a "No endpoints found" stub file.

@@ -1,10 +1,12 @@
 <!-- AUTO-GENERATED from OpenAPI spec. Do not edit manually. -->
 <!-- Source: oas/core.json -->
-<!-- Regenerate: node scripts/generate-api-reference.js -->
+<!-- Regenerate: node scripts/generate-api-reference.mjs -->
 
 # Attributes API Reference
 
 Source: Kinetic Core REST API v6.1
+
+> Generated from the OpenAPI spec — endpoints + parameters only. For base URLs, authentication, pagination, `include` conventions, and worked examples see `concepts/api-basics`, `api/authentication`, and `api/using-the-api`.
 
 ### `GET /kapps/{kappSlug}/categoryAttributeDefinitions`
 **Operation:** `listCategoryAttributeDefinitions`
@@ -12,8 +14,8 @@ Kapp Category Attribute Definition List
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
@@ -25,8 +27,8 @@ Kapp Category Attribute Definition Create
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Request body (required):** The content for the attribute definition properties
 
@@ -41,9 +43,9 @@ Kapp Category Attribute Definition Retrieve
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
-| `name` (string) | path | Yes | The name of the attribute definition  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
+| `name` (string) | path | Yes | The name of the attribute definition |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
@@ -55,9 +57,9 @@ Kapp Category Attribute Definition Update
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
-| `name` (string) | path | Yes | The name of the attribute definition  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
+| `name` (string) | path | Yes | The name of the attribute definition |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Request body (required):** The content for the attribute definition properties to update
 
@@ -74,9 +76,9 @@ Kapp Category Attribute Definition Delete
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
-| `name` (string) | path | Yes | The name of the attribute definition  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
+| `name` (string) | path | Yes | The name of the attribute definition |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
@@ -88,8 +90,8 @@ Kapp Form Attribute Definition List
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
@@ -101,8 +103,8 @@ Kapp Form Attribute Definition Create
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Request body (required):** The content for the attribute definition properties
 
@@ -117,9 +119,9 @@ Kapp Form Attribute Definition Retrieve
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
-| `name` (string) | path | Yes | The name of the attribute definition  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
+| `name` (string) | path | Yes | The name of the attribute definition |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
@@ -131,9 +133,9 @@ Kapp Form Attribute Definition Update
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
-| `name` (string) | path | Yes | The name of the attribute definition  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
+| `name` (string) | path | Yes | The name of the attribute definition |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Request body (required):** The content for the attribute definition properties to update
 
@@ -150,9 +152,9 @@ Kapp Form Attribute Definition Delete
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
-| `name` (string) | path | Yes | The name of the attribute definition  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
+| `name` (string) | path | Yes | The name of the attribute definition |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
@@ -164,8 +166,8 @@ Kapp Attribute Definition List
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
@@ -177,8 +179,8 @@ Kapp Attribute Definition Create
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Request body (required):** The content for the attribute definition properties
 
@@ -193,9 +195,9 @@ Kapp Attribute Definition Retrieve
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
-| `name` (string) | path | Yes | The name of the attribute definition  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
+| `name` (string) | path | Yes | The name of the attribute definition |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
@@ -207,9 +209,9 @@ Kapp Attribute Definition Update
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
-| `name` (string) | path | Yes | The name of the attribute definition  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
+| `name` (string) | path | Yes | The name of the attribute definition |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Request body (required):** The content for the attribute definition properties to update
 
@@ -226,80 +228,9 @@ Kapp Attribute Definition Delete
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
-| `name` (string) | path | Yes | The name of the attribute definition  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
-
-**Success response:** 200
-
----
-
-### `GET /spaceAttributeDefinitions`
-**Operation:** `listSpaceAttributeDefinitions`
-Space Attribute Definition List
-
-| Parameter | Location | Required | Description |
-|-----------|----------|----------|-------------|
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
-
-**Success response:** 200
-
----
-
-### `POST /spaceAttributeDefinitions`
-**Operation:** `createSpaceAttributeDefinition`
-Space Attribute Definition Create
-
-| Parameter | Location | Required | Description |
-|-----------|----------|----------|-------------|
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
-
-**Request body (required):** The content for the attribute definition properties
-
-
-**Success response:** 200
-
----
-
-### `GET /spaceAttributeDefinitions/{name}`
-**Operation:** `retrieveSpaceAttributeDefinition`
-Space Attribute Definition Retrieve
-
-| Parameter | Location | Required | Description |
-|-----------|----------|----------|-------------|
-| `name` (string) | path | Yes | The name of the attribute definition  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
-
-**Success response:** 200
-
----
-
-### `PUT /spaceAttributeDefinitions/{name}`
-**Operation:** `updateSpaceAttributeDefinition`
-Space Attribute Definition Update
-
-| Parameter | Location | Required | Description |
-|-----------|----------|----------|-------------|
-| `name` (string) | path | Yes | The name of the attribute definition  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
-
-**Request body (required):** The content for the attribute definition properties to update
-
-**Only** the properties supplied will be updated.
-
-
-**Success response:** 200
-
----
-
-### `DELETE /spaceAttributeDefinitions/{name}`
-**Operation:** `deleteSpaceAttributeDefinition`
-Space Attribute Definition Delete
-
-| Parameter | Location | Required | Description |
-|-----------|----------|----------|-------------|
-| `name` (string) | path | Yes | The name of the attribute definition  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
+| `name` (string) | path | Yes | The name of the attribute definition |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
@@ -311,7 +242,7 @@ Team Attribute Definition List
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
@@ -323,7 +254,7 @@ Team Attribute Definition Create
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Request body (required):** The content for the attribute definition properties
 
@@ -338,8 +269,8 @@ Team Attribute Definition Retrieve
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `name` (string) | path | Yes | The name of the attribute definition  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `name` (string) | path | Yes | The name of the attribute definition |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
@@ -351,8 +282,8 @@ Team Attribute Definition Update
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `name` (string) | path | Yes | The name of the attribute definition  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `name` (string) | path | Yes | The name of the attribute definition |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Request body (required):** The content for the attribute definition properties to update
 
@@ -369,8 +300,8 @@ Team Attribute Definition Delete
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `name` (string) | path | Yes | The name of the attribute definition  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `name` (string) | path | Yes | The name of the attribute definition |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
@@ -382,7 +313,7 @@ User Attribute Definition List
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
@@ -394,7 +325,7 @@ User Attribute Definition Create
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Request body (required):** The content for the attribute definition properties
 
@@ -409,8 +340,8 @@ User Attribute Definition Retrieve
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `name` (string) | path | Yes | The name of the attribute definition  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `name` (string) | path | Yes | The name of the attribute definition |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
@@ -422,8 +353,8 @@ User Attribute Definition Update
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `name` (string) | path | Yes | The name of the attribute definition  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `name` (string) | path | Yes | The name of the attribute definition |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Request body (required):** The content for the attribute definition properties to update
 
@@ -440,8 +371,8 @@ User Attribute Definition Delete
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `name` (string) | path | Yes | The name of the attribute definition  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `name` (string) | path | Yes | The name of the attribute definition |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
@@ -453,7 +384,7 @@ User Profile Attribute Definition List
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
@@ -465,7 +396,7 @@ User Profile Attribute Definition Create
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Request body (required):** The content for the attribute definition properties
 
@@ -480,8 +411,8 @@ User Profile Attribute Definition Retrieve
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `name` (string) | path | Yes | The name of the attribute definition  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `name` (string) | path | Yes | The name of the attribute definition |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
@@ -493,8 +424,8 @@ User Profile Attribute Definition Update
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `name` (string) | path | Yes | The name of the attribute definition  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `name` (string) | path | Yes | The name of the attribute definition |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Request body (required):** The content for the attribute definition properties to update
 
@@ -511,8 +442,8 @@ User Profile Attribute Definition Delete
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `name` (string) | path | Yes | The name of the attribute definition  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `name` (string) | path | Yes | The name of the attribute definition |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 

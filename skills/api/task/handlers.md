@@ -1,10 +1,12 @@
 <!-- AUTO-GENERATED from OpenAPI spec. Do not edit manually. -->
 <!-- Source: oas/task.json -->
-<!-- Regenerate: node scripts/generate-api-reference.js -->
+<!-- Regenerate: node scripts/generate-api-reference.mjs -->
 
 # Handlers API Reference
 
 Source: Kinetic Task REST API v2.0
+
+> Generated from the OpenAPI spec — endpoints + parameters only. For base URLs, authentication, pagination, `include` conventions, and worked examples see `concepts/api-basics`, `api/authentication`, and `api/using-the-api`.
 
 ### `POST /categories/{name}/handlers`
 **Operation:** `addCategoryHandler`
@@ -12,7 +14,7 @@ Handler Categorization Create
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `name` (string) | path | Yes | The name of the category  |
+| `name` (string) | path | Yes | The name of the category |
 
 **Request body (required):** The content for the handler properties
 
@@ -27,8 +29,8 @@ Handler Categorization Delete
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `name` (string) | path | Yes | The name of the category  |
-| `definitionId` (string) | path | Yes | The definitionId of the handler  |
+| `name` (string) | path | Yes | The name of the category |
+| `definitionId` (string) | path | Yes | The definitionId of the handler |
 
 **Success response:** 200
 
@@ -53,7 +55,7 @@ Handler Import
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `force` (boolean) | query | No | when true, indicates an existing task handler should be overwritten with the package being uploaded.  |
+| `force` (boolean) | query | No | when true, indicates an existing task handler should be overwritten with the package being uploaded. |
 
 **Request body (required):** The content for the handler properties
 
@@ -68,7 +70,7 @@ Handler Retrieve
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `definitionId` (string) | path | Yes | The definitionId of the handler  |
+| `definitionId` (string) | path | Yes | The definitionId of the handler |
 | `include` (array) | query | No |  |
 
 **Success response:** 200
@@ -81,7 +83,7 @@ Handler Update
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `definitionId` (string) | path | Yes | The definitionId of the handler  |
+| `definitionId` (string) | path | Yes | The definitionId of the handler |
 | `include` (array) | query | No |  |
 
 **Request body (required):** The content for the handler properties to update
@@ -99,7 +101,7 @@ Handler Delete
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `definitionId` (string) | path | Yes | The definitionId of the handler  |
+| `definitionId` (string) | path | Yes | The definitionId of the handler |
 | `include` (array) | query | No |  |
 
 **Success response:** 200
@@ -112,7 +114,7 @@ Handler Metrics Retrieve
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `definitionId` (string) | path | Yes | The definitionId of the handler  |
+| `definitionId` (string) | path | Yes | The definitionId of the handler |
 
 **Success response:** 200
 

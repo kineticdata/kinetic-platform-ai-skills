@@ -1,10 +1,12 @@
 <!-- AUTO-GENERATED from OpenAPI spec. Do not edit manually. -->
 <!-- Source: oas/core.json -->
-<!-- Regenerate: node scripts/generate-api-reference.js -->
+<!-- Regenerate: node scripts/generate-api-reference.mjs -->
 
 # Webapis API Reference
 
 Source: Kinetic Core REST API v6.1
+
+> Generated from the OpenAPI spec — endpoints + parameters only. For base URLs, authentication, pagination, `include` conventions, and worked examples see `concepts/api-basics`, `api/authentication`, and `api/using-the-api`.
 
 ### `GET /kapps/{kappSlug}/webApis`
 **Operation:** `listKappWebAPIs`
@@ -12,8 +14,8 @@ Kapp WebAPI List
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  * securityPolicies  |
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details * securityPolicies |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
 
 **Success response:** 200
 
@@ -25,8 +27,8 @@ Kapp WebAPI Create
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  * securityPolicies  |
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details * securityPolicies |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
 
 **Request body (required):** The content for the webapi properties
 
@@ -41,9 +43,9 @@ Kapp WebAPI Retrieve
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
-| `webApiSlug` (string) | path | Yes | The slug of the WebAPI  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  * securityPolicies  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
+| `webApiSlug` (string) | path | Yes | The slug of the WebAPI |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details * securityPolicies |
 
 **Success response:** 200
 
@@ -55,9 +57,9 @@ Kapp WebAPI Update
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
-| `webApiSlug` (string) | path | Yes | The slug of the WebAPI  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  * securityPolicies  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
+| `webApiSlug` (string) | path | Yes | The slug of the WebAPI |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details * securityPolicies |
 
 **Request body (required):** The content for the webapi properties to update
 
@@ -72,9 +74,9 @@ Kapp WebAPI Delete
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
-| `webApiSlug` (string) | path | Yes | The slug of the WebAPI  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  * securityPolicies  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
+| `webApiSlug` (string) | path | Yes | The slug of the WebAPI |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details * securityPolicies |
 
 **Success response:** 200
 
@@ -86,8 +88,8 @@ Kapp WebAPI Export
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
-| `webApiSlug` (string) | path | Yes | The slug of the WebAPI  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
+| `webApiSlug` (string) | path | Yes | The slug of the WebAPI |
 
 **Success response:** 200
 
@@ -99,7 +101,7 @@ Space WebAPI List
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  * securityPolicies  |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details * securityPolicies |
 
 **Success response:** 200
 
@@ -111,7 +113,7 @@ Space WebAPI Create
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  * securityPolicies  |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details * securityPolicies |
 
 **Request body (required):** The content for the webapi properties
 
@@ -126,8 +128,8 @@ Space WebAPI Retrieve
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `webApiSlug` (string) | path | Yes | The slug of the WebAPI  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  * securityPolicies  |
+| `webApiSlug` (string) | path | Yes | The slug of the WebAPI |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details * securityPolicies |
 
 **Success response:** 200
 
@@ -139,8 +141,8 @@ Space WebAPI Update
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `webApiSlug` (string) | path | Yes | The slug of the WebAPI  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  * securityPolicies  |
+| `webApiSlug` (string) | path | Yes | The slug of the WebAPI |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details * securityPolicies |
 
 **Request body (required):** The content for the webapi properties to update
 
@@ -155,8 +157,8 @@ Space WebAPI Delete
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `webApiSlug` (string) | path | Yes | The slug of the WebAPI  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  * securityPolicies  |
+| `webApiSlug` (string) | path | Yes | The slug of the WebAPI |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details * securityPolicies |
 
 **Success response:** 200
 
@@ -168,7 +170,7 @@ Space WebAPI Export
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `webApiSlug` (string) | path | Yes | The slug of the WebAPI  |
+| `webApiSlug` (string) | path | Yes | The slug of the WebAPI |
 
 **Success response:** 200
 

@@ -1,10 +1,12 @@
 <!-- AUTO-GENERATED from OpenAPI spec. Do not edit manually. -->
 <!-- Source: oas/core.json -->
-<!-- Regenerate: node scripts/generate-api-reference.js -->
+<!-- Regenerate: node scripts/generate-api-reference.mjs -->
 
 # Webhooks API Reference
 
 Source: Kinetic Core REST API v6.1
+
+> Generated from the OpenAPI spec — endpoints + parameters only. For base URLs, authentication, pagination, `include` conventions, and worked examples see `concepts/api-basics`, `api/authentication`, and `api/using-the-api`.
 
 ### `GET /kapps/{kappSlug}/webhooks`
 **Operation:** `listKappWebhooks`
@@ -12,8 +14,8 @@ Kapp Webhook List
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
@@ -25,8 +27,8 @@ Kapp Webhook Create
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Request body (required):** The content for the webhook properties
 
@@ -41,9 +43,9 @@ Kapp Webhook Retrieve
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
-| `name` (string) | path | Yes | The name of the webhook  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
+| `name` (string) | path | Yes | The name of the webhook |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
@@ -55,9 +57,9 @@ Kapp Webhook Update
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
-| `name` (string) | path | Yes | The name of the webhook  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
+| `name` (string) | path | Yes | The name of the webhook |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Request body (required):** The content for the webhook properties to update
 
@@ -74,9 +76,9 @@ Kapp Webhook Delete
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
-| `name` (string) | path | Yes | The name of the webhook  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
+| `name` (string) | path | Yes | The name of the webhook |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
@@ -96,27 +98,7 @@ Kapp Webhook Event List by Type
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `type` (string) | path | Yes | The type of kapp webhook events to retrieve.  |
-
-**Success response:** 200
-
----
-
-### `GET /meta/webhooks/events/space`
-**Operation:** `spaceWebhookEvents`
-Space Webhook Event List
-
-**Success response:** 200
-
----
-
-### `GET /meta/webhooks/events/space/{type}`
-**Operation:** `spaceWebhookEventsByType`
-Space Webhook Event List by Type
-
-| Parameter | Location | Required | Description |
-|-----------|----------|----------|-------------|
-| `type` (string) | path | Yes | The type of space webhook events to retrieve.  |
+| `type` (string) | path | Yes | The type of kapp webhook events to retrieve. |
 
 **Success response:** 200
 
@@ -130,21 +112,13 @@ Kapp Webhook Type List
 
 ---
 
-### `GET /meta/webhooks/types/space`
-**Operation:** `spaceWebhookTypes`
-Space Webhook Type List
-
-**Success response:** 200
-
----
-
 ### `GET /webhooks`
 **Operation:** `listSpaceWebhooks`
 Space Webhook List
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
@@ -156,7 +130,7 @@ Space Webhook Create
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Request body (required):** The content for the webhook properties
 
@@ -171,8 +145,8 @@ Space Webhook Retrieve
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `name` (string) | path | Yes | The name of the webhook  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `name` (string) | path | Yes | The name of the webhook |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
@@ -184,8 +158,8 @@ Space Webhook Update
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `name` (string) | path | Yes | The name of the webhook  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `name` (string) | path | Yes | The name of the webhook |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Request body (required):** The content for the webhook properties to update
 
@@ -202,8 +176,8 @@ Space Webhook Delete
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `name` (string) | path | Yes | The name of the webhook  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `name` (string) | path | Yes | The name of the webhook |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 

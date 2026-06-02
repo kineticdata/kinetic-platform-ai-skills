@@ -23,7 +23,7 @@ jobs:
           node-version: '20'
 
       - name: Generate API reference
-        run: node scripts/generate-api-reference.js
+        run: node scripts/generate-api-reference.mjs
 
       - name: Check for changes
         id: changes

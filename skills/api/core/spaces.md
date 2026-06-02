@@ -1,10 +1,12 @@
 <!-- AUTO-GENERATED from OpenAPI spec. Do not edit manually. -->
 <!-- Source: oas/core.json -->
-<!-- Regenerate: node scripts/generate-api-reference.js -->
+<!-- Regenerate: node scripts/generate-api-reference.mjs -->
 
 # Spaces API Reference
 
 Source: Kinetic Core REST API v6.1
+
+> Generated from the OpenAPI spec — endpoints + parameters only. For base URLs, authentication, pagination, `include` conventions, and worked examples see `concepts/api-basics`, `api/authentication`, and `api/using-the-api`.
 
 ### `GET /activity`
 **Operation:** `fetchSpaceActivityMetrics`
@@ -33,7 +35,7 @@ Kapp Submission Metrics Retrieve
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
 | `days` (integer) | query | No | Number of days to fetch activity metrics for |
 | `tz` (string) | query | No | Number of days to fetch activity metrics for |
 
@@ -47,7 +49,7 @@ Kapp Submission Metrics Delete
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
 
 **Success response:** 200
 
@@ -59,8 +61,8 @@ Kapp Form Submission Metrics Retrieve
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `kappSlug` (string) | path | Yes | The slug of the Kapp  |
-| `formSlug` (string) | path | Yes | The slug of the form  |
+| `kappSlug` (string) | path | Yes | The slug of the Kapp |
+| `formSlug` (string) | path | Yes | The slug of the form |
 | `days` (integer) | query | No | Number of days to fetch activity metrics for |
 | `tz` (string) | query | No | Number of days to fetch activity metrics for |
 
@@ -82,7 +84,7 @@ Space Webhook Event List by Type
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `type` (string) | path | Yes | The type of space webhook events to retrieve.  |
+| `type` (string) | path | Yes | The type of space webhook events to retrieve. |
 
 **Success response:** 200
 
@@ -102,8 +104,8 @@ Space Retrieve
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  * attributes  * attributes[ATTRIBUTE NAME]  * attributesMap  * attributesMap[ATTRIBUTE NAME]  * bridgeModels  * bridgeMappings  * filestore  * kapps  * securityPolicyDefinitions  * securityPolicies  * spaceAttributeDefinitions  * userAttributeDefinitions  * userProfileAttributeDefinitions  * webhooks  |
-| `export` (boolean) | query | No | flag indicating the API should export all child components of the space.  |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details * attributes * attributes[ATTRIBUTE NAME] * attributesMap * attributesMap[ATTRIBUTE NAME] * bridgeModels * bridgeMappings * f… |
+| `export` (boolean) | query | No | flag indicating the API should export all child components of the space. |
 
 **Success response:** 200
 
@@ -115,7 +117,7 @@ Space Update
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  * attributes  * attributes[ATTRIBUTE NAME]  * attributesMap  * attributesMap[ATTRIBUTE NAME]  * bridgeModels  * bridgeMappings  * filestore  * kapps  * securityPolicyDefinitions  * securityPolicies  * spaceAttributeDefinitions  * userAttributeDefinitions  * userProfileAttributeDefinitions  * webhooks  |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details * attributes * attributes[ATTRIBUTE NAME] * attributesMap * attributesMap[ATTRIBUTE NAME] * bridgeModels * bridgeMappings * f… |
 
 **Request body (required):** The content for the space properties to update
 
@@ -132,7 +134,7 @@ Space Attribute Definition List
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
@@ -144,7 +146,7 @@ Space Attribute Definition Create
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Request body (required):** The content for the attribute definition properties
 
@@ -159,8 +161,8 @@ Space Attribute Definition Retrieve
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `name` (string) | path | Yes | The name of the attribute definition  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `name` (string) | path | Yes | The name of the attribute definition |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
@@ -172,8 +174,8 @@ Space Attribute Definition Update
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `name` (string) | path | Yes | The name of the attribute definition  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `name` (string) | path | Yes | The name of the attribute definition |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Request body (required):** The content for the attribute definition properties to update
 
@@ -190,8 +192,8 @@ Space Attribute Definition Delete
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `name` (string) | path | Yes | The name of the attribute definition  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `name` (string) | path | Yes | The name of the attribute definition |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
@@ -203,9 +205,9 @@ Submission Activity Retrieve
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `submissionId` (string) | path | Yes | The id of the submission  |
-| `activityId` (string) | path | Yes | The id of the submission activity  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `submissionId` (string) | path | Yes | The id of the submission |
+| `activityId` (string) | path | Yes | The id of the submission activity |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
@@ -217,9 +219,9 @@ Submission Activity Update
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `submissionId` (string) | path | Yes | The id of the submission  |
-| `activityId` (string) | path | Yes | The id of the submission activity  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `submissionId` (string) | path | Yes | The id of the submission |
+| `activityId` (string) | path | Yes | The id of the submission activity |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Request body (required):** The content for the submission activity properties to update
 
@@ -236,9 +238,9 @@ Submission Activity Delete
 
 | Parameter | Location | Required | Description |
 |-----------|----------|----------|-------------|
-| `submissionId` (string) | path | Yes | The id of the submission  |
-| `activityId` (string) | path | Yes | The id of the submission activity  |
-| `include` (string) | query | No | comma-separated list of properties to include in the response  * details  |
+| `submissionId` (string) | path | Yes | The id of the submission |
+| `activityId` (string) | path | Yes | The id of the submission activity |
+| `include` (string) | query | No | comma-separated list of properties to include in the response * details |
 
 **Success response:** 200
 
