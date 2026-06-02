@@ -29,9 +29,12 @@ A shareable AI skills library for building on the Kinetic Platform. Organized fo
 | [architectural-patterns](skills/concepts/architectural-patterns/SKILL.md) | Deferral pattern, approvals, fulfillment, work routing, SLA tracking, external system sync, bulk operations |
 | [robots](skills/concepts/robots/SKILL.md) | Scheduled automation — robot definition/execution/next-execution forms, the execution routine, robot tree pattern, scheduling, and gotchas |
 | [form-engine](skills/concepts/form-engine/SKILL.md) | Form JSON schema, field types, events, expressions, K() JavaScript API, bundle.config overrides |
+| [form-events-expressions](skills/concepts/form-events-expressions/SKILL.md) | Form events (load/submit/change/click), K() JavaScript API, expression syntax, bundle.config overrides, form-level integrations |
 | [integrations](skills/concepts/integrations/SKILL.md) | Connections/Operations, Bridges, Handlers, File Resources — when to use each |
+| [models](skills/concepts/models/SKILL.md) | Bridge Data Models — read-only data views backed by bridge adapters for querying external data from forms and portals |
 | [webapis-and-webhooks](skills/concepts/webapis-and-webhooks/SKILL.md) | WebAPIs (custom REST endpoints), Webhooks (event triggers), security, callback patterns |
 | [users-teams-security](skills/concepts/users-teams-security/SKILL.md) | Users, Teams, KSL security definitions, two-layer security model, policy endpoints, attribute definitions, submission activities |
+| [security-policies](skills/concepts/security-policies/SKILL.md) | KSL security expressions, policy definitions/CRUD, binding functions, attribute definitions, activities, Task engine security, access control |
 
 #### Provisioning & Automation
 
@@ -45,6 +48,7 @@ A shareable AI skills library for building on the Kinetic Platform. Organized fo
 | Skill | Description |
 |-------|-------------|
 | [bootstrap](skills/front-end/bootstrap/SKILL.md) | KineticLib setup, app context fetching, Vite config, auth state machine |
+| [portal-patterns](skills/front-end/portal-patterns/SKILL.md) | Portal architecture — routing, Redux/regRedux, useData hook, context fetching, kappSlug resolution, project structure |
 | [forms](skills/front-end/forms/SKILL.md) | CoreForm vs client-side decision, KineticForm wrapper, CoreForm usage, globals.jsx, widget system |
 | [data-fetching](skills/front-end/data-fetching/SKILL.md) | useData, usePaginatedData, defineKqlQuery, searchSubmissions |
 | [mutations](skills/front-end/mutations/SKILL.md) | executeIntegration, submission CRUD, profile/kapp/space updates |
