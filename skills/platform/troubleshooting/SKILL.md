@@ -228,34 +228,8 @@ Connector `value` fields are evaluated as pure Ruby expressions — do NOT use `
 
 ---
 
-## Export Endpoint Bug
+## Known Platform Bugs
 
-`GET /trees/{title}/export` may return the **wrong tree definition** for trees with `versionId: "1"` (stub registrations that were never explicitly updated via the export path).
+Several recurring platform defects show up during troubleshooting — wrong/stale tree export (`GET /trees/{title}/export`), `run.tree` returned as an object (renders as `[object Object]`), WebAPI `timeout` > 30 → HTTP 500 with orphan runs, security-policy evaluation returning 500 instead of 403, `smtp_email_send_v1` omitting `Handler Error Message` on success (downstream `IndexError`), and `GET /errors` hard-capping at 5 results.
 
-**Workaround:** Use `GET /trees/{title}?include=treeJson` instead. The `treeJson` include is the reliable round-trip path — it always returns the current tree definition.
-
-To detect affected trees: check `versionId` — if it's `"1"` and the tree has been modified via Core API PUT (not Task API), the export endpoint may return stale or incorrect XML.
-
----
-
-## `run.tree` Is an Object
-
-The `run.tree` field in Task API responses is an **object** (not a string):
-
-```json
-{
-  "tree": {
-    "name": "my-workflow",
-    "title": "Kinetic Request CE :: abc123 :: my-workflow",
-    "sourceName": "Kinetic Request CE",
-    "sourceGroup": "abc123",
-    "status": "Active"
-  }
-}
-```
-
-Using `run.tree` directly (e.g., in string concatenation) produces `[object Object]`. Always extract the name:
-
-```js
-const treeName = (typeof run.tree === 'object' ? run.tree?.name : run.tree) || 'Unknown';
-```
+These are catalogued with full symptoms, impact, and tested workarounds in the **Known Bugs** skill (`platform/known-bugs`) — the canonical registry. Consult it when a failure looks like a platform bug rather than a configuration error.
