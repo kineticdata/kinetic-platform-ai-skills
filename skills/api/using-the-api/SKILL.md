@@ -170,10 +170,7 @@ curl -u "admin:password" -X POST \
   "https://myspace.kinops.io/app/api/v1/kapps/services/forms/service-request/indexDefinitions" \
   -H "Content-Type: application/json" \
   -d '{
-    "parts": [
-      { "name": "values[Status]" },
-      { "name": "values[Requested For]" }
-    ]
+    "parts": ["values[Status]", "values[Requested For]"]
   }'
 ```
 

@@ -305,7 +305,7 @@ Verified via a focused six-probe characterization including direct PATCH variati
 - `coreState` - Filter submissions: `Draft`, `Submitted`, or `Closed`
 - `orderBy` - **Only** needed with KQL range operators (`!=`, `=*`, `>`, `<`, `BETWEEN`). Must reference the same field as the range expression. Equality operators (`=`, `IN`) do NOT need `orderBy`. **Note:** `!=` is a range operator despite looking like equality.
 
-### Query Parameters That Do NOT Exist
+### `direction` — Sort Order
 
 The `direction` parameter controls sort order: `ASC` or `DESC` (default). Submissions are returned in `createdAt` descending order by default. The `direction` parameter works alongside `orderBy` to control sorting.
 

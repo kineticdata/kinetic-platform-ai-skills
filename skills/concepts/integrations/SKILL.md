@@ -229,31 +229,31 @@ The Integrator API (v6.1.6) is available at `/app/integrator/api/`. Most endpoin
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/connections` | List all connections |
-| POST | `/api/connections` | Create a connection |
-| GET | `/api/connections/{id}` | Get a connection |
-| PUT/PATCH | `/api/connections/{id}` | Update a connection |
-| DELETE | `/api/connections/{id}` | Delete a connection |
-| POST | `/api/connections/{id}/test` | Test connection (accepts optional config overrides) |
-| POST | `/api/connections/{id}/restart` | Restart a connection |
+| GET | `/connections` | List all connections |
+| POST | `/connections` | Create a connection |
+| GET | `/connections/{id}` | Get a connection |
+| PUT/PATCH | `/connections/{id}` | Update a connection |
+| DELETE | `/connections/{id}` | Delete a connection |
+| POST | `/connections/{id}/test` | Test connection (accepts optional config overrides) |
+| POST | `/connections/{id}/restart` | Restart a connection |
 
 #### Operation Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/connections/{connection_id}/operations` | List operations for a connection |
-| POST | `/api/connections/{connection_id}/operations` | Create an operation |
-| GET | `/api/connections/{connection_id}/operations/{id}` | Get an operation |
-| PUT/PATCH | `/api/connections/{connection_id}/operations/{id}` | Update an operation |
-| DELETE | `/api/connections/{connection_id}/operations/{id}` | Delete an operation |
+| GET | `/connections/{connection_id}/operations` | List operations for a connection |
+| POST | `/connections/{connection_id}/operations` | Create an operation |
+| GET | `/connections/{connection_id}/operations/{id}` | Get an operation |
+| PUT/PATCH | `/connections/{connection_id}/operations/{id}` | Update an operation |
+| DELETE | `/connections/{connection_id}/operations/{id}` | Delete an operation |
 
 #### Execution & Utility Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/execute` | Execute an operation (optional `?debug` query param for raw response) |
-| POST | `/api/operations/inspect` | Detect input parameters in an operation config |
-| POST | `/api/transform/test` | Test output transformation expressions |
+| POST | `/execute` | Execute an operation (optional `?debug` query param for raw response) |
+| POST | `/operations/inspect` | Detect input parameters in an operation config |
+| POST | `/transform/test` | Test output transformation expressions |
 | GET | `/healthz` | Health check (unprotected) |
 | GET | `/version` | Build version info (unprotected) |
 
