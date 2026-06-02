@@ -110,8 +110,8 @@ These are `user-invocable: true` slash-command skills (note they carry extra fro
 | 400 on KQL query ("requires index definition") | KQL & Indexing |
 | 400 on form creation ("Invalid Form") | Form Engine (field property table) |
 | 400 on submission ("field is required") | API Basics (coreState transitions) |
-| Workflow never fires | Workflow Engine (filter syntax, event names) |
-| Workflow node fails with "ENGINE Run Error" | Workflow XML (debugging runs section) |
+| Workflow never fires | Workflow Creation (filter syntax, supported events) |
+| Workflow node fails with "ENGINE Run Error" | Troubleshooting (ENGINE Run Error causes); Workflow XML (return-node rules) |
 | `system_tree_return_v1` RuntimeError | Workflow XML (tree_return is only for WebAPIs/routines) |
 | Loop workflow fails | Workflow XML (loop connector pattern — head must connect to body AND tail) |
 | Integration 401 Unauthorized | Integrations (connection auth — never modify via API) |

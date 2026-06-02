@@ -11,8 +11,10 @@ The pattern is domain-agnostic. "Your form" could be a service request, purchase
 
 **Before reading this recipe, familiarise yourself with:**
 - `skills/concepts/architectural-patterns/SKILL.md` — the deferral and approval patterns
-- `skills/concepts/workflow-engine/SKILL.md` — workflow concepts, execution model, Task API reference
-- `skills/concepts/workflow-xml/SKILL.md` — XML schema, handler definition IDs, tree title format
+- `skills/concepts/workflow-engine/SKILL.md` — workflow concepts, execution model, deferrals/Queue Task pattern
+- `skills/concepts/workflow-xml/SKILL.md` — XML/treeJson schema, handler definition IDs, connectors, ERB context
+- `skills/concepts/workflow-creation/SKILL.md` — creating and binding the trees (Core API, tree title format, supported events)
+- `skills/concepts/task-api-reference/SKILL.md` — Task API endpoints used in the Step 6 test cycle (runs, triggers, errors)
 
 ---
 
@@ -728,6 +730,8 @@ Any form-level tree can call this routine instead of duplicating the deferral pa
 ## Cross-References
 
 - `skills/concepts/architectural-patterns/SKILL.md` — deferral pattern internals, multi-stage fulfillment, SLA tracking, work routing patterns
-- `skills/concepts/workflow-engine/SKILL.md` — Task API v2 reference, run/task/trigger objects, connector types (Complete/Create/Update), observed response formats
-- `skills/concepts/workflow-xml/SKILL.md` — XML schema, handler definition IDs (`utilities_create_trigger_v1`, `system_wait_v1`), critical node flags, connector conditions, `system_tree_return_v1` parameter rules
+- `skills/concepts/workflow-engine/SKILL.md` — execution model, deferrals/Queue Task pattern, run-status derivation
+- `skills/concepts/task-api-reference/SKILL.md` — Task API v2 endpoints, run/task/trigger objects, response shapes (used by the Step 6 test cycle)
+- `skills/concepts/workflow-creation/SKILL.md` — Core API tree creation/binding, tree title format, supported events
+- `skills/concepts/workflow-xml/SKILL.md` — XML schema, handler definition IDs (`utilities_create_trigger_v1`, `system_wait_v1`), critical node flags, connector types/conditions, `system_tree_return_v1` parameter rules
 - `skills/recipes/create-submission-form/SKILL.md` — creating the approval form fields, index definitions, events, and test submissions
