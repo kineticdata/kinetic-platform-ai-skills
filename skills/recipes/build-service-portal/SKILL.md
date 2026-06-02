@@ -10,7 +10,8 @@ This recipe walks through building a complete self-service portal on the Kinetic
 The reference production implementation is [momentum-portal](https://github.com/kineticdata/momentum-portal).
 
 **Before reading this recipe, read these foundational skills:**
-- `skills/front-end/bootstrap/SKILL.md` — KineticLib, Vite config, auth state machine, project structure
+- `skills/front-end/bootstrap/SKILL.md` — Vite scaffold/install, dev proxy, KineticLib entry point, CoreForm prerequisites, auth state machine
+- `skills/front-end/portal-patterns/SKILL.md` — routing, Redux/regRedux, useData, App-context fetching, kappSlug resolution, project structure
 - `skills/front-end/forms/SKILL.md` — CoreForm, KineticForm wrapper, globals.jsx
 - `skills/front-end/data-fetching/SKILL.md` — useData, usePaginatedData, defineKqlQuery
 - `skills/front-end/mutations/SKILL.md` — executeIntegration, submission CRUD
@@ -23,11 +24,13 @@ The reference production implementation is [momentum-portal](https://github.com/
 A service portal has six main concerns:
 
 1. **Platform setup** — a kapp with service forms and a workflow tree
-2. **React project setup** — Vite + `@kineticdata/react` + routing
+2. **React project setup** — Vite + `@kineticdata/react` + Redux + routing (in `bootstrap` and `portal-patterns`; not repeated here)
 3. **Service catalog** — listing available forms grouped by category
 4. **Request form page** — rendering forms with `KineticForm`
 5. **Request list** — paginated, filterable submission history
 6. **Request detail** — single submission with activity timeline
+
+This recipe documents only the **portal-specific** layers (1, 3, 4, 5, 6). The shared React scaffold (concern 2) lives in the foundational skills above — this recipe references it rather than duplicating it.
 
 ---
 
@@ -92,241 +95,34 @@ Attach a workflow tree to each service form to handle submission processing, app
 
 ## Part 2 — React Project Setup
 
-### 2.1 Scaffold
+> Project setup (Vite scaffold, dev proxy, `@kineticdata/react` install, `index.html` bundle scripts, `globals.js`, the `KineticLib` entry point, and the no-`StrictMode` auth state machine) is in `skills/front-end/bootstrap/SKILL.md`.
 
-```bash
-npm create vite@latest portal -- --template react
-cd portal
-npm install @kineticdata/react react-router-dom react-redux @reduxjs/toolkit
-npm install jquery moment
-npm install -D @vitejs/plugin-react vite-plugin-svgr @tailwindcss/vite
-```
+> Routing, the Redux store + `regRedux`, the `useData` hook, App-context fetching (space/profile/kapp), and kappSlug resolution are in `skills/front-end/portal-patterns/SKILL.md`.
 
-### 2.2 `index.html` — Bundle Scripts
+Build `index.html`, `vite.config.js`, `src/globals.js`, `src/main.jsx`, `src/redux.js`, and the `App.jsx` auth state machine per those two skills. The only portal-specific addition is the **private route table** below, which wires this recipe's pages into the App shell once `loggedIn && kapp && profile` are ready.
 
-`CoreForm` requires Kinetic's bundle JavaScript. Add before the Vite entry `<script>`:
+### 2.1 Private Routes
 
-```html
-<head>
-  <script>window.global ||= window;</script>
-  <link rel="stylesheet" href="/app/head.css" type="text/css" media="all" />
-  <script src="/app/head.js"></script>
-  <script src="/app/bundle.js"></script>
-</head>
-```
-
-These files are served by the Kinetic server and proxied through Vite — they are not local files. See `skills/front-end/bootstrap/SKILL.md` for why this is required.
-
-### 2.3 `vite.config.js` — Dev Proxy
-
-```js
-import { defineConfig, loadEnv } from 'vite';
-import react from '@vitejs/plugin-react';
-
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '');
-  return {
-    plugins: [react()],
-    define: {
-      'process.env': env,  // @kineticdata/react references process.env
-    },
-    server: {
-      port: 3000,
-      proxy: {
-        '^(?!(/@|/src|/node_modules|/index.html|/$)).*$': {
-          target: env.REACT_APP_PROXY_HOST,
-          changeOrigin: true,
-          secure: false,
-          configure: proxy => {
-            proxy.on('proxyReq', proxyReq => {
-              if (proxyReq.getHeader('origin')) {
-                proxyReq.setHeader('origin', env.REACT_APP_PROXY_HOST);
-              }
-            });
-            proxy.on('proxyRes', (proxyRes, req) => {
-              const setCookie = proxyRes.headers['set-cookie'];
-              if (setCookie && req.protocol === 'http') {
-                const strip = c => c.replace(/;\s*Secure/gi, '').replace(/;\s*SameSite=None/gi, '');
-                proxyRes.headers['set-cookie'] = Array.isArray(setCookie)
-                  ? setCookie.map(strip) : strip(setCookie);
-              }
-            });
-          },
-        },
-      },
-    },
-  };
-});
-```
-
-Set `REACT_APP_PROXY_HOST=https://yourspace.kinops.io` in `.env.development.local`.
-
-### 2.4 `src/globals.js` — Form Engine Environment
-
-```js
-import jquery from 'jquery';
-import moment from 'moment';
-
-jquery.ajaxSetup({ xhrFields: { withCredentials: true } });
-window.$ = jquery;
-window.jQuery = jquery;
-window.moment = moment;
-```
-
-### 2.5 `src/main.jsx` — Entry Point
-
-**Never wrap in `React.StrictMode`** — it permanently breaks `CoreForm` in development. See `skills/front-end/bootstrap/SKILL.md` for the explanation.
+These are the authenticated routes rendered by `App.jsx` after the auth state machine reaches the ready state (see the `portal-patterns` routing section for where this `<Routes>` block sits in the shell):
 
 ```jsx
-import ReactDOM from 'react-dom/client';
-import { HashRouter } from 'react-router-dom';
-import { Provider } from 'react-redux';
-import { KineticLib } from '@kineticdata/react';
-import { store } from './redux.js';
-import { App } from './App.jsx';
-
-const globals = import('./globals.js');
-
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <Provider store={store}>
-    <KineticLib globals={globals} locale="en">
-      {kineticProps => (
-        <HashRouter>
-          <App {...kineticProps} />
-        </HashRouter>
-      )}
-    </KineticLib>
-  </Provider>,
-);
-```
-
-Use `HashRouter` (not `BrowserRouter`) to avoid Vite proxy intercepting deep-path hard refreshes.
-
-### 2.6 `src/redux.js` — Store
-
-```js
-import { configureStore, combineSlices, createSlice } from '@reduxjs/toolkit';
-
-const init = createSlice({ name: 'init', initialState: false,
-  reducers: { regRedux: () => true } });
-const rootReducer = combineSlices(init);
-
-export const store = configureStore({
-  reducer: rootReducer,
-  middleware: gDM => gDM({
-    serializableCheck: {
-      ignoredActions: ['view/handleResize', 'confirm/open'],
-      ignoredPaths: ['confirm.options.accept', 'confirm.options.cancel'],
-    },
-  }),
-});
-
-export const regRedux = (name, initialState, reducers) => {
-  const slice = createSlice({
-    name, initialState,
-    reducers: Object.fromEntries(
-      Object.entries(reducers).map(([k, v]) => [
-        k, (state, { payload }) => v(state, payload),
-      ]),
-    ),
-  });
-  rootReducer.inject(slice, { overrideExisting: true });
-  store.dispatch(init.actions.regRedux());
-  return Object.fromEntries(
-    Object.entries(slice.actions).map(([k, v]) => [
-      k, (...args) => store.dispatch(v(...args)),
-    ]),
-  );
-};
-```
-
-See `skills/front-end/state/SKILL.md` for `appActions`, `themeActions`, `viewActions`.
-
-### 2.7 `src/App.jsx` — Auth State Machine
-
-```jsx
-import { useMemo, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
-import { fetchSpace, fetchKapp, fetchProfile } from '@kineticdata/react';
-import { useData } from './hooks/useData.js';
-import { appActions } from './helpers/state.js';
 import { Catalog } from './pages/Catalog.jsx';
 import { RequestForm } from './pages/RequestForm.jsx';
 import { Requests } from './pages/Requests.jsx';
 import { RequestDetail } from './pages/RequestDetail.jsx';
-import { Login } from './pages/Login.jsx';
-import { Loading } from './components/Loading.jsx';
 
-export function App({ initialized, loggedIn, loginProps, timedOut, serverError }) {
-  const { space, kappSlug, kapp, profile, error } = useSelector(s => s.app);
-
-  // 1. Fetch space (public=true when not logged in)
-  const spaceParams = useMemo(
-    () => initialized
-      ? { include: 'attributesMap,kapps', ...(loggedIn ? {} : { public: true }) }
-      : null,
-    [initialized, loggedIn],
-  );
-  const { loading: spaceLoading, response: spaceData } = useData(fetchSpace, spaceParams);
-  useEffect(() => {
-    if (!spaceLoading && spaceData) appActions.setSpace(spaceData);
-  }, [spaceLoading, spaceData]);
-
-  // 2. Fetch profile (authenticated only)
-  const profileParams = useMemo(
-    () => initialized && loggedIn
-      ? { include: 'profileAttributesMap,attributesMap,memberships' }
-      : null,
-    [initialized, loggedIn],
-  );
-  const { loading: profileLoading, response: profileData } = useData(fetchProfile, profileParams);
-  useEffect(() => {
-    if (!profileLoading && profileData) appActions.setProfile(profileData);
-  }, [profileLoading, profileData]);
-
-  // 3. Fetch kapp (requires kappSlug from space)
-  const kappParams = useMemo(
-    () => initialized && loggedIn && kappSlug
-      ? { kappSlug, include: 'attributesMap,categories,categories.attributesMap' }
-      : null,
-    [initialized, loggedIn, kappSlug],
-  );
-  const { loading: kappLoading, response: kappData } = useData(fetchKapp, kappParams);
-  useEffect(() => {
-    if (!kappLoading && kappData) appActions.setKapp(kappData);
-  }, [kappLoading, kappData]);
-
-  if (serverError || error) return <div>Error loading portal</div>;
-  if (!initialized || !space) return <Loading />;
-  if (!loggedIn) return <Login {...loginProps} />;
-  if (!kapp || !profile) return <Loading />;
-
-  return (
-    <>
-      <Routes>
-        <Route path="/" element={<Catalog />} />
-        <Route path="/forms/:formSlug" element={<RequestForm />} />
-        <Route path="/forms/:formSlug/:submissionId" element={<RequestForm />} />
-        <Route path="/requests" element={<Requests />} />
-        <Route path="/requests/:submissionId" element={<RequestDetail />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-      {timedOut && (
-        <dialog open>
-          <Login {...loginProps} />
-        </dialog>
-      )}
-    </>
-  );
-}
+<Routes>
+  <Route path="/" element={<Catalog />} />
+  <Route path="/forms/:formSlug" element={<RequestForm />} />
+  <Route path="/forms/:formSlug/:submissionId" element={<RequestForm />} />
+  <Route path="/requests" element={<Requests />} />
+  <Route path="/requests/:submissionId" element={<RequestDetail />} />
+  <Route path="*" element={<Navigate to="/" replace />} />
+</Routes>
 ```
 
-**Auth state machine:**
-1. `!initialized || !space` → Loading
-2. `!loggedIn` → Login page
-3. `!kapp || !profile` → Loading (bootstrapping after login)
-4. Ready → render routes; `timedOut` → overlay dialog re-login
+`Catalog`, `RequestForm`, `Requests`, and `RequestDetail` are the portal-specific pages defined in Parts 3–6. `Login`, `Profile`, and `ResetPassword` (referenced in the full route table in Part 7) are standard portal pages — see `bootstrap` (login/auth) and `portal-patterns` (public routes); they are out of scope for this recipe.
 
 ---
 
@@ -704,7 +500,11 @@ function ActivityTimeline({ activities }) {
 
 ---
 
-## Part 7 — Recommended Route Structure
+## Part 7 — Route Structure
+
+> The full route structure (public + private routing, where `<Routes>` sits in the App shell) is in `skills/front-end/portal-patterns/SKILL.md`. The private routes for this recipe's pages are in Part 2.1.
+
+Portal-specific path → page mapping:
 
 ```
 /                          → Catalog (home — service listing)
@@ -712,81 +512,37 @@ function ActivityTimeline({ activities }) {
 /forms/:formSlug/:id       → Resume draft or view submitted form
 /requests                  → My request list (paginated)
 /requests/:submissionId    → Request detail + activity timeline
-/profile                   → User profile (optional)
-/login                     → Login (public)
-/reset-password/:token?    → Password reset (public)
 ```
 
-**App.jsx route config:**
-
-```jsx
-<Routes>
-  {/* Public routes */}
-  <Route path="/login" element={<Login {...loginProps} />} />
-  <Route path="/reset-password/:token?" element={<ResetPassword />} />
-
-  {/* Private routes — rendered only when loggedIn && kapp && profile */}
-  <Route path="/" element={<Catalog />} />
-  <Route path="/forms/:formSlug" element={<RequestForm />} />
-  <Route path="/forms/:formSlug/:submissionId" element={<RequestForm />} />
-  <Route path="/requests" element={<Requests />} />
-  <Route path="/requests/:submissionId" element={<RequestDetail />} />
-  <Route path="/profile" element={<Profile />} />
-  <Route path="*" element={<Navigate to="/" replace />} />
-</Routes>
-```
+`/login`, `/reset-password/:token?`, and `/profile` are standard portal routes — out of scope here (see `bootstrap` and `portal-patterns`).
 
 ---
 
 ## Part 8 — Project Folder Structure
 
+> The base Vite portal layout (`index.html`, `vite.config.js`, `main.jsx`, `App.jsx`, `redux.js`, `globals.js`, `api/`, `components/`, `helpers/`, `hooks/`) is in `skills/front-end/portal-patterns/SKILL.md`. This recipe adds the portal-specific pages and the `KineticForm` wrapper:
+
 ```
-portal/
-├── index.html                   ← bundle scripts + Vite entry
-├── vite.config.js
-├── .env.development.local       ← REACT_APP_PROXY_HOST (gitignored)
-└── src/
-    ├── main.jsx                 ← ReactDOM.createRoot, KineticLib, HashRouter, Provider
-    ├── App.jsx                  ← auth state machine, space/kapp/profile fetch, Routes
-    ├── globals.js               ← jQuery, moment — passed to KineticLib globals prop
-    ├── redux.js                 ← configureStore, regRedux helper
-    ├── api/
-    │   └── kinetic.js           ← re-exports + executeIntegration wrapper
-    ├── components/
-    │   ├── KineticForm.jsx      ← CoreForm wrapper with created/updated handlers
-    │   ├── Loading.jsx
-    │   └── kinetic-form/
-    │       ├── globals.jsx      ← form engine globals (widgets, date pickers)
-    │       └── widgets/         ← custom widget implementations
-    ├── helpers/
-    │   ├── state.js             ← appActions, themeActions via regRedux
-    │   ├── records.js           ← getAttributeValue
-    │   ├── toasts.js            ← toastSuccess, toastError, clearToasts
-    │   └── confirm.js           ← openConfirm, closeConfirm
-    ├── hooks/
-    │   ├── useData.js           ← single fetch hook (NOT exported by @kineticdata/react)
-    │   ├── usePaginatedData.js  ← cursor-paginated list hook
-    │   ├── usePagination.js     ← pageToken stack (used by usePaginatedData)
-    │   └── usePoller.js         ← exponential backoff polling
-    └── pages/
-        ├── Catalog.jsx          ← service catalog home
-        ├── RequestForm.jsx      ← new/resume form page
-        ├── Requests.jsx         ← paginated request list
-        ├── RequestDetail.jsx    ← single request + timeline
-        ├── Login.jsx
-        └── Profile.jsx
+src/
+├── components/
+│   └── KineticForm.jsx      ← CoreForm wrapper with created/updated handlers (Part 4)
+├── hooks/
+│   └── usePoller.js         ← exponential backoff polling (used by RequestDetail; see data-fetching)
+└── pages/
+    ├── Catalog.jsx          ← service catalog home (Part 3)
+    ├── RequestForm.jsx      ← new/resume form page (Part 4)
+    ├── Requests.jsx         ← paginated request list (Part 5)
+    └── RequestDetail.jsx    ← single request + activity timeline (Part 6)
 ```
 
 ---
 
 ## Common Gotchas
 
+> Setup-level gotchas (`StrictMode` breaking `CoreForm`, the spinner / bundle-scripts / `globals` issues, the "Invalid CORS request" Origin rewrite, `useData` being project-local) are in `bootstrap` and `portal-patterns`. The rows below are portal-specific.
+
 | Gotcha | Fix |
 |--------|-----|
-| `CoreForm` renders nothing in dev mode | Remove `<React.StrictMode>` — it double-mounts and permanently breaks `_unmounted` |
-| Form always stuck in spinner (`{ pending: true }`) | Missing `StrictMode` fix above, OR missing bundle scripts in `index.html`, OR missing `globals` prop on `KineticLib` |
-| Login POST rejected with "Invalid CORS request" | Add `proxyReq` handler to rewrite `Origin` header to `REACT_APP_PROXY_HOST` |
-| `useData` not found in `@kineticdata/react` | It is a project-local hook — implement it in `src/hooks/useData.js` |
 | Form query param values not pre-populating | `valuesFromQueryParams` must parse `?values[Field Name]=value` format |
 | Draft saves don't navigate to submission URL | `KineticForm.handleCreated` must call `navigate(submission.id, ...)` on `coreState !== 'Submitted'` |
 | Activity `details` is null | Include `activities.details` in the `fetchSubmission` include string |
@@ -800,6 +556,7 @@ portal/
 ## Cross-References
 
 - `skills/front-end/bootstrap/SKILL.md` — full KineticLib config, Vite proxy, auth state machine, `HashRouter` rationale
+- `skills/front-end/portal-patterns/SKILL.md` — routing, Redux/`regRedux`, `useData`, App-context fetching, kappSlug resolution, project structure
 - `skills/front-end/forms/SKILL.md` — `generateFormLayout`, widget system, `bundle.config` overrides, review mode
 - `skills/front-end/data-fetching/SKILL.md` — full `useData` and `usePaginatedData` implementations, `usePoller`, `defineKqlQuery`
 - `skills/front-end/mutations/SKILL.md` — `executeIntegration`, `deleteSubmission`, `updateProfile`

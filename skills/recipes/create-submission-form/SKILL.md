@@ -12,6 +12,8 @@ This recipe walks through creating a form end-to-end on the Kinetic Platform —
 - `skills/concepts/form-engine/SKILL.md` — form JSON schema, field types, events
 - `skills/concepts/kql-and-indexing/SKILL.md` — index definitions, KQL gotchas
 
+> Field JSON structure, render types, required properties per field type, choice (dropdown/radio/checkbox) fields, conditional visibility, and hidden-field patterns are documented in `concepts/form-engine`. This recipe assumes that material and focuses on the create → index → events → verify flow.
+
 ---
 
 ## Overview
@@ -91,201 +93,15 @@ PUT /app/api/v1/kapps/{kappSlug}/forms/{formSlug}
 Content-Type: application/json
 ```
 
-### Field Type Reference
+> Field/section/button JSON, render types (`text`, `dropdown`, `radio`, `checkbox`, `date`, `attachment`, …), the required-property set per type (and which are forbidden, e.g. `rows` on choice fields), choice-field shapes, conditional `visible`/`required` expressions, and the hidden-section + `omitWhenHidden: false` pattern are all documented in `concepts/form-engine`. Build each element from those templates. The points below are the recipe-specific layout decisions.
 
-| renderType | dataType | Notes |
-|------------|----------|-------|
-| `text` | `string` | Single-line text; set `rows > 1` for textarea behaviour |
-| `text` | `string` | Textarea: `"rows": 5` |
-| `dropdown` | `string` | Select with static or integration-driven choices |
-| `radio` | `string` | Radio button group |
-| `checkbox` | `json` | Multi-select; value is stored as a JSON array |
-| `date` | `string` | Date picker |
-| `datetime` | `string` | Date + time picker |
-| `time` | `string` | Time picker |
-| `attachment` | `file` | File upload; set `"allowMultiple": true` in `renderAttributes` for multi-file |
+**Field layout for a submission-driven form.** Most forms organize fields into three categories:
 
-### Required Field Properties
+- **User-facing input fields** (`visible: true`) — what the requester fills in (Location, Category, Description, Priority, Preferred Date, Attachments).
+- **Status / routing fields** — populated by workflows, not the requester. A `Status` text field with `defaultValue: "New"` is the primary one (it becomes the main KQL filter — see Step 3).
+- **Hidden system fields** — metadata written by workflows (Assigned Team, Deferral Token), placed in a section with `visible: false` + `omitWhenHidden: false` so their values still submit. (`omitWhenHidden: false` is the load-bearing property here — see `concepts/form-engine`.)
 
-**Critical:** The API validates that ALL field properties are present. Omitting any property results in a `400 Invalid Form` error. Every field element MUST include these properties:
-
-```json
-{
-  "type": "field",
-  "name": "Field Name",
-  "label": "Field Name",
-  "key": "f1",
-  "renderType": "text",
-  "dataType": "string",
-  "required": false,
-  "enabled": true,
-  "visible": true,
-  "defaultValue": null,
-  "defaultDataSource": "none",
-  "defaultResourceName": null,
-  "requiredMessage": null,
-  "omitWhenHidden": null,
-  "pattern": null,
-  "constraints": [],
-  "events": [],
-  "rows": 1,
-  "renderAttributes": {}
-}
-```
-
-Section elements also require: `renderType: null`, `omitWhenHidden: null`, `renderAttributes: {}`.
-
-Form-level and page-level `events: []` must also be present (even if empty).
-
-### Typical Field Pattern
-
-Most submission-driven forms have three categories of fields:
-
-**User-facing input fields** — what the requester fills in
-
-```json
-{
-  "type": "field",
-  "name": "Location",
-  "label": "Location",
-  "key": "f1",
-  "renderType": "text",
-  "dataType": "string",
-  "required": true,
-  "enabled": true,
-  "visible": true,
-  "defaultValue": null,
-  "defaultDataSource": "none",
-  "defaultResourceName": null,
-  "requiredMessage": null,
-  "omitWhenHidden": null,
-  "pattern": null,
-  "constraints": [],
-  "events": [],
-  "rows": 1,
-  "renderAttributes": {}
-}
-```
-
-**Status and routing fields** — populated by workflows, not the requester
-
-```json
-{
-  "type": "field",
-  "name": "Status",
-  "label": "Status",
-  "key": "f10",
-  "renderType": "text",
-  "dataType": "string",
-  "required": false,
-  "enabled": true,
-  "visible": true,
-  "defaultValue": "New",
-  "defaultDataSource": "none",
-  "defaultResourceName": null,
-  "requiredMessage": null,
-  "omitWhenHidden": null,
-  "pattern": null,
-  "constraints": [],
-  "events": [],
-  "rows": 1,
-  "renderAttributes": {}
-}
-```
-
-**Hidden system fields** — metadata written by workflows; never shown to the requester
-
-```json
-{
-  "type": "section",
-  "name": "Hidden System Questions",
-  "visible": false,
-  "omitWhenHidden": false,
-  "elements": [
-    {
-      "type": "field",
-      "name": "Assigned Team",
-      "renderType": "text",
-      "dataType": "string",
-      "required": false,
-      "enabled": true,
-      "visible": true,
-      "defaultValue": null,
-      "defaultDataSource": "none",
-      "rows": 1,
-      "renderAttributes": {}
-    },
-    {
-      "type": "field",
-      "name": "Deferral Token",
-      "renderType": "text",
-      "dataType": "string",
-      "required": false,
-      "enabled": true,
-      "visible": true,
-      "defaultValue": null,
-      "defaultDataSource": "none",
-      "rows": 1,
-      "renderAttributes": {}
-    }
-  ]
-}
-```
-
-> `omitWhenHidden: false` is critical. Without it, the hidden section's field values are not submitted and workflows cannot read them.
-
-### Dropdown with Static Choices
-
-**Critical choice-field properties (apply to `dropdown`, `radio`, AND `checkbox`):**
-- **`choicesRunIf: null`** — required, even when not using conditional choices
-- **`choicesResourceName: null`** — required, even for static choices
-- **Do NOT include `rows`** — the `rows` property is not supported on choice fields (`dropdown`, `radio`, `checkbox`) and causes a 400 error
-
-```json
-{
-  "type": "field",
-  "name": "Category",
-  "label": "Category",
-  "renderType": "dropdown",
-  "dataType": "string",
-  "required": true,
-  "enabled": true,
-  "visible": true,
-  "defaultValue": null,
-  "defaultDataSource": "none",
-  "choicesDataSource": "custom",
-  "choicesRunIf": null,
-  "choicesResourceName": null,
-  "choices": [
-    { "label": "Plumbing", "value": "Plumbing" },
-    { "label": "Electrical", "value": "Electrical" },
-    { "label": "HVAC", "value": "HVAC" },
-    { "label": "Other", "value": "Other" }
-  ],
-  "renderAttributes": {}
-}
-```
-
-### Conditional Field (visible and required only when needed)
-
-```json
-{
-  "type": "field",
-  "name": "Other Category Detail",
-  "label": "Please specify",
-  "renderType": "text",
-  "dataType": "string",
-  "required": "values('Category') === 'Other'",
-  "visible": "values('Category') === 'Other'",
-  "omitWhenHidden": true,
-  "defaultValue": null,
-  "defaultDataSource": "none",
-  "rows": 1,
-  "renderAttributes": {}
-}
-```
-
-### Complete PUT Payload (Maintenance Request Example)
+**Representative PUT body** (abbreviated — one field per shape; expand using the form-engine templates for each element):
 
 ```json
 {
@@ -303,188 +119,42 @@ Most submission-driven forms have three categories of fields:
       "events": [],
       "elements": [
         {
-          "type": "section",
-          "name": "Request Details",
-          "title": "Request Details",
-          "visible": true,
-          "omitWhenHidden": null,
-          "renderAttributes": {},
+          "type": "section", "name": "Request Details", "title": "Request Details",
+          "visible": true, "omitWhenHidden": null, "renderAttributes": {},
           "elements": [
-            {
-              "type": "field",
-              "name": "Location",
-              "label": "Location",
-              "renderType": "text",
-              "dataType": "string",
-              "required": true,
-              "enabled": true,
-              "visible": true,
-              "defaultValue": null,
-              "defaultDataSource": "none",
-              "rows": 1,
-              "renderAttributes": {}
-            },
-            {
-              "type": "field",
-              "name": "Category",
-              "label": "Category",
-              "renderType": "dropdown",
-              "dataType": "string",
-              "required": true,
-              "enabled": true,
-              "visible": true,
-              "defaultValue": null,
-              "defaultDataSource": "none",
-              "choicesDataSource": "custom",
-              "choicesRunIf": null,
-              "choicesResourceName": null,
-              "choices": [
-                { "label": "Plumbing", "value": "Plumbing" },
-                { "label": "Electrical", "value": "Electrical" },
-                { "label": "HVAC", "value": "HVAC" },
-                { "label": "Other", "value": "Other" }
-              ],
-              "renderAttributes": {}
-            },
-            {
-              "type": "field",
-              "name": "Description",
-              "label": "Description",
-              "renderType": "text",
-              "dataType": "string",
-              "required": true,
-              "enabled": true,
-              "visible": true,
-              "defaultValue": null,
-              "defaultDataSource": "none",
-              "rows": 5,
-              "renderAttributes": {}
-            },
-            {
-              "type": "field",
-              "name": "Priority",
-              "label": "Priority",
-              "renderType": "radio",
-              "dataType": "string",
-              "required": true,
-              "enabled": true,
-              "visible": true,
-              "defaultValue": "Normal",
-              "defaultDataSource": "none",
-              "choicesDataSource": "custom",
-              "choicesRunIf": null,
-              "choicesResourceName": null,
-              "choices": [
-                { "label": "Low", "value": "Low" },
-                { "label": "Normal", "value": "Normal" },
-                { "label": "High", "value": "High" },
-                { "label": "Urgent", "value": "Urgent" }
-              ],
-              "renderAttributes": {}
-            },
-            {
-              "type": "field",
-              "name": "Preferred Date",
-              "label": "Preferred Date",
-              "renderType": "date",
-              "dataType": "string",
-              "required": false,
-              "enabled": true,
-              "visible": true,
-              "defaultValue": null,
-              "defaultDataSource": "none",
-              "rows": 1,
-              "renderAttributes": {}
-            },
-            {
-              "type": "field",
-              "name": "Attachments",
-              "label": "Attachments (optional)",
-              "renderType": "attachment",
-              "dataType": "file",
-              "required": false,
-              "enabled": true,
-              "visible": true,
-              "defaultValue": null,
-              "defaultDataSource": "none",
-              "rows": 1,
-              "renderAttributes": { "allowMultiple": "true" }
-            }
+            { "type": "field", "name": "Location", "renderType": "text", "dataType": "string", "rows": 1, "required": true, "...": "see text template" },
+            { "type": "field", "name": "Category", "renderType": "dropdown", "dataType": "string", "choicesDataSource": "custom", "choicesRunIf": null, "choicesResourceName": null, "choices": [{ "label": "Plumbing", "value": "Plumbing" }, { "label": "Other", "value": "Other" }], "...": "see dropdown template" },
+            { "type": "field", "name": "Description", "renderType": "text", "dataType": "string", "rows": 5, "required": true, "...": "see text template" },
+            { "type": "field", "name": "Priority", "renderType": "radio", "dataType": "string", "defaultValue": "Normal", "choicesDataSource": "custom", "choicesRunIf": null, "choicesResourceName": null, "choices": [{ "label": "Low", "value": "Low" }, { "label": "Urgent", "value": "Urgent" }], "...": "see radio template" },
+            { "type": "field", "name": "Attachments", "renderType": "attachment", "dataType": "file", "renderAttributes": { "allowMultiple": "true" }, "...": "see attachment template" }
           ]
         },
         {
-          "type": "section",
-          "name": "Status Fields",
-          "title": "Status",
-          "visible": true,
-          "omitWhenHidden": null,
-          "renderAttributes": {},
+          "type": "section", "name": "Status Fields", "title": "Status",
+          "visible": true, "omitWhenHidden": null, "renderAttributes": {},
           "elements": [
-            {
-              "type": "field",
-              "name": "Status",
-              "label": "Status",
-              "renderType": "text",
-              "dataType": "string",
-              "required": false,
-              "enabled": true,
-              "visible": true,
-              "defaultValue": "New",
-              "defaultDataSource": "none",
-              "rows": 1,
-              "renderAttributes": {}
-            }
+            { "type": "field", "name": "Status", "renderType": "text", "dataType": "string", "rows": 1, "defaultValue": "New", "...": "see text template" }
           ]
         },
         {
-          "type": "section",
-          "name": "Hidden System Questions",
-          "visible": false,
-          "omitWhenHidden": false,
-          "renderAttributes": {},
+          "type": "section", "name": "Hidden System Questions",
+          "visible": false, "omitWhenHidden": false, "renderAttributes": {},
           "elements": [
-            {
-              "type": "field",
-              "name": "Assigned Team",
-              "renderType": "text",
-              "dataType": "string",
-              "required": false,
-              "enabled": true,
-              "visible": true,
-              "defaultValue": null,
-              "defaultDataSource": "none",
-              "rows": 1,
-              "renderAttributes": {}
-            },
-            {
-              "type": "field",
-              "name": "Deferral Token",
-              "renderType": "text",
-              "dataType": "string",
-              "required": false,
-              "enabled": true,
-              "visible": true,
-              "defaultValue": null,
-              "defaultDataSource": "none",
-              "rows": 1,
-              "renderAttributes": {}
-            }
+            { "type": "field", "name": "Assigned Team", "renderType": "text", "dataType": "string", "rows": 1, "...": "see text template" },
+            { "type": "field", "name": "Deferral Token", "renderType": "text", "dataType": "string", "rows": 1, "...": "see text template" }
           ]
         },
         {
-          "type": "button",
-          "renderType": "submit-page",
-          "name": "Submit Button",
-          "label": "Submit",
-          "visible": true,
-          "enabled": true,
-          "renderAttributes": {}
+          "type": "button", "renderType": "submit-page", "name": "Submit Button",
+          "label": "Submit", "visible": true, "enabled": true, "renderAttributes": {}
         }
       ]
     }
   ]
 }
 ```
+
+The `"...": "see ... template"` placeholders stand in for the full required-property set each element type needs — fill them from `concepts/form-engine` before PUTting, or the API returns `400 Invalid Form`.
 
 ---
 
@@ -704,9 +374,7 @@ If you get a 400 with a message like `"The query requires one of the following i
 | KQL returns 400 — "query requires index definition" | Add `indexDefinitions` for the queried fields, trigger `Build Index` background job, wait for status `"Built"` |
 | AND query fails even though both fields have single-field indexes | Multi-field AND requires a **compound** index: `"parts": ["values[A]", "values[B]"]` |
 | Range operator (`=*`, `>`, `<`, `BETWEEN`) fails without `orderBy` | Add `&orderBy=values[FieldName]` to the request |
-| Hidden section fields not submitted | Set `omitWhenHidden: false` on the section |
 | `PUT /forms/{slug}` wipes existing system indexes | Always fetch current `indexDefinitions` first and merge |
-| `checkbox` field value comparisons fail with `===` | Checkbox values are JSON arrays — use `.indexOf('value') !== -1` |
 | Submitting a value for a non-existent field returns 500 | Verify field names with `GET /forms/{form}?include=fields` |
 | New index returns empty results (not an error) | Index is still in `"New"` state — trigger build, poll until `"Built"` |
 | Form PUT with partial `pages` loses other pages | Always include the complete `pages` array in PUT requests |

@@ -35,12 +35,7 @@ Before writing a single line of code, answer four questions:
 
 ### Who approves?
 
-| Routing strategy | How it works | Change without workflow change? |
-|-----------------|--------------|--------------------------------|
-| Hardcoded | Workflow node directly sets approver | No |
-| Form attribute-driven | Workflow reads `@form_attributes['Approver Team']` | Yes — edit form attribute |
-| Value-driven | Workflow branches on a submission field (e.g. `values['Department']`) | Partially |
-| Lookup-driven | Workflow queries a routing matrix form | Yes — edit the matrix form |
+> The deferral / Create-Trigger wait-for-callback mechanism and approver routing strategies (hardcoded / attribute-driven / value-driven / lookup-driven) are documented in `concepts/architectural-patterns`.
 
 **Recommended default:** use form attributes (`Approver Team`, `Approver Individual`). Builders can update routing by editing a form attribute — no workflow change needed.
 
@@ -180,14 +175,7 @@ Ensure the `indexDefinitions` are included in the form PUT before triggering the
 
 This tree fires on your form's **Submission Created** (or **Submission Submitted**) event. It determines the approver, creates the approval submission, defers, then branches on the decision.
 
-### Tree title format
-
-When created via the Core API the title is auto-generated:
-```
-Kinetic Request CE :: {sourceGroup-UUID} :: {eventName}
-```
-
-You do not set the title manually — it derives from `sourceName`, `sourceGroup` (the form's UUID), and `name` (the event name you provide).
+> treeJson/XML syntax, handler IDs, connectors, and ERB context are in `concepts/workflow-xml`; creating & binding the trees (Core API, title format, supported events) is in `concepts/workflow-creation`.
 
 ### Node-by-node walkthrough
 
@@ -270,21 +258,13 @@ The corrected node order:
 
 #### The Deferral Node
 
-Use `system_wait_v1` with a long wait time as the deferral vehicle, or use a purpose-built handler. The key is that when the deferral node is active, `@task['Deferral Token']` holds the unique token for this specific pause point.
+The deferral node carries `defers: true` / `deferrable: true` (see the worked treeJson in Step 5). When it is active, `@task['Deferral Token']` holds the unique token for this specific pause point.
 
-**Critical node flags for the deferral node:**
-```
-defers: true
-deferrable: true
-```
-
-Do NOT set these on the Start node.
+> The deferral / Create-Trigger wait-for-callback mechanism is documented in `concepts/architectural-patterns`; the handler flags and ERB context are in `concepts/workflow-xml`.
 
 #### Branch on Decision
 
-After the deferral completes, the deferred results (from the approval callback) are available in `@results`. The approval callback sends back the Decision, Reason, and Notes fields as deferred variables.
-
-Use conditional connectors on the post-deferral node:
+After the deferral completes, the deferred results from the approval callback are available in `@results`. Use conditional connectors on the post-deferral node:
 
 ```ruby
 # Approved path connector value:
@@ -330,14 +310,9 @@ Start
 
 ### Complete Deferral node
 
-Use `utilities_create_trigger_v1` (the Create Trigger handler):
+Use the Create Trigger handler (`utilities_create_trigger_v1`) with `action_type: Complete` and `deferral_token: <%= @values['Deferral Token'] %>` — see the worked callback treeJson in Step 5 for the full parameter set.
 
-| Parameter | Value |
-|-----------|-------|
-| `action_type` | `Complete` |
-| `deferral_token` | `<%= @values['Deferral Token'] %>` |
-| `deferred_variables` | See below |
-| `message` | `<%= @values['Decision'] %>` (optional, human-readable) |
+> The Create-Trigger wait-for-callback mechanism is documented in `concepts/architectural-patterns`; the handler parameters and ERB context are in `concepts/workflow-xml`.
 
 **Deferred variables** — pass the decision fields back to the waiting workflow:
 
@@ -376,7 +351,7 @@ Where `{approvalSubmissionId}` is `@submission['Id']` (the approval submission's
 
 ## Step 5 — Wire Both Trees to Their Forms
 
-**Always use the Core API for creating workflows** — the Task API v2 tree creation lacks platform registration and produces orphaned trees. See the workflow-engine skill for a full explanation.
+> Creating & binding the trees (Core API registration, title format, supported events, and why Task API v2 tree creation produces orphaned trees) is in `concepts/workflow-creation`. The two worked treeJson examples below are the recipe-specific spine.
 
 ### Register the main workflow tree
 
@@ -647,13 +622,11 @@ curl -s -u "user:pass" \
 
 ---
 
-## Approval Routing Patterns
+## Approval Routing
 
-### Pattern 1 — Form attribute-driven (recommended default)
+> The full set of routing strategies (hardcoded / attribute-driven / value-driven / lookup-driven) and the standard assignment fields are documented in `concepts/architectural-patterns`.
 
-Add a kapp-level or form-level attribute to control routing. No workflow changes needed when reassigning approvers.
-
-Form attributes to add:
+**Recommended default — form attribute-driven.** Add routing attributes to the form, then read them in the workflow. No workflow change needed to reassign approvers:
 
 ```json
 [
@@ -662,42 +635,11 @@ Form attributes to add:
 ]
 ```
 
-In the workflow, read the attribute via `kinetic_core_api_v1`:
-
-```
-GET /app/api/v1/kapps/{kapp}/forms/{form}?include=attributes
-```
-
-Then in subsequent node parameters:
 ```ruby
+# After GET /app/api/v1/kapps/{kapp}/forms/{form}?include=attributes
 <%= @results['Get Form Attributes']['Approval Team'] %>
 <%= @results['Get Form Attributes']['Approval Individual'] %>
 ```
-
-### Pattern 2 — Value-driven routing
-
-Branch in the workflow based on a submission field value (e.g., `values['Department']`):
-
-```ruby
-# Connector condition — Finance branch:
-@values['Department'] == 'Finance'
-
-# Connector condition — HR branch:
-@values['Department'] == 'HR'
-```
-
-Each branch sets a different `Assigned Team` before reaching the shared deferral step.
-
-### Pattern 3 — Lookup-driven routing (most dynamic)
-
-Query a "Routing Matrix" datastore form to resolve approver from submission data:
-
-```
-GET /app/api/v1/kapps/{kapp}/forms/routing-matrix/submissions
-    ?include=values&q=values[Department]="Finance"&limit=1
-```
-
-Parse the result to extract the approver team/individual. Use this when routing rules change frequently without developer involvement.
 
 ---
 
