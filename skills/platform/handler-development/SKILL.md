@@ -1,6 +1,6 @@
 ---
 name: handler-development
-description: Building custom Kinetic Task handlers — zero-dependency architecture, file structure, authentication patterns, HTTP helpers, testing, packaging, and the complete handler catalog.
+description: Use when building, modifying, testing, or packaging a custom Kinetic Task handler — writing handler/init.rb (initialize/execute), node.xml/info.xml parameters and results, the 5-file handler-name_v1 structure, zero-dependency JRuby/Java HTTP and crypto calls, XML-escaping result values, or choosing an existing handler from the catalog.
 ---
 
 # Handler Development

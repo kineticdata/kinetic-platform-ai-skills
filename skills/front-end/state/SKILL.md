@@ -1,6 +1,6 @@
 ---
 name: state
-description: regRedux dynamic slice registration, appActions, themeActions, viewActions, confirmation modal, toast system, theme system, and utility helpers for Kinetic front-end portals.
+description: "Use when managing app state or UI chrome in a Kinetic React portal — registering Redux slices at runtime with regRedux, dispatching appActions/themeActions/viewActions, or showing confirmation modals, toasts, and theme switching."
 ---
 
 # State Management

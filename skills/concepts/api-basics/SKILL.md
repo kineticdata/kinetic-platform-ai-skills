@@ -1,6 +1,6 @@
 ---
 name: api-basics
-description: Base URLs, authentication, Core API v1 and Task API v2 endpoints, response formats, submission PATCH, and common gotchas for the Kinetic Platform REST API.
+description: "Use when constructing or troubleshooting Kinetic Platform REST API calls — figuring out the base URL for cloud (kinops) vs customer-managed spaces, the Task API v2 path under /app/components/task/app/api/v2 vs Core API v1 /app/api/v1, choosing Basic Auth vs the Integrator OAuth bearer flow, PATCHing a submission, or decoding response formats."
 ---
 
 # Kinetic Core API Basics

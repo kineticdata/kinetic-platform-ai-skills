@@ -238,7 +238,7 @@ These directories are for KD employees and are not intended for customer use:
 
    **Frontmatter rules:**
    - `name` **must match the folder name exactly** (e.g., folder `api-basics/` → `name: api-basics`)
-   - `description` should be a single sentence summarizing the skill's scope
+   - `description` should start with "Use when …" and state the concrete triggering conditions/symptoms that signal the skill applies (not a scope summary, and not a step-by-step of what it does) — this is what an AI reads to decide whether to load the skill. (Slash-command skills under `skills/commands/` are the exception: their `description` is an imperative action label shown in the command menu.)
    - For most skills, `name` and `description` are the only fields needed — don't add `tags`, `version`, etc.
    - **Slash-command skills** under `skills/commands/` additionally use the Claude Code fields `user-invocable: true` and `argument-hint: "<...>"`. These are Claude Code command conventions (not part of the core Agent Skills Standard) and apply only to command skills.
 

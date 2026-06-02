@@ -1,6 +1,6 @@
 ---
 name: template-provisioning
-description: Template export/import structure, install.rb provisioning scripts, connection/operation JSON schema, and environment bootstrap patterns for the Kinetic Platform.
+description: Use when bootstrapping or provisioning a new Kinetic space from a project template — authoring or running install.rb, navigating the export/ directory layout (core, integrator, space.json, kapps, teams, trees, routines, policyRules), building the install config JSON (core/task/http_options blocks), or defining connection/operation JSON schema.
 ---
 
 # Template Provisioning

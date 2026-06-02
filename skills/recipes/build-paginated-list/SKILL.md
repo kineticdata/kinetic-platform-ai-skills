@@ -1,6 +1,6 @@
 ---
 name: build-paginated-list
-description: Step-by-step recipe for building a paginated submission list in a React portal using @kineticdata/react hooks.
+description: "Use when building a paginated, filterable submission list in a Kinetic React portal (request queue, approval inbox, search results, incident queue) — adding form index definitions, building KQL with defineKqlQuery, wiring usePaginatedData to searchSubmissions, and adding filter/pagination controls and optional usePoller refresh."
 ---
 
 # Recipe: Build a Paginated List

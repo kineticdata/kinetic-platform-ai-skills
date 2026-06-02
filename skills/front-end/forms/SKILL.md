@@ -1,6 +1,6 @@
 ---
 name: forms
-description: CoreForm vs client-side forms decision framework, KineticForm wrapper, CoreForm direct usage, generateFormLayout factory, globals.jsx setup, widget system, and form environment configuration for Kinetic front-end portals.
+description: "Use when rendering or building a form in a Kinetic React portal — deciding between server-rendered CoreForm and a client-side API form, using the KineticForm wrapper or CoreForm directly, applying generateFormLayout, configuring globals.jsx and the widget system, or overriding fields via bundle.config."
 ---
 
 # Forms and Widgets (CoreForm / KineticForm)

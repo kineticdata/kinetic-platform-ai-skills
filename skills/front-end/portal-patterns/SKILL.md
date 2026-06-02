@@ -1,6 +1,6 @@
 ---
 name: portal-patterns
-description: Portal architecture patterns — routing, Redux setup, useData hook, context fetching, kappSlug resolution, project structure, and reference implementation.
+description: "Use when structuring a Kinetic React portal or wiring its App context — setting up routing and Redux, fetching space/profile/kapp with useData, resolving kappSlug, laying out the project structure, or following the momentum-portal reference implementation."
 ---
 
 # Portal Patterns — Architecture and Reference

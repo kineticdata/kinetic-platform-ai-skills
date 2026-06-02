@@ -19,6 +19,13 @@ Apply the following knowledge when writing code that interacts with the Kinetic 
 @../../skills/concepts/users-teams-security/SKILL.md
 @../../skills/concepts/ruby-sdk/SKILL.md
 @../../skills/concepts/template-provisioning/SKILL.md
+@../../skills/concepts/form-events-expressions/SKILL.md
+@../../skills/concepts/workflow-creation/SKILL.md
+@../../skills/concepts/security-policies/SKILL.md
+@../../skills/concepts/models/SKILL.md
+@../../skills/platform/handler-development/SKILL.md
+@../../skills/platform/known-bugs/SKILL.md
+@../../skills/platform/troubleshooting/SKILL.md
 @../../skills/recipes/create-submission-form/SKILL.md
 @../../skills/recipes/add-approval-workflow/SKILL.md
 @../../skills/recipes/connect-external-system/SKILL.md

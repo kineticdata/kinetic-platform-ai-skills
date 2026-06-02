@@ -1,6 +1,6 @@
 ---
 name: workflow-creation
-description: Creating and managing workflows via Core API — tree creation, treeJson upload, event binding, workflow filters, and sources.
+description: "Use when creating or managing Kinetic workflow trees via the Task API — building a new tree, uploading treeJson, formatting tree titles ({sourceName} :: {sourceGroup} :: {name}), parsing /export or ?include=treeJson/treeXml responses, binding events, configuring sources, workflow filters, or discovering handlers."
 ---
 
 # Workflow Creation & Management

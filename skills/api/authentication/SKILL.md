@@ -1,6 +1,6 @@
 ---
 name: authentication
-description: Authentication patterns for Core, Integrator, and Task APIs — Basic Auth, OAuth 2.0, CSRF tokens, self-signed certificate handling, and service-account patterns (the platform does not issue per-user API keys).
+description: "Use when authenticating to a Kinetic API or fixing a 401/403 — picking Basic Auth (Core/Task) vs the Integrator OAuth 2.0 bearer token, resolving \"Authorization header must contain a bearer token\", looking for a (nonexistent) per-user API key/personal access token, setting up a service account, handling CSRF tokens, self-signed certs, or SAML SSO coexistence with Basic Auth."
 ---
 
 # Authentication

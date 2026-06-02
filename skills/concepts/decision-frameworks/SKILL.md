@@ -1,6 +1,6 @@
 ---
 name: decision-frameworks
-description: Decision trees for choosing between forms approaches, integration types, data storage patterns, and security models in the Kinetic Platform.
+description: "Use when deciding between competing Kinetic approaches and unsure which to pick — CoreForm vs client-side API forms, Connections/Operations vs Bridges vs Handlers, datastore vs submission vs attribute storage, or which security model — and you need the trade-offs and 'choose when' guidance to make the right architectural call."
 ---
 
 # Decision Frameworks

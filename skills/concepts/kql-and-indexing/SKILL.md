@@ -1,6 +1,6 @@
 ---
 name: kql-and-indexing
-description: Kinetic Query Language (KQL) operators, form index definitions, compound indexes, range queries with compound indexes, and query gotchas for searching Kinetic Platform submissions.
+description: "Use when writing or debugging KQL searches over Kinetic submissions — building the q parameter, 400 errors like \"the 'orderBy' parameter must be specified\" or \"requires index definition\", range operators (=*, BETWEEN, >, <), OR across multiple fields, or defining form index definitions and compound indexes."
 ---
 
 # KQL and Indexing

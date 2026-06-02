@@ -1,6 +1,6 @@
 ---
 name: workflow-xml
-description: "Workflow handler reference — handler definition IDs, parameters, loops, deferrals, system_integration_v1 pattern, run debugging API, and common gotchas."
+description: "Use when authoring, validating, or PUTting Kinetic workflow tree XML/treeJson — handler definitionIds and parameters, loops, deferrals, system_integration_v1, validate-workflow/put-workflow gate scripts, dropped nodes, 404-in-handler, ghost-run-status, or debugging a run via /runs/{id}/tasks."
 ---
 
 # Kinetic Workflow XML & Handler Reference

@@ -1,6 +1,6 @@
 ---
 name: integrations
-description: Connections/Operations (modern), Bridges (legacy), Handlers (workflow), File Resources, LogHub API, handler import gotchas, and Kinetic Agent management for integrating the Kinetic Platform with external systems.
+description: "Use when integrating Kinetic with an external REST/SQL system or debugging one — Connections & Operations via the Integrator API ({server}/app/integrator/api, OAuth implicit grant, bare-array responses), legacy Bridges/Bridge Adapters, workflow Handlers, File Resources, LogHub, handler-import gotchas, or Kinetic Agent management."
 ---
 
 # Integrations

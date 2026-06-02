@@ -1,6 +1,6 @@
 ---
 name: mutations
-description: executeIntegration helper, submission CRUD, profile/kapp/space updates for Kinetic front-end portals.
+description: "Use when creating/updating/deleting Kinetic submissions or profile/kapp/space records from a React portal — the executeIntegration helper for calling integrations, submission CRUD writes, file uploads via saveSubmissionMultipart, and why updateSubmission won't transition coreState."
 ---
 
 # Mutations

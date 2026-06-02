@@ -10,3 +10,6 @@ Apply the following patterns when building or modifying Kinetic front-end portal
 @../../skills/front-end/data-fetching/SKILL.md
 @../../skills/front-end/mutations/SKILL.md
 @../../skills/front-end/state/SKILL.md
+@../../skills/front-end/portal-patterns/SKILL.md
+@../../skills/recipes/build-paginated-list/SKILL.md
+@../../skills/recipes/build-service-portal/SKILL.md

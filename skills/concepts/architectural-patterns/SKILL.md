@@ -1,6 +1,6 @@
 ---
 name: architectural-patterns
-description: Standard Kinetic Platform patterns for approvals, deferrals, multi-stage fulfillment, SLA tracking, external system sync, work routing, and bulk operations.
+description: "Use when designing or implementing a common Kinetic business-process pattern — approval workflows, the deferral/Create-Trigger wait-for-callback mechanism, multi-stage fulfillment, SLA tracking, external system sync, work routing/assignment, or bulk operations across submissions."
 ---
 
 # Architectural Patterns

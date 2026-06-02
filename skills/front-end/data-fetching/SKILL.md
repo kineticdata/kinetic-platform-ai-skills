@@ -1,6 +1,6 @@
 ---
 name: data-fetching
-description: useData, usePaginatedData, usePagination, usePoller hooks, defineKqlQuery builder, searchSubmissions patterns, and @kineticdata/react portal-relevant exports.
+description: "Use when reading or querying Kinetic data from a React portal — fetching with useData, paginating with usePaginatedData/usePagination, polling with usePoller, building KQL with defineKqlQuery, or running searchSubmissions and other @kineticdata/react read calls."
 ---
 
 # Data Fetching

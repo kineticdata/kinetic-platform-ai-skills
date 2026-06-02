@@ -1,6 +1,6 @@
 ---
 name: models
-description: Bridge Data Models — read-only data views backed by bridge adapters for querying external data sources from forms and portals.
+description: "Use when reading external data into Kinetic forms or portals via Bridge Data Models — defining a model with attributes and qualifications (named queries), mapping it to a bridge structure on an agent, wiring a bridge adapter to LDAP/SQL/REST sources, or distinguishing read-side models from write-side Connections & Operations."
 ---
 
 # Models (Bridge Data Views)

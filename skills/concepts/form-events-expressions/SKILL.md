@@ -1,6 +1,6 @@
 ---
 name: form-events-expressions
-description: Form events (load/submit/change/click), K() JavaScript API, expression syntax, bundle.config rendering overrides, and form-level integrations array.
+description: "Use when adding runtime behavior to a Kinetic form — wiring load/submit/change/click events, writing Custom action JavaScript with the K() API (K('field[X]').value(), K('submission'), K('identity')), debugging \"is not a function\" TypeErrors or cross-page field reads, authoring ${} expressions, bundle.config rendering overrides, or the form-level integrations array."
 ---
 
 # Form Events & Expressions

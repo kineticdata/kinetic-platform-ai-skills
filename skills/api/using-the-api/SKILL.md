@@ -1,6 +1,6 @@
 ---
 name: using-the-api
-description: Common API usage patterns, request/response conventions, error handling, and guidance for working with the Kinetic Platform REST APIs.
+description: "Use when working through practical Kinetic REST API calls — choosing include parameters (and why include=values omits createdAt/updatedAt or Task run id), parsing Core/Task/Integrator response and error shapes, handling a 500 from submitting undefined field values, creating forms/indexes, searching with KQL, PATCHing submissions, or hitting space-level utility endpoints (version, activity, notices, translations)."
 ---
 
 # Using the API

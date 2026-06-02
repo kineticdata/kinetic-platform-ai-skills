@@ -1,6 +1,6 @@
 ---
 name: build-service-portal
-description: End-to-end recipe for building a self-service portal on the Kinetic Platform — from project setup through service catalog, request forms, approval queues, and request tracking.
+description: "Use when building a complete self-service portal on the Kinetic Platform (IT catalog, recruiting, facilities, field service) — a React SPA with kapp/workflow setup, @kineticdata/react + Vite + routing, a service catalog, KineticForm request pages, paginated request lists, and request-detail tracking."
 ---
 
 # Recipe: Build a Service Portal

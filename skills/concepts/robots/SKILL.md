@@ -1,6 +1,6 @@
 ---
 name: robots
-description: "Kinetic Robots — scheduled automation. Robot-definitions/executions/next-execution datastore forms, the execution routine, robot tree pattern, creating/scheduling a robot, and gotchas."
+description: "Use when scheduling recurring work in a Kinetic space (no native cron) — nightly cleanups, polling, digests, expiring records — via Robots: creating/scheduling a robot, the robot-definitions/robot-executions/robot-next-execution datastore forms, routine_kinetic_robot_execution_v2, the robot tree pattern, or debugging a robot that won't fire/reschedule."
 ---
 
 # Kinetic Robots (Scheduled Automation)

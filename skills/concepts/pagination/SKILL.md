@@ -1,6 +1,6 @@
 ---
 name: pagination
-description: Core API pageToken pagination, 1000-record cap, keyset pagination for large datasets, Task API offset pagination, server-side/client-side pagination patterns, golden rule (max 25 client-side), and deletion pagination gotchas.
+description: "Use when paginating Kinetic API results or retrieving large submission sets — hitting the Core API 1000-record cap, pageToken/nextPageToken returning duplicate, empty, or skipped records, building keyset (createdAt cursor) pagination, Task API offset pagination, choosing server-side vs client-side paging, or deleting records in batches."
 ---
 
 # Pagination

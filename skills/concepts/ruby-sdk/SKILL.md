@@ -1,6 +1,6 @@
 ---
 name: ruby-sdk
-description: Kinetic Ruby SDK (kinetic_sdk gem) for environment provisioning, data migrations, and scripted administration of Core, Task, and Integrator APIs.
+description: Use when writing or debugging Ruby scripts that use the kinetic_sdk gem to provision environments, run data migrations, do bulk operations, or script admin tasks — initializing KineticSdk::Core/Task/Integrator/Agent/Bridgehub/Filehub/Discussions clients, setting space_server_url/space_slug/app_server_url/oauth credentials, export_directory, or log_level options.
 ---
 
 # Kinetic Ruby SDK

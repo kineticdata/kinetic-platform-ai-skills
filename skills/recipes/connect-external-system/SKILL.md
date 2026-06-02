@@ -1,6 +1,6 @@
 ---
 name: connect-external-system
-description: Step-by-step recipe for connecting the Kinetic Platform to an external REST API using Connections and Operations.
+description: "Use when integrating the Kinetic Platform with an external REST API (ServiceNow, Jira, Salesforce, or any custom endpoint) — creating a Connection and Operations via the Integrator API (OAuth, not Basic Auth), invoking them from workflows with system_integration_v1, and calling them from a portal via executeIntegration."
 ---
 
 # Recipe: Connect an External System

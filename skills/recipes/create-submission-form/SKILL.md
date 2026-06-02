@@ -1,6 +1,6 @@
 ---
 name: create-submission-form
-description: Step-by-step recipe for creating a new form with fields, index definitions, events, and submission handling on the Kinetic Platform.
+description: "Use when creating a new submission-driven form on the Kinetic Platform end-to-end — defining the form and its fields, adding index definitions for KQL search, wiring events, and verifying with a test submission (e.g. service requests, IT tickets, approvals, recruiting)."
 ---
 
 # Recipe: Create a Submission-Driven Form

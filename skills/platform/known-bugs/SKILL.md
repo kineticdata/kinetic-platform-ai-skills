@@ -1,6 +1,6 @@
 ---
 name: known-bugs
-description: Confirmed Kinetic Platform bugs with symptoms, impact, and tested workarounds.
+description: "Use when a Kinetic API/workflow behaves unexpectedly and you suspect a platform bug — /trees/{title}/export returns wrong/stale tree, run.tree is an object showing [object Object], POST /submissions/{id}/submit 404s, WebAPI timeout>30 returns 500 with orphan runs, security-policy Display returns 500 not 403 and poisons GET /kapps, smtp_email_send_v1 omits Handler Error Message causing IndexError on success, or GET /errors hard-caps at 5 results."
 ---
 
 # Known Platform Bugs

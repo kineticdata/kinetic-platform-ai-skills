@@ -1,6 +1,6 @@
 ---
 name: workflow-engine
-description: Kinetic Platform workflow engine concepts, execution model, Task API v2 reference, observed response formats, run status derivation, tree type classification, stuck run repair, and lessons learned for building workflow UIs.
+description: "Use when reasoning about how Kinetic Task executes — node/connector/handler execution model, Complete/Create/Update connector semantics, tree scope (Space/Kapp/Form), deriving run status, classifying tree types, repairing a stuck/Deferred run, querying the Task API v2 (/trees, /runs), or building a workflow-monitoring UI."
 ---
 
 # Kinetic Platform Workflow Engine

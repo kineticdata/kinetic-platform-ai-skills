@@ -1,6 +1,6 @@
 ---
 name: bootstrap
-description: Critical portal setup — installation, KineticLib entry point, CoreForm prerequisites, Vite dev proxy with process.env shim, and auth state machine.
+description: "Use when scaffolding a new Kinetic React portal or debugging its startup — installing @kineticdata/react (React 18 only, isarray quirk), wiring the KineticLib entry point and CoreForm prerequisites, configuring the Vite dev proxy with the process.env shim, or handling the login/auth state machine."
 ---
 
 # Portal Bootstrap — Critical Setup

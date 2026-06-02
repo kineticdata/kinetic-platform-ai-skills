@@ -1,6 +1,6 @@
 ---
 name: add-approval-workflow
-description: Step-by-step recipe for adding a deferral-based approval workflow to a form, including routing, notifications, and status updates.
+description: "Use when adding a human-approval step to an existing Kinetic form — designing approver routing, building the approval form, writing the main and callback workflow trees with the deferral pattern, sending notifications, updating status, and testing the cycle via the Task API."
 ---
 
 # Recipe: Add an Approval Workflow

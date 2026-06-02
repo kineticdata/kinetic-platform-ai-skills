@@ -1,6 +1,6 @@
 ---
 name: troubleshooting
-description: Diagnosing workflow failures, stuck runs, error management, common API error patterns, and platform debugging techniques.
+description: "Use when diagnosing a failed, stuck, or misbehaving Kinetic workflow run or API call — run.status stuck at Started, ENGINE Run Error / Node Parameter Error / Connector Error / Missing Handler Error / Unidentified Error on triggers, IndexError on @results or @values, run stuck at Start node, both mutually-exclusive branches firing, stale_record/uniqueness_violation on PUT, missing-index KQL 400s, or resolving errors via /errors and /triggers."
 ---
 
 # Troubleshooting

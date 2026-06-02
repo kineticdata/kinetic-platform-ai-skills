@@ -1,6 +1,6 @@
 ---
 name: form-engine
-description: Kinetic form JSON schema, field types, required properties per type, choices, content elements, buttons, and API creation gotchas.
+description: "Use when creating or modifying a Kinetic form definition via the API — building the form JSON (pages/sections/fields/buttons/content), choosing field render types (text, dropdown, radio, checkbox, date, attachment), supplying every required property per field type, or fixing a 400 Invalid Form / unsupported 'events' property / missing renderAttributes rejection on PUT."
 ---
 
 # Form Engine

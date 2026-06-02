@@ -1,6 +1,6 @@
 ---
 name: users-teams-security
-description: User and team CRUD, memberships, and management patterns for the Kinetic Platform.
+description: Use when creating, updating, deleting, searching, or inspecting Kinetic users or teams — managing memberships, user vs profile attributes, spaceAdmin/enabled flags, allowedIps, the /users, /me, or /teams Core API endpoints, KQL user search (q=username=*), keyset pagination (nextPageToken), or include params (attributes, memberships, authorization).
 ---
 
 # Users, Teams, and Security

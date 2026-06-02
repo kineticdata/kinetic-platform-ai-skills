@@ -1,6 +1,6 @@
 ---
 name: security-policies
-description: KSL security expressions, policy definitions and CRUD, binding functions (identity, values, submission), attribute definitions, activities, Task engine security, and access control patterns.
+description: "Use when controlling who can view/create/modify/delete Kinetic resources — writing or debugging KSL security definitions (JavaScript rules), creating/assigning security policies to form/kapp/space endpoints, using binding functions (identity, values, submission), defining attribute definitions, or setting Task engine (Ruby) policy rules. Covers core-platform vs Task-engine language differences, space-admin bypass, and access denied/403 troubleshooting."
 ---
 
 # Security Policies

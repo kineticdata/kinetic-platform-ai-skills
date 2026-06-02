@@ -1,6 +1,6 @@
 ---
 name: webapis-and-webhooks
-description: WebAPIs (custom REST endpoints backed by workflows), Webhooks (event-driven workflow triggers), security policies, callback patterns, and API management for the Kinetic Platform.
+description: "Use when exposing a Kinetic workflow as a custom REST endpoint or wiring an event trigger — WebAPIs (/app/webApis/<slug> or /app/kapps/<kapp>/webApis/<slug>, @request body/method/parameters, 30s synchronous timeout, callback pattern), Webhooks as event-driven tree triggers, securing them with KSL policies, or frontend JS calling a WebAPI."
 ---
 
 # WebAPIs and Webhooks
