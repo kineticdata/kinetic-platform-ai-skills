@@ -97,7 +97,7 @@ The users list supports keyset pagination:
 }
 ```
 
-**No search/filter parameter** — the `q` parameter does NOT work on users (`"Unexpected \"term\" -- ^term"` error). To find users, you must page through all results.
+**Searching users** — the `q` parameter supports KQL on the users list endpoint (see "Searching/Filtering Users" above) — e.g. `q=username="jane.doe@example.com"` or `q=displayName =* "Jane"`. The `=*` (starts-with) operator requires `orderBy` on the same field.
 
 ### User CRUD Examples
 
@@ -194,7 +194,7 @@ DELETE /app/api/v1/users/jane.doe@example.com
 - **Username is changeable via PUT** — setting `"username": "new@example.com"` renames the user. The old username immediately returns 404. Any memberships follow the user
 - **Attributes can be set without a definition** — the API silently accepts attribute names that have no attribute definition. These values are stored but may not behave correctly in security expressions
 - **Inline memberships work on create** — you can include `"memberships"` array in the POST body to add team memberships at creation time
-- **No user search** — the `q` parameter is not supported on the users list endpoint. You must paginate through all users
+- **User search uses KQL** — the `q` parameter supports KQL on the users list endpoint (`q=username="x"`, `q=displayName =* "Jane"`); the `=*` starts-with operator requires `orderBy` on the same field (see "Searching/Filtering Users")
 - **PUT replaces attributes entirely** — if you PUT `attributes: [{"name":"A","values":["1"]}]`, any previously-set attributes B, C, etc. are removed. Include all attributes in every PUT
 
 ### Service Accounts (No API Keys)
