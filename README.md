@@ -256,6 +256,7 @@ These directories are for KD employees and are not intended for customer use:
 
 5. **Register the skill** in these files:
    - `CLAUDE.md` — add a row to the appropriate skill-index table (the index is read on demand; there are no `@`-imports)
+   - `AGENTS.md` **and** `GEMINI.md` — these mirror `CLAUDE.md` for Codex and Gemini; add the same row (or just re-copy `CLAUDE.md` into both)
    - `README.md` — add a row to the appropriate skills table
    - `.cursor/rules/kinetic-platform.mdc` or `kinetic-front-end.mdc` — add an `@` import
    - `.github/copilot-instructions.md` — add to the skill list at the bottom
@@ -268,7 +269,7 @@ Edit the `SKILL.md` file directly. No other files need to change unless you rena
 
 If you rename a skill folder, update all references:
 - `SKILL.md` frontmatter `name` (must match new folder name)
-- `CLAUDE.md` import path
+- `CLAUDE.md` index row + path (and mirror into `AGENTS.md` / `GEMINI.md`)
 - `README.md` table link
 - `.cursor/rules/*.mdc` import paths
 - `.github/copilot-instructions.md`
