@@ -21,8 +21,10 @@ A shareable AI skills library for building on the Kinetic Platform. Organized fo
 | [api-basics](skills/concepts/api-basics/SKILL.md) | Base URLs, authentication, Core API v1 and Task API v2 endpoints, response formats, submission PATCH, and common gotchas |
 | [kql-and-indexing](skills/concepts/kql-and-indexing/SKILL.md) | KQL operators, form index definitions, compound indexes, and query gotchas |
 | [pagination](skills/concepts/pagination/SKILL.md) | Core API pageToken pagination, 1000-record cap, keyset pagination, Task API offset pagination |
-| [workflow-engine](skills/concepts/workflow-engine/SKILL.md) | Workflow engine concepts, execution model, ERB context, events/coreState, programmatic workflow creation, Task API v2 reference |
-| [workflow-xml](skills/concepts/workflow-xml/SKILL.md) | XML/treeJson schema, task nodes, flow control, system handlers, return node rules, critical node flags, error management API, triggers API |
+| [workflow-engine](skills/concepts/workflow-engine/SKILL.md) | Workflow execution model, nodes/connectors/events/coreState, deferrals & Queue Task pattern, run-status derivation, stuck-run repair |
+| [workflow-xml](skills/concepts/workflow-xml/SKILL.md) | XML/treeJson schema, task nodes, flow control, ERB context, system handlers, return node rules, critical node flags |
+| [workflow-creation](skills/concepts/workflow-creation/SKILL.md) | Create/manage workflows — Core API two-step creation, kapp vs form, filters, supported events, tree title format, sources |
+| [task-api-reference](skills/concepts/task-api-reference/SKILL.md) | Task API v2 endpoints (trees/runs/handlers/sources), triggers & errors APIs, run/tree/task response shapes, meta resources |
 | [decision-frameworks](skills/concepts/decision-frameworks/SKILL.md) | Integration type selection, data storage patterns, workflow execution model |
 | [architectural-patterns](skills/concepts/architectural-patterns/SKILL.md) | Deferral pattern, approvals, fulfillment, work routing, SLA tracking, external system sync, bulk operations |
 | [robots](skills/concepts/robots/SKILL.md) | Scheduled automation — robot definition/execution/next-execution forms, the execution routine, robot tree pattern, scheduling, and gotchas |

@@ -9,7 +9,7 @@ user-invocable: true
 
 The user wants to create a workflow on the Kinetic Platform. The argument describes what the workflow should do.
 
-> **Tooling:** these steps use the raw Core/Task REST API (see the Workflow Engine, Workflow XML, and Authentication skills for endpoints and auth). If you have an MCP server that wraps these calls, you can use its equivalent tools — but the raw API is the source of truth.
+> **Tooling:** these steps use the raw Core/Task REST API (see the Task API Reference, Workflow Engine, Workflow XML, and Authentication skills for endpoints and auth). If you have an MCP server that wraps these calls, you can use its equivalent tools — but the raw API is the source of truth.
 
 ## Step 1: Read Reference Docs
 

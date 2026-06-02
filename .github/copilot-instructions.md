@@ -54,7 +54,7 @@ This project uses the Kinetic Platform. Apply the rules below when writing or su
 ---
 
 For full details see the skills library:
-- `skills/concepts/` — API basics, KQL & indexing, pagination, workflow engine, workflow XML, workflow creation, decision frameworks, architectural patterns, robots, form engine, form events & expressions, integrations, WebAPIs & webhooks, users/teams/security, security policies, models, Ruby SDK, template provisioning
+- `skills/concepts/` — API basics, KQL & indexing, pagination, workflow engine, workflow XML, workflow creation, Task API reference, decision frameworks, architectural patterns, robots, form engine, form events & expressions, integrations, WebAPIs & webhooks, users/teams/security, security policies, models, Ruby SDK, template provisioning
 - `skills/recipes/` — Create forms, add approval workflows, connect external systems, build paginated lists, build service portals
 - `skills/front-end/` — Bootstrap, portal patterns, forms, data fetching, mutations, state management
 - `skills/platform/` — Handler development, known bugs, troubleshooting

@@ -7,7 +7,7 @@
 //     "PreToolUse": [
 //       { "matcher": "Bash",
 //         "hooks": [{ "type": "command",
-//                     "command": "node /absolute/path/to/skills/skills/platform/workflow-xml/scripts/hook-check-workflow-put.mjs" }] }
+//                     "command": "node /absolute/path/to/skills/skills/concepts/workflow-xml/scripts/hook-check-workflow-put.mjs" }] }
 //     ]
 //   }
 // }
@@ -51,12 +51,12 @@ console.error(`⛔ BLOCKED: command appears to modify a Kinetic workflow tree wi
 
   command: ${cmd.slice(0, 200)}${cmd.length > 200 ? "..." : ""}
 
-Required: route through skills/skills/platform/workflow-xml/scripts/put-workflow.mjs
+Required: route through skills/skills/concepts/workflow-xml/scripts/put-workflow.mjs
 or .../validate-workflow.mjs.
 
 Bypass rules (rare, only when intentional):
   KINETIC_SKIP_VALIDATION=1 <your command>
 
-Why: skills/platform/workflow-xml/PITFALLS.md
-Scripts: skills/platform/workflow-xml/scripts/README.md`);
+Why: skills/concepts/workflow-xml/PITFALLS.md
+Scripts: skills/concepts/workflow-xml/scripts/README.md`);
 process.exit(2);

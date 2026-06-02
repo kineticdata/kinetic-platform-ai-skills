@@ -17,7 +17,7 @@ Mechanical enforcement of the rules documented in `../SKILL.md`. These exist bec
 From any machine where this skills repo is cloned:
 
 ```bash
-node skills/platform/workflow-xml/scripts/install-hook.mjs
+node skills/concepts/workflow-xml/scripts/install-hook.mjs
 ```
 
 That's it. The script:
@@ -45,27 +45,27 @@ Every rule below is documented with symptoms, causes, and full explanation in [.
 
 ### Validate a tree XML file
 ```bash
-node skills/platform/workflow-xml/scripts/validate-workflow.mjs --tree tree.xml
+node skills/concepts/workflow-xml/scripts/validate-workflow.mjs --tree tree.xml
 ```
 
 ### Validate from stdin
 ```bash
-cat tree.xml | node skills/platform/workflow-xml/scripts/validate-workflow.mjs --stdin
+cat tree.xml | node skills/concepts/workflow-xml/scripts/validate-workflow.mjs --stdin
 ```
 
 ### Atomic validate + PUT (the right way to ship a tree)
 ```bash
-node skills/platform/workflow-xml/scripts/put-workflow.mjs \
+node skills/concepts/workflow-xml/scripts/put-workflow.mjs \
   work/work-item/04f3d8a4-3108-4e33-a543-bc4d352ec25a \
   --tree tree.xml
 ```
 
 ### Debug the most recent run (all handler errors surface, incl. 4xx response bodies)
 ```bash
-node skills/platform/workflow-xml/scripts/workflow-debug.mjs          # latest run
-node skills/platform/workflow-xml/scripts/workflow-debug.mjs 27        # specific run
-node skills/platform/workflow-xml/scripts/workflow-debug.mjs --sub <submissionId>
-node skills/platform/workflow-xml/scripts/workflow-debug.mjs --watch   # live-tail
+node skills/concepts/workflow-xml/scripts/workflow-debug.mjs          # latest run
+node skills/concepts/workflow-xml/scripts/workflow-debug.mjs 27        # specific run
+node skills/concepts/workflow-xml/scripts/workflow-debug.mjs --sub <submissionId>
+node skills/concepts/workflow-xml/scripts/workflow-debug.mjs --watch   # live-tail
 ```
 
 ## Environment variables

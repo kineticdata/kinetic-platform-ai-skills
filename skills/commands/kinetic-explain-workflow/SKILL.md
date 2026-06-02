@@ -9,13 +9,13 @@ user-invocable: true
 
 The user wants to understand what a Kinetic workflow does. They provide a tree title or partial name.
 
-> **Tooling:** these steps use the raw Task REST API (see the Workflow XML and Workflow Engine skills for endpoints and auth). If you have an MCP server that wraps these calls, use its equivalent tools — but the raw API is the source of truth.
+> **Tooling:** these steps use the raw Task REST API (see the Task API Reference, Workflow XML, and Workflow Engine skills for endpoints and auth). If you have an MCP server that wraps these calls, use its equivalent tools — but the raw API is the source of truth.
 
 For tree structure, ERB, and connector-type details, see the `concepts/workflow-xml` and `concepts/workflow-engine` skills.
 
 ## Step 1: Connect and Find the Tree
 
-1. Authenticate to the Kinetic Platform Task API (see the Workflow XML and Workflow Engine skills for endpoints and auth).
+1. Authenticate to the Kinetic Platform Task API (see the Task API Reference, Workflow XML, and Workflow Engine skills for endpoints and auth).
 2. Search for the tree:
    - List trees via `GET /app/components/task/app/api/v2/trees` and match the user's search term against tree names/titles
    - Filter by the user's search term (partial match on name or title)

@@ -44,9 +44,10 @@ These skills are the shared knowledge base for **any AI assistant or developer**
 | Form Events & Expressions | `skills/concepts/form-events-expressions/SKILL.md` | Form events (load/submit/change/click), K() JavaScript API, expression syntax, bundle.config overrides, form-level integrations |
 | KQL & Indexing | `skills/concepts/kql-and-indexing/SKILL.md` | Write search queries, create indexes, filter submissions. Read when you get KQL errors or need to search. |
 | Pagination | `skills/concepts/pagination/SKILL.md` | Page through results — pageToken, 1000-record cap workarounds, keyset pagination |
-| Workflow Engine | `skills/concepts/workflow-engine/SKILL.md` | Understand workflow concepts (trees, nodes, events, runs), create/manage workflows via Core API, workflow filters |
-| Workflow XML | `skills/concepts/workflow-xml/SKILL.md` | Handler reference — handler definition IDs, parameters, loops, deferrals, `system_integration_v1` pattern, run debugging API, gotchas |
-| Workflow Creation | `skills/concepts/workflow-creation/SKILL.md` | Create and manage workflows — tree creation via Task API, treeJson upload, title format, handler discovery, sources |
+| Workflow Engine | `skills/concepts/workflow-engine/SKILL.md` | Understand the execution model (trees, nodes, connectors, events, runs), deferrals/Queue Task pattern, run-status derivation, stuck-run repair |
+| Workflow XML | `skills/concepts/workflow-xml/SKILL.md` | Handler reference — handler definition IDs, parameters, loops, deferrals, `system_integration_v1` pattern, ERB context table, connectors, gotchas |
+| Workflow Creation | `skills/concepts/workflow-creation/SKILL.md` | Create/manage workflows — Core API two-step creation, kapp vs form, filters, supported events, tree title format, treeJson upload, sources |
+| Task API Reference | `skills/concepts/task-api-reference/SKILL.md` | Call the Task API v2 directly — trees/runs/handlers/sources endpoints, triggers & errors APIs, run/tree/task response shapes, meta resources |
 | Integrations | `skills/concepts/integrations/SKILL.md` | Set up Connections/Operations (preferred), Bridges, or Handlers. Read when wiring up external system calls. |
 | Decision Frameworks | `skills/concepts/decision-frameworks/SKILL.md` | Choose between approaches — which integration type, where to store data, workflow vs real-time |
 | Architectural Patterns | `skills/concepts/architectural-patterns/SKILL.md` | Implement approvals, deferrals, fulfillment queues, SLA tracking, external system sync |

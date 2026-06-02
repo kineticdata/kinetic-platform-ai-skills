@@ -9,7 +9,7 @@ user-invocable: true
 
 The user wants to debug a workflow execution. They may provide a run ID, or say "last failed" / provide no argument (find recent failures automatically).
 
-> **Tooling:** these steps use the raw Task/Core REST API (see the Workflow Engine, Workflow XML, and Troubleshooting skills for endpoints and auth). If you have an MCP server that wraps these calls, use its equivalent tools — but the raw API is the source of truth.
+> **Tooling:** these steps use the raw Task/Core REST API (see the Task API Reference, Workflow Engine, Workflow XML, and Troubleshooting skills for endpoints and auth). If you have an MCP server that wraps these calls, use its equivalent tools — but the raw API is the source of truth.
 
 ## Step 0: Reference Docs
 

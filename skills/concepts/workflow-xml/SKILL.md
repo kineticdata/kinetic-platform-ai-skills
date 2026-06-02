@@ -33,7 +33,7 @@ Before writing, PUTting, or debugging any workflow tree, use the gate scripts in
       "matcher": "Bash",
       "hooks": [{
         "type": "command",
-        "command": "node /absolute/path/to/skills/skills/platform/workflow-xml/scripts/hook-check-workflow-put.mjs"
+        "command": "node /absolute/path/to/skills/skills/concepts/workflow-xml/scripts/hook-check-workflow-put.mjs"
       }]
     }]
   }
@@ -44,35 +44,7 @@ Bypass only via `KINETIC_SKIP_VALIDATION=1` for rare intentional cases.
 
 ---
 
-## Task API Endpoints & Authentication
-
-**Base URL pattern:**
-```
-https://<space>.kinops.io/app/components/task/app/api/v2
-```
-
-**Authentication:** HTTP Basic Auth with Kinetic Platform credentials.
-
-### Key Endpoints
-
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| GET | `/trees` | List all workflows (Trees + Global Routines) |
-| GET | `/trees?limit=500` | List with higher limit (default is 100) |
-| GET | `/trees/{title}` | Get metadata for a single workflow |
-| GET | `/trees/{title}/export` | Export full XML definition |
-| GET | `/runs` | List workflow execution runs |
-| GET | `/handlers` | List available task handlers |
-| GET | `/sources` | List configured task sources |
-
-### Searching by Name
-
-The `/trees` endpoint returns all workflows. To find a specific workflow:
-1. Fetch the full list with `?limit=500`
-2. Search the JSON array by `name` field (the human-readable name)
-3. Use the `title` field for export (it's the full qualified name)
-
-**Important:** The `title` field differs between Trees and Global Routines (see `concepts/workflow-creation` for title format).
+> **Task API base URL, auth, and endpoints** — see `concepts/task-api-reference`.
 
 ---
 
@@ -245,6 +217,32 @@ In treeJson, connectors are a flat array at the top level of the `taskTree`, rep
 ## Context Variables
 
 ERB expressions in parameters and conditions can access these context variables:
+
+### Event-Triggered (Submission) Workflows — full context (verified by debug dump on live engine)
+
+| Variable | Type | Keys | Description |
+|----------|------|------|-------------|
+| `@submission` | Hash | `Created By`, `Submitted By`, `Updated By`, `Id`, `Core State`, `Handle`, `Created At`, `Submitted At`, `Updated At`, `Closed At`, `Closed By`, `Type`, `Origin Id`, `Parent Id` | The submission that triggered the workflow |
+| `@form` | Hash | `Name`, `Slug`, `Description`, `Status`, `Type`, `Created At`, `Created By`, `Updated At`, `Updated By` | The form the submission belongs to |
+| `@kapp` | Hash | `Name`, `Slug` | The kapp the form belongs to |
+| `@space` | Hash | `Name`, `Slug` | The space |
+| `@event` | Hash | `Action` (Created/Updated), `Type` (Submission), `Timestamp` | What triggered this workflow |
+| `@values` | Hash | All form field names | Current field values |
+| `@values_previous` | Hash | All form field names | Previous field values (empty on Created) |
+| `@values_changes` | Hash | All form field names | Tracks which fields changed |
+| `@submission_previous` | Hash | Same keys as `@submission` | Previous submission state |
+| `@submission_changes` | Hash | Same keys as `@submission` | Tracks which submission properties changed |
+| `@results` | Hash | Keyed by node name | Results from completed upstream tasks |
+| `@variables` | Hash | Same as `@results` | Alias for `@results` |
+| `@run` | Hash | `Id` | Current run |
+| `@source` | Hash | `Name`, `Group`, `Id`, `Data` | Source metadata |
+| `@task` | Hash | `Id`, `Status`, `Name`, `Deferral Token`, `Task Definition Id`, `Node Id`, `Tree Id`, `Tree Name`, `Source`, `Source Id`, `Return Variables`, `Deferred Variables`, `Loop Index`, `Parent Loop Index`, `Visible`, `Execution Duration` | Current node metadata |
+| `@trigger` | Hash | `Id`, `Engine Identification`, `Status`, `Action`, `Execution Type`, `Tree Id`, `Node Id`, `Source`, `Source Id`, `Loop Index`, `Deferral Token`, `Deferred Variables`, `Message`, `Management Action`, `Selection Criterion`, `Flags` | Engine trigger metadata |
+| `@kapp_attributes` | Hash | Kapp attribute names | Kapp-level attributes |
+| `@form_attributes` | Hash | Form attribute names | Form-level attributes |
+| `@space_attributes` | Hash | Space attribute names | Space-level attributes |
+
+The tables below add variables for user/team events, routine `@inputs`, and WebAPI trees.
 
 ### Available in Trees (event-triggered)
 | Variable | Description |
@@ -854,135 +852,11 @@ The retry gets original parameters from the error process results:
 
 ---
 
-## Triggers API
-
-The Task API exposes a `/triggers` endpoint for inspecting individual trigger events within workflow runs. Triggers represent each node activation in a run's execution.
-
-### Endpoint
-
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| GET | `/triggers` | List/search trigger events |
-
-### Query Parameters
-
-| Parameter | Description | Example |
-|-----------|-------------|---------|
-| `runId` | Filter by specific run | `runId=8091` |
-| `branchId` | Filter by branch | `branchId=123` |
-| `source` | Filter by source name | `source=Kinetic+Request+CE` |
-| `sourceId` | Filter by source ID (submission UUID) | `sourceId=4b3cfbc6-...` |
-| `group` | Source group path | `group=services+>+laptop-order` |
-| `tree` | Filter by tree name | `tree=test1` |
-| `start` | Start date filter | `start=2026-02-18` |
-| `end` | End date filter | `end=2026-02-19` |
-| `timeline` | Field for date filtering (default: `createdAt`) | `timeline=scheduledAt` |
-| `limit` | Results per page (default 100) | `limit=10` |
-| `offset` | Pagination offset | `offset=100` |
-| `include` | Additional properties | `include=details` |
-
-### Response Fields
-
-Each trigger object contains:
-
-| Field | Description |
-|-------|-------------|
-| `id` | Trigger ID (requires `include=details`) |
-| `action` | `Root` (start), handler action, etc. |
-| `nodeId` | Which workflow node was activated (e.g., `start`) |
-| `nodeName` | Human-readable node name (e.g., `Start`) |
-| `status` | `Open`, `Closed`, `Error` |
-| `type` | `Automatic` or `Manual` |
-| `originator` | What initiated the trigger (e.g., `API v2 Run Tree from 10.x.x.x`) |
-| `mode` | `Active` or `Staged` |
-| `scheduledAt` | When the trigger was scheduled to fire |
-| `results` | Output results from the node execution (empty `{}` for start nodes) |
-| `message` | Error or status message (null on success) |
-| `loopIndex` | Loop iteration path (e.g., `/` for root, `/0`, `/1` for loop iterations) |
-| `engineIdentification` | Task engine host, version, and directory info |
-| `createdAt` / `updatedAt` | Timestamps (requires `include=details`) |
-
-### Relationship to Runs
-
-- A **run** is a single execution of a workflow tree
-- A **trigger** is one node activation within that run
-- A run with 5 nodes produces ~5 triggers (one per node activation)
-- The first trigger in any run has `action=Root`, `nodeId=start`
-- Use `runId` to get all triggers for a specific run execution
-
-### Diagnosing Stuck Runs
-
-When runs show status `Started` but triggers show `Closed`, the workflow engine processed the start node but got stuck on a downstream handler or deferred task. Check:
-1. `GET /triggers?runId={id}&include=details` — see which nodes fired
-2. Look for triggers with `status=Error` or non-empty `message`
-3. Check if any trigger has `type=Manual` (waiting for external input)
+> **Triggers API** (querying triggers, run relationship, diagnosing stuck runs) — see `concepts/task-api-reference`.
 
 ---
 
-## Error Management API
-
-Failed triggers generate error records in the Task engine.
-
-### Endpoints
-
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| GET | `/errors?include=details&status=Active` | List errors (**`include=details` is REQUIRED to get the `id` field needed by `/errors/resolve`** — see callout below) |
-| POST | `/errors/resolve` | Bulk-resolve errors |
-
-### Error Object Fields
-
-| Field | Description |
-|-------|-------------|
-| `id` | Error ID (only with `include=details`) |
-| `relatedItem1Id` | Trigger ID (the failed trigger) |
-| `relatedItem2Id` | Node ID |
-| `status` | `Active` or `Handled` |
-| `summary` | Human-readable error description |
-| `type` | Error type (see below) |
-
-> **Always pass `include=details` when listing errors for programmatic resolution.** Without it, `GET /errors` returns objects whose only ID-shaped fields are `relatedItem1Id` (trigger) and `relatedItem2Id` (node) — neither is the error ID. Posting those to `/errors/resolve` returns 404 `Unable to retrieve the error with id`. With `include=details`, the response gains a top-level `id` field; pass those to `/errors/resolve` and they work. Verified empirically (May 2026) — resolving errors `[163, 164]` returned `{"messageType":"success","message":"Resolved task errors [163, 164]"}`.
-
-### Error Types
-
-| Type | Description | Valid Actions |
-|------|-------------|---------------|
-| `Handler Error` | Handler execution failed | Retry Task, Skip Task, Do Nothing |
-| `Node Parameter Error` | ERB evaluation failed on a parameter | Retry Task, Skip Task, Do Nothing |
-| `Source Error` | Source data processing error | Do Nothing only |
-| `Tree Error` | Tree-level error | Do Nothing only |
-| `Missing Handler Error` | Handler not found on server | Retry Task, Skip Task, Do Nothing |
-| `Connector Error` | A `<dependents>` connector condition (ERB on a branch) raised at evaluation (e.g. `IndexError` from `JSON.parse(nil)` or a missing `@results` key) | **None of Retry/Skip/Do Nothing are accepted** — cannot be resolved via `/errors/resolve`; fix the tree and re-run, or leave (stale errors are harmless) |
-
-### Resolve Request
-
-```json
-POST /errors/resolve
-{
-  "ids": [1550, 1549, 1548],
-  "action": "Retry Task",
-  "resolution": "Description of fix applied"
-}
-```
-
-### Error API Gotchas
-
-- `GET /errors` returns **max 5 errors per request** regardless of `limit` parameter — paginate with offset
-- `Skip Task` on handler errors may generate new downstream errors (skipped node's dependents may fail)
-- Using an invalid action for an error type returns: `{"message":"Invalid management action \"Skip Task\" for error #N with type \"Source Error\""}`
-- "Do Nothing" is the only universally valid action across all error types
-
-### Trigger Originator Values
-
-The `originator` field on triggers indicates what initiated the activation:
-
-| Pattern | Meaning |
-|---------|---------|
-| `API v2 Run Tree from {IPs}` | Anonymous API invocation |
-| `API v2 Run Tree by {user} from {IPs}` | Authenticated API invocation |
-| `ENGINE Call System Tree` | Sub-tree/routine call |
-| `ENGINE Run Error` | Failure — engine generated this trigger |
-| `HANDLER {Name}` | Handler completing (e.g., `HANDLER Wait`) |
+> **Error Management API** (listing/resolving errors, error types, originators) — see `concepts/task-api-reference`.
 
 ---
 

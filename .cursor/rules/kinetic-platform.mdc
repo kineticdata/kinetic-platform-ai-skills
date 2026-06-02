@@ -21,6 +21,7 @@ Apply the following knowledge when writing code that interacts with the Kinetic 
 @../../skills/concepts/template-provisioning/SKILL.md
 @../../skills/concepts/form-events-expressions/SKILL.md
 @../../skills/concepts/workflow-creation/SKILL.md
+@../../skills/concepts/task-api-reference/SKILL.md
 @../../skills/concepts/security-policies/SKILL.md
 @../../skills/concepts/models/SKILL.md
 @../../skills/platform/handler-development/SKILL.md

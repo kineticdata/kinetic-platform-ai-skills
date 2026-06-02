@@ -9,7 +9,7 @@ user-invocable: true
 
 Run a comprehensive health check against the connected Kinetic Platform space. No arguments needed.
 
-> **Tooling:** these steps use the raw Core/Task REST API (see the Workflow Engine, Using the API, and Troubleshooting skills for endpoints and auth). If you have an MCP server that wraps these calls, use its equivalent tools — but the raw API is the source of truth.
+> **Tooling:** these steps use the raw Core/Task REST API (see the Task API Reference, Workflow Engine, Using the API, and Troubleshooting skills for endpoints and auth). If you have an MCP server that wraps these calls, use its equivalent tools — but the raw API is the source of truth.
 
 ## Step 1: Connect
 

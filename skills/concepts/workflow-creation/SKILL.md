@@ -179,3 +179,164 @@ The sources endpoint returns `sourceRoots` (not `sources`):
   ]
 }
 ```
+
+---
+
+## Programmatic Workflow Creation (Core API)
+
+**Always use the Core API for creating/updating/deleting workflows.** The Task API v2 PUT silently ignores tree XML content.
+
+### Core API Workflow Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/app/api/v1/kapps/{kapp}/workflows` | List workflows + orphan diagnostics |
+| POST | `/app/api/v1/kapps/{kapp}/workflows` | Create workflow (auto-registers with platform) |
+| PUT | `/app/api/v1/kapps/{kapp}/workflows/{id}` | Update workflow / upload tree definition |
+| DELETE | `/app/api/v1/kapps/{kapp}/workflows/{id}` | Soft-delete workflow |
+
+**No standalone `GET /workflows/{id}` exists.** A 404 is returned for `GET /app/api/v1/workflows/{id}` (without the kapp/form scoping). To read a single workflow's metadata, either:
+- Use the kapp- or form-nested list: `GET /app/api/v1/kapps/{kapp}/workflows` or `GET /app/api/v1/kapps/{kapp}/forms/{form}/workflows`, then filter by `id`, OR
+- Use the Task API by tree title: `GET /app/components/task/app/api/v2/trees/{url-encoded-title}` (see the Tree Title Format section above for the title format).
+
+### Two-Step Creation
+
+1. **Create:** `POST /workflows` with `{name, event, type:"Tree", status:"Active"}`
+   - Returns `id` (UUID) — also used as `sourceGroup` in Task API
+   - Auto-sets `platformItemType`, `platformItemId`, `guid === sourceGroup`
+
+2. **Upload definition:** `PUT /workflows/{id}` with `{"treeXml": "<taskTree>...</taskTree>"}`
+   - Must be ONLY the `<taskTree>` inner element — NOT the full `<tree>` wrapper
+   - Server adds the wrapper automatically
+
+**Response shape on POST/PUT `/workflows`:** the response body is a flat workflow object — `{id, name, event, status, ...}` — NOT wrapped under a `workflow` key. Code that reads `response.workflow.id` will fail; read `response.id` directly. (Contrast with `/trees` and `/forms` endpoints, which often nest the entity under a top-level key.)
+
+**`?include=treeJson` is silently ignored on the form-scoped workflow list.** `GET /app/api/v1/kapps/{kapp}/forms/{form}/workflows?include=treeJson` returns the workflows without the `treeJson` payload. To read a workflow's tree, either fetch via the Task API by title (`GET /app/components/task/app/api/v2/trees/{title}?include=treeJson`) or use the kapp-scoped workflow list, where the include parameter is honored.
+
+### Kapp-Level vs Form-Level Workflows
+
+- **Kapp-level:** `POST /kapps/{kapp}/workflows` — fires for ALL forms in the kapp
+- **Form-level:** `POST /kapps/{kapp}/forms/{form}/workflows` — fires only for that form
+- Both share the same tree infrastructure in the Task API
+
+### Architecture: Core vs Task
+
+The Workflow Engine (Task) is a **separate web app** that runs independently from Core (the forms engine). However, the Task API is proxied through Core at `/app/components/task/app/api/v2/...` — this is the recommended way to access Task because Core applies permissions. Never call the Task engine host directly in production.
+
+**CRUD pattern:**
+1. **Create** workflow via Core: `POST /app/api/v1/kapps/{kapp}/forms/{form}/workflows` — this creates the tree AND registers it with the form
+2. **Update** workflow (including uploading tree definition) via Core: `PUT /app/api/v1/workflows/{id}` — use `treeXml` or `treeJson` in the body
+3. **Read** tree details, triggers, runs via Core-proxied Task API: `/app/components/task/app/api/v2/trees/{title}`, `/runs`, `/triggers`
+4. **Delete** workflow via Core: `DELETE /app/api/v1/kapps/{kapp}/forms/{form}/workflows/{id}` — **form-nested URL required**. The flat `DELETE /app/api/v1/workflows/{id}` returns 404 ("Unable to locate the {id} Workflow"), mirroring the no-standalone-GET rule on form-level workflows. Verified May 2026.
+
+**IMPORTANT:** These are completely separate queries. `GET /kapps/{kapp}/workflows` returns **only kapp-level** workflows — form-level workflows are invisible. To discover ALL workflows in a kapp, you must iterate each form with `GET /kapps/{kapp}/forms/{form}/workflows`. The `platformItemType` field distinguishes them: `"Kapp"` vs `"Form"`.
+
+### `filter` PUT requires the nested URL on form- and kapp-level workflows
+
+The flat `PUT /app/api/v1/workflows/{id}` endpoint **silently no-ops the `filter` field** for form-level and kapp-level workflows. The PUT returns HTTP 200 with the new filter value echoed in the response body, but:
+
+- The form-nested GET (`/kapps/{kapp}/forms/{form}/workflows/{id}`) still shows the OLD filter
+- The runtime engine continues honoring the OLD filter — no gating change takes effect
+
+Other top-level workflow fields PUT via the flat URL **persist correctly**: `name`, `status`, `event` all reflect in the form-nested GET and (where verifiable) take effect at runtime. The `filter` field is the lone exception.
+
+**Use the nested PUT URL to change a filter:**
+
+- **Form-level workflows** (`platformItemType: "Form"`): `PUT /app/api/v1/kapps/{kapp}/forms/{form}/workflows/{id}` with body `{"filter": "..."}`. Verified end-to-end May 2026 — form-nested GET reflects the new value, and the runtime gates submissions correctly.
+- **Kapp-level workflows** (`platformItemType: "Kapp"`): by analogy, `PUT /app/api/v1/kapps/{kapp}/workflows/{id}` should work. Not directly verified; treat as expected-but-unverified until tested.
+- **Space-level workflows** (`platformItemType: "Space"`): the flat URL appears to write the filter persistently (flat GET shows the new value), but runtime enforcement was not verified. Treat as expected.
+
+**Why this matters:** the flat-PUT-200-echoes-the-value pattern looks like success in every script log. There's no error, no warning, no audit signal. The bug only surfaces when later runtime behavior doesn't match what the response body said the filter is — typically wasted debugging cycles after several workflow runs fail to gate correctly.
+
+Verified May 2026 across form-level and kapp-level workflows. An earlier approach used `DELETE` + recreate to clear a bad filter — that works but is unnecessarily destructive; the simpler and non-disruptive fix is using the nested PUT URL.
+
+### Why NOT Task API for Workflow Creation
+
+- `PUT /trees/{title}` with XML content returns HTTP 200 and bumps `versionId` but does NOT persist the XML
+- Trees created via `POST /trees` lack platform registration — flagged as "orphaned" and may be deleted
+- `guid !== sourceGroup` when created via Task API — admin UI shows "Unable to retrieve tree by GUID"
+
+### Supported Events
+
+**Warning:** The API accepts ANY string as the event name without validation. Invalid event names (like typos) are silently accepted but the workflow will never fire. Always use one of the exact names below.
+
+| Category | Valid Event Names |
+|----------|------------------|
+| **Space** | `Space Login Failure` |
+| **User** | `User Login`, `User Logout`, `User Created`, `User Updated`, `User Deleted`, `User Membership Change` |
+| **Submission** | `Submission Created`, `Submission Submitted`, `Submission Updated`, `Submission Saved`, `Submission Closed`, `Submission Deleted` |
+| **Form** | `Form Created`, `Form Updated`, `Form Deleted`, `Form Restored` |
+| **Team** | `Team Created`, `Team Updated`, `Team Deleted`, `Team Restored`, `Team Membership Change` |
+
+**Scope determines which events are available:**
+- **Form-level workflows** — Submission events only
+- **Kapp-level workflows** — Submission + Form events (fires for all forms in the kapp)
+- **Space-level workflows** — All events (Space, User, Team, plus Submission/Form across all kapps)
+
+Note: `Submission Saved` fires on every save (including Draft saves). `Submission Submitted` fires when a submission becomes `Submitted` — either via a POST with `coreState:"Submitted"` or a PUT transitioning Draft → Submitted (see the callout in "Workflow Events and coreState" in the Workflow Engine skill). `Form Restored` and `Team Restored` fire when a soft-deleted entity is restored.
+
+### Workflow Response Shape
+
+```json
+{
+  "id": "a03b7bb6-4766-486a-9944-ccbd40121241",
+  "name": "On Submit",
+  "event": "Submission Submitted",
+  "filter": "",
+  "sourceGroup": "a03b7bb6-4766-486a-9944-ccbd40121241",
+  "type": "Tree",
+  "status": "Active",
+  "platformItemType": "Form",
+  "platformItemId": "230bacf6-32f5-11f1-98c0-6599b94dbb50",
+  "ownerEmail": null,
+  "notes": null,
+  "versionId": "0",
+  "createdAt": "2026-04-08T02:49:17.340Z",
+  "createdBy": "admin@example.com",
+  "updatedAt": "2026-04-08T02:49:17.340Z",
+  "updatedBy": "admin@example.com"
+}
+```
+
+**No version history.** `updatedAt` and `updatedBy` are snapshot-of-most-recent-PUT only. The Task API exposes no `/trees/{id}/versions` endpoint, no `/audits` sub-resource, and `?include=versions,history,audits` is silently ignored (no extra keys returned). Once a tree is mutated, the prior `treeJson` body is unrecoverable from the platform side, and there is no record of who made any intermediate change beyond the most recent one. `versionId` increments monotonically per PUT, which lets you detect that something changed but not what or by whom. For change forensics on production-critical workflows, plan an external audit trail — CI artifacts, cached GETs, or build-test transcripts. The same limitation applies to forms (no notes diff history) and submissions (no values diff history beyond the current snapshot). Verified May 2026 against an active playground space.
+
+The `filter` field accepts KSL expressions for conditional triggering. **Critical: use function-call syntax** `values('Field')`, NOT bracket syntax `values["Field"]`.
+
+```
+// CORRECT — KSL function syntax with double-quoted string literals
+"filter": "values('Status') == \"Open\""
+"filter": "form('name') == \"Approval\""
+
+// ALSO WORKS — single-quoted string literals
+"filter": "values('Status') == 'Open'"
+
+// WRONG — bracket syntax silently fails, workflow never fires
+"filter": "values[\"Status\"] == \"Open\""
+```
+
+**Filter scope depends on workflow level:**
+- **Form-level workflows** (Submission events) — filter can use `values('Field')`, `identity('username')`, `form('slug')`, `kapp('slug')`, `submission('property')`
+- **Kapp-level workflows** (Form events) — filter can use `form('slug')`, `kapp('slug')` but NOT `values()` (no submission context)
+- **Space-level workflows** (User/Team events) — filter can use `identity()`, `space('slug')` but NOT `values()`, `form()`, or `kapp()` (no form/kapp context)
+
+The filter is evaluated by the Core API before triggering the Task engine. If the filter returns false, the workflow is silently skipped — no run is created.
+
+**Change-detection in filters is NOT supported.** `values_previous()` is NOT a valid KSL binding even though `@values_previous` is available in node ERB. The filter accepts `values_previous('Status') != "X"` at registration but the binding returns nil/empty at runtime, so the filter never matches change-detection conditions. Workflow appears inert; no run created, no entry in `/errors`.
+
+**Pattern: KSL filter + ERB connector guard.** Do the gross check in the filter on the current state, then guard the side-effect node inside the tree with a connector condition that uses `@values_previous`:
+
+```json
+// Workflow registration
+{ "event": "Submission Updated",
+  "filter": "values('Status') == \"In Repair\"" }
+```
+
+```json
+// Connector inside the tree (start → side-effect node)
+{ "from": "start", "to": "n1", "type": "Complete",
+  "value": "@values_previous['Status'] != 'In Repair'" }
+```
+
+The KSL filter creates the run only when the current state matches; the connector blocks the side-effect node when it's a no-op update (Status was already "In Repair"). Empty runs (only `start` Closed) are produced for no-op PUTs but no external side effect fires.
+
+The GET response also includes diagnostic arrays: `{ "migratable": [], "missing": [], "orphaned": [], "workflows": [...] }`
