@@ -5,11 +5,13 @@ description: "Use when integrating the Kinetic Platform with an external REST AP
 
 # Recipe: Connect an External System
 
-This recipe walks through wiring an external REST API into the Kinetic Platform end-to-end — creating a Connection, defining Operations, invoking them from workflows, and calling them from front-end portals. The examples use a generic ticketing API but the same steps apply to ServiceNow, Jira, Salesforce, or any custom REST endpoint.
+This recipe wires an external REST API into the Kinetic Platform end-to-end — token → Connection → Operations → workflow → portal → test. The examples use a generic ticketing API, but the same steps apply to ServiceNow, Jira, Salesforce, or any custom REST endpoint.
+
+This recipe is the runnable spine. For the underlying concepts it builds on — Connection/Operation JSON schema, credential/auth types, base-URL strategy, the `{{Param*}}` asterisk rule, the `system_integration_v1` handler, and defensive output expressions — see `skills/concepts/integrations/SKILL.md`. This recipe cross-references that concept skill rather than re-teaching it.
 
 **Before reading this recipe, familiarise yourself with:**
-- `skills/concepts/integrations/SKILL.md` — Connections/Operations, Bridges, Handlers, comparison table
-- `skills/concepts/api-basics/SKILL.md` — endpoint paths, auth, response shapes
+- `skills/concepts/integrations/SKILL.md` — Connections/Operations, auth types, schema, Bridges, Handlers, comparison table
+- `skills/concepts/api-basics/SKILL.md` — base URLs, Integrator OAuth bearer flow
 - `skills/front-end/mutations/SKILL.md` — `executeIntegration` helper
 
 ---
@@ -25,17 +27,17 @@ Connecting an external system has four phases:
 
 The Connection and Operations are managed through the **Integrator API**, which requires OAuth 2.0 — not Basic Auth.
 
-**Bridges as an alternative.** This recipe covers Connections + Operations. Bridges (with their associated Models) are a coexisting integration mechanism that some systems are reached through instead — especially when a form needs a stable typed data view to populate dropdowns against, when the target is reached through a non-REST adapter (SQL, LDAP, custom databases), or when an existing bridge for the system is the established pattern in your space. See `concepts/models/SKILL.md` for bridge guidance. The two mechanisms can coexist within a single kapp; choose based on what the integration needs and your team's existing patterns rather than on a "modern vs legacy" framing.
+**Bridges as an alternative.** This recipe covers Connections + Operations. Bridges (with their Models) are a coexisting mechanism — preferred when a form needs a stable typed data view to populate dropdowns, when the target is reached through a non-REST adapter (SQL, LDAP), or when an existing bridge is the established pattern in your space. The two coexist within a kapp; choose on need, not on a "modern vs legacy" framing. See `concepts/integrations/SKILL.md` (Bridges) and `concepts/models/SKILL.md`.
 
 ---
 
 ## Step 1 — Obtain an Integrator API Token
 
-The Integrator API lives at a separate path and requires an OAuth 2.0 bearer token. Basic Auth is rejected.
+The Integrator API requires an OAuth 2.0 bearer token; Basic Auth is rejected.
 
 ```bash
-# Step 1a — Request a token via implicit grant
-# The server returns a 302 redirect; --max-redirs 0 captures the Location header
+# Step 1a — Request a token via implicit grant.
+# The server returns a 302 redirect; --max-redirs 0 captures the Location header.
 curl -u "admin:password" \
   --max-redirs 0 \
   -w "%{redirect_url}" \
@@ -54,13 +56,9 @@ Extract the `access_token` value and export it:
 export INTEGRATOR_TOKEN="eyJhbGciOi..."
 ```
 
-**Token lifetime:** 43,200 seconds (12 hours). Cache and reuse; re-acquire 30 seconds before expiry.
+**Token lifetime:** 43,200 seconds (12 hours). Cache and reuse; re-acquire ~30 seconds before expiry.
 
-**Integrator API base URL:**
-| Environment | URL |
-|-------------|-----|
-| Cloud (kinops) | `https://<space-slug>.kinops.io/app/integrator/api` |
-| Self-hosted | `https://<server>/kinetic/<space-slug>/app/integrator/api` |
+The Integrator API base URL is `{server}/app/integrator/api`. For the cloud-vs-self-hosted base-URL forms and the full OAuth implicit-grant flow (including the extra metadata in the redirect fragment), see `concepts/api-basics/SKILL.md` and `concepts/integrations/SKILL.md`.
 
 ---
 
@@ -68,7 +66,7 @@ export INTEGRATOR_TOKEN="eyJhbGciOi..."
 
 A Connection represents one external system instance. Create one per system (one for ServiceNow prod, one for ServiceNow dev, etc.).
 
-> **Base URL pattern — bake the version prefix in.** Set `url` to the host *plus* the common path prefix the API uses (e.g. `/api/v1`, `/rest/api/3`, `/services/data/v59.0`). Operation paths will then be short relative paths like `/employees/{{Employee Id}}` instead of `/api/v1/employees/{{Employee Id}}` repeated 50 times. Kinetic appends `path` to `url` literally — no trailing slash on `url`, always a leading slash on `path`. See the **Base URL strategy** section in `skills/concepts/integrations/SKILL.md` for full details and per-system examples.
+> **Bake the version prefix into `url`.** Set `url` to the host *plus* the common path prefix (e.g. `/api/v1`, `/rest/api/3`). Operation paths are then short relatives like `/tickets/{{Ticket Id}}` instead of repeating the prefix. Kinetic appends `path` to `url` literally — no trailing slash on `url`, leading slash on `path`. Full rationale and per-system table: **Base URL strategy** in `concepts/integrations/SKILL.md`.
 
 ```bash
 curl -s -X POST \
@@ -91,15 +89,7 @@ curl -s -X POST \
   }'
 ```
 
-**Credential types:**
-
-| `credentials.type` | Required fields | Notes |
-|--------------------|-----------------|-------|
-| `basic` | `username`, `password` | HTTP Basic Auth |
-| `bearer` | `token` | Static Bearer token |
-| `api_key` | `header`, `value` | Custom header, e.g. `X-API-Key` |
-| `oauth2_client_credentials` | `tokenUrl`, `clientId`, `clientSecret`, `scope` | OAuth 2.0 machine-to-machine |
-| `none` | — | Public endpoints |
+Set `credentials.type` to match the target system — `basic`, `bearer`, `api_key`, `oauth2_client_credentials`, or `none`. Required fields per type are in the **Connection auth types** table in `concepts/integrations/SKILL.md`.
 
 **Successful response:**
 
@@ -123,20 +113,7 @@ curl -s \
   "https://myspace.kinops.io/app/integrator/api/connections"
 ```
 
-**Update credentials (deep-merge — does not wipe other fields):**
-
-```bash
-curl -s -X PUT \
-  -H "Authorization: Bearer $INTEGRATOR_TOKEN" \
-  -H "Content-Type: application/json" \
-  "https://myspace.kinops.io/app/integrator/api/connections/{connectionId}" \
-  -d '{
-    "credentials": {
-      "type": "bearer",
-      "token": "new-token-value"
-    }
-  }'
-```
+**Update credentials** — `PUT /connections/{id}` with just a `credentials` block deep-merges without wiping other fields. But never PUT auth fields back blindly: GET responses mask secrets as `null`, and PUTting `null` permanently breaks the connection. See the **NEVER modify connection auth credentials** warning in `concepts/integrations/SKILL.md`.
 
 ---
 
@@ -180,45 +157,11 @@ curl -s -X POST \
 
 Save the operation `id` — it is referenced in workflow tasks and form integration configs.
 
-**You don't need to invoke an operation immediately to be useful.** It's a common authoring pattern to define a catalog of operations against a connection ahead of need — workflows or React portal code wire them up over time. In practice, many defined operations go unreferenced by any workflow or form at a given time; that's normal "library ahead of need" rather than dead code. Don't feel obliged to call every operation you define from the recipe — a useful catalog often outpaces the workflows that consume it.
+> Defining an operation does not require invoking it. Building a catalog of operations ahead of need is a normal "library ahead of need" pattern, not dead code — see `concepts/integrations/SKILL.md`. Path/body placeholder syntax (`{{Param}}` / `{{{Param}}}`), the `{{Param*}}` asterisk-is-part-of-the-key rule, and defensive output expressions (`?.` / `?? null`) are also documented there — follow them when authoring the operations below.
 
 ### Common Operation Patterns
 
-#### Lookup by ID (GET)
-
-```json
-{
-  "name": "Get Ticket",
-  "method": "GET",
-  "path": "/tickets/${parameters[\"Ticket Id\"]}",
-  "parameters": [
-    { "name": "Ticket Id", "required": true }
-  ],
-  "outputMappings": [
-    { "name": "Status",  "value": "${response.body[\"status\"]}" },
-    { "name": "Summary", "value": "${response.body[\"summary\"]}" }
-  ]
-}
-```
-
-#### Search / List (GET with query string)
-
-```json
-{
-  "name": "Search Tickets",
-  "method": "GET",
-  "path": "/tickets?status=${parameters[\"Status\"]}&assignee=${parameters[\"Assignee\"]}&limit=${parameters[\"Limit\"]}",
-  "parameters": [
-    { "name": "Status",   "required": false },
-    { "name": "Assignee", "required": false },
-    { "name": "Limit",    "required": false }
-  ],
-  "outputMappings": [
-    { "name": "Tickets", "value": "${response.body[\"results\"]}" },
-    { "name": "Total",   "value": "${response.body[\"total\"]}" }
-  ]
-}
-```
+Beyond the lookup above, the recipe uses a **Create** operation (driven by the workflow in Step 4 and the end-to-end test in Step 7). The same `name`/`method`/`path`/`parameters`/`outputMappings` shape covers the other CRUD verbs — Search is a `GET` with a templated query string, Update is a `PATCH` with a `body`.
 
 #### Create Record (POST)
 
@@ -246,25 +189,9 @@ Save the operation `id` — it is referenced in workflow tasks and form integrat
 }
 ```
 
-#### Update Record (PATCH)
+**Search / List** (GET) — put the filters in the query string and map the array out: `"path": "/tickets?status=${parameters[\"Status\"]}&limit=${parameters[\"Limit\"]}"` with an output like `{ "name": "Tickets", "value": "${response.body[\"results\"]}" }`.
 
-```json
-{
-  "name": "Update Ticket Status",
-  "method": "PATCH",
-  "path": "/tickets/${parameters[\"Ticket Id\"]}",
-  "body": {
-    "status": "${parameters[\"Status\"]}"
-  },
-  "parameters": [
-    { "name": "Ticket Id", "required": true },
-    { "name": "Status",    "required": true }
-  ],
-  "outputMappings": [
-    { "name": "Updated At", "value": "${response.body[\"updatedAt\"]}" }
-  ]
-}
-```
+**Update** (PATCH) — `"path": "/tickets/${parameters[\"Ticket Id\"]}"` with `"body": { "status": "${parameters[\"Status\"]}" }`.
 
 **List operations on a connection:**
 
@@ -274,11 +201,13 @@ curl -s \
   "https://myspace.kinops.io/app/integrator/api/connections/$CONNECTION_ID/operations"
 ```
 
+The full set of Integrator endpoints (get/update/delete connection and operation, export/import, etc.) is in the **Integrator REST API** tables in `concepts/integrations/SKILL.md`.
+
 ---
 
 ## Step 4 — Use Operations in Workflows
 
-Invoke any Operation from a workflow using the built-in `system_integration_v1` handler. Parameters map directly to the operation's `parameters` array by name.
+Invoke any Operation from a workflow using the built-in `system_integration_v1` handler. The `connection` and `operation` parameters take the UUIDs from Steps 2 and 3; `parameters.*` map by name to the operation's parameters.
 
 ```xml
 <!-- In tree XML — create an external ticket on form submission -->
@@ -294,7 +223,7 @@ Invoke any Operation from a workflow using the built-in `system_integration_v1` 
 </task>
 ```
 
-After the handler runs, its outputs are available downstream as:
+After the handler runs, its outputs (the operation's `outputMappings`) are available downstream:
 
 ```
 @results['Create External Ticket']['Ticket Id']
@@ -313,22 +242,13 @@ Write these back to the submission so the portal can display them:
 </task>
 ```
 
-**Reference — Integrator API endpoints used by `system_integration_v1`:**
-
-| `id` parameter | What it maps to |
-|----------------|-----------------|
-| `connection` | Connection UUID (`id` from Step 2 response) |
-| `operation` | Operation UUID (`id` from Step 3 response) |
-| `parameters.*` | Named parameters defined on the operation |
+> `system_integration_v1` has **no `error_handling` lever** — a non-defensive output expression or a 4xx/5xx response fails the whole run. Make every output expression defensive. Handler parameter details and ERB binding rules are in `concepts/workflow-xml/SKILL.md`; the defensive-expression requirement is in `concepts/integrations/SKILL.md`.
 
 ---
 
 ## Step 5 — Expose Operations to the Front End
 
-Front-end portals can invoke Operations through the Kinetic kapp integration layer. This requires:
-
-1. Defining the integration on the form (or kapp)
-2. Calling it via `executeIntegration` in React
+Front-end portals invoke Operations through the Kinetic kapp integration layer. This requires defining the integration on the form (or kapp), then calling it via `executeIntegration` in React.
 
 ### 5a — Add the Integration to a Form
 
@@ -349,11 +269,11 @@ In the form's JSON definition, add an entry to the `integrations` array:
 }
 ```
 
-`inputMappings` keys are the operation's parameter names; values are form expressions.
+`inputMappings` keys are the operation's parameter names; values are form expressions. (Note: every `${values('X')}` must reference a field that exists on the form, or the form 500s on render.)
 
 ### 5b — Expose at Kapp Level (Portal-Wide)
 
-For integrations shared across forms (search, lookup, create), register the integration at the kapp level in the Space console under **Kapps > {KappName} > Integrations**. Apply a security policy so only authenticated users can invoke it.
+For integrations shared across forms, register the integration at the kapp level in the Space console under **Kapps > {KappName} > Integrations**, and apply a security policy so only authenticated users can invoke it.
 
 Kapp-level integrations are callable at:
 ```
@@ -367,33 +287,10 @@ POST /integrations/kapps/{kappSlug}/forms/{formSlug}/{integrationName}
 
 ### 5c — Call from React Portal
 
-Use the `executeIntegration` helper (see `skills/front-end/mutations/SKILL.md` for the full implementation):
+Use the `executeIntegration` helper — it POSTs to the integration URL with the CSRF token and returns either the operation's `outputMappings` or `{ error: { message } }`. The full implementation (and the `X-XSRF-TOKEN: getCsrfToken()` header it must send) is in `skills/front-end/mutations/SKILL.md`. Its call signature:
 
 ```js
-// portal/src/helpers/api.js
-import { bundle, getCsrfToken } from '@kineticdata/react';
-
-export const executeIntegration = ({ kappSlug, formSlug, integrationName, parameters }) =>
-  fetch(
-    [
-      `${bundle.apiLocation()}/integrations/kapps/${kappSlug}`,
-      formSlug && `/forms/${formSlug}`,
-      `/${integrationName}`,
-    ].filter(Boolean).join(''),
-    {
-      method: 'POST',
-      body: JSON.stringify(parameters),
-      headers: { 'X-XSRF-TOKEN': getCsrfToken() },
-    },
-  )
-  .then(async res => {
-    const data = await res.json();
-    if (!res.ok) throw data;
-    return data;
-  })
-  .catch(err => ({
-    error: { message: err?.error || err?.message || 'Unexpected error.' },
-  }));
+executeIntegration({ kappSlug, formSlug, integrationName, parameters }); // → outputs | { error }
 ```
 
 **Example — look up an external ticket:**
@@ -401,31 +298,16 @@ export const executeIntegration = ({ kappSlug, formSlug, integrationName, parame
 ```jsx
 import { executeIntegration } from '../helpers/api';
 
-const TicketDetail = ({ ticketId, kappSlug }) => {
-  const [ticket, setTicket] = useState(null);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    executeIntegration({
-      kappSlug,
-      integrationName: 'Get Ticket',           // kapp-level integration name
-      parameters: { 'Ticket Id': ticketId },
-    }).then(data => {
-      if (data.error) setError(data.error.message);
-      else setTicket(data);
-    });
-  }, [ticketId]);
-
-  if (error) return <p>Error: {error}</p>;
-  if (!ticket) return <p>Loading...</p>;
-  return (
-    <dl>
-      <dt>Status</dt><dd>{ticket.Status}</dd>
-      <dt>Summary</dt><dd>{ticket.Summary}</dd>
-      <dt>Assignee</dt><dd>{ticket.Assignee}</dd>
-    </dl>
-  );
-};
+useEffect(() => {
+  executeIntegration({
+    kappSlug,
+    integrationName: 'Get Ticket',            // kapp-level integration name
+    parameters: { 'Ticket Id': ticketId },
+  }).then(data => {
+    if (data.error) setError(data.error.message);
+    else setTicket(data);                     // data.Status, data.Summary, data.Assignee
+  });
+}, [ticketId]);
 ```
 
 **Example — create an external ticket on button click:**
@@ -452,23 +334,20 @@ const handleCreateTicket = async () => {
 };
 ```
 
-**Named integration wrappers** (recommended for projects with several integrations):
+Once you have several integrations, wrap them by name so callers don't repeat `kappSlug`/`integrationName`:
 
 ```js
 const makeIntegration = name => params =>
   executeIntegration({ kappSlug, integrationName: name, parameters: params });
-
-export const getTicket         = makeIntegration('Get Ticket');
-export const createTicket      = makeIntegration('Create Ticket');
-export const updateTicketStatus = makeIntegration('Update Ticket Status');
-export const searchTickets     = makeIntegration('Search Tickets');
+export const getTicket    = makeIntegration('Get Ticket');
+export const createTicket = makeIntegration('Create Ticket');
 ```
 
 ---
 
 ## Step 6 — Populate Form Dropdowns from an Operation
 
-Operations that return a list can drive form field choices without any custom code. In the form JSON:
+An Operation that returns a list can drive form field choices with no custom code. Add the integration with empty `inputMappings`:
 
 ```json
 {
@@ -501,19 +380,19 @@ Then on the dropdown field:
 }
 ```
 
-`choicesResourceProperty` is the key in the operation's response that holds the array. `integration('name')` and `integration('id')` reference fields within each array element.
+`choicesResourceProperty` is the key in the response that holds the array; `integration('name')` and `integration('id')` reference fields within each array element.
 
 ---
 
 ## Step 7 — Test the Integration
 
-Before wiring into workflows or the portal, verify each operation independently.
+Verify each operation independently before wiring it into workflows or the portal.
 
-**Test via the UI:** In the Space console, go to Plugins > Connections > {Connection} > {Operation} > Test. Enter parameter values and inspect the raw response.
+**Test via the UI:** Space console > Plugins > Connections > {Connection} > {Operation} > Test. Enter parameter values and inspect the raw response.
 
 **Test via the Integrator `/execute` endpoint directly:**
 
-The Integrator exposes `POST /app/integrator/api/execute`, which runs a single operation against its connection without going through a workflow or form — useful for verifying inputs/outputs in isolation. Requires an OAuth bearer token (Step 1).
+`POST /app/integrator/api/execute` runs a single operation against its connection without a workflow or form — ideal for verifying inputs/outputs in isolation. Requires the OAuth bearer token from Step 1.
 
 ```bash
 curl -s -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
@@ -525,14 +404,13 @@ curl -s -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   }'
 ```
 
-Two notes on the request body:
-- **Key is `parameters`, not `inputs`.** Posting `{"inputs": {...}}` returns `{"error": "Request does not match the API schema", "validationErrors": [{"error": "Unexpected field: inputs"}]}`.
-- **Each parameter's key matches the literal placeholder name** from the operation definition. If the operation's path uses `{{Country Code}}` (with the space), the request key is `"Country Code"` — also with the space. Renaming to `country_code` or `countryCode` causes silent miss; the placeholder isn't substituted and the request goes out malformed.
+Two gotchas on the request body:
+- **The key is `parameters`, not `inputs`.** Posting `{"inputs": {...}}` returns `{"error": "Request does not match the API schema", "validationErrors": [{"error": "Unexpected field: inputs"}]}`.
+- **Each parameter key matches the literal placeholder name** from the operation. If the path uses `{{Country Code}}` (with the space), the request key is `"Country Code"` — with the space. Renaming to `country_code` causes a silent miss: the placeholder isn't substituted and the request goes out malformed. (Same key-matching rule as the `{{Param*}}` asterisk case — see `concepts/integrations/SKILL.md`.)
 
-**Test via the API directly (simulate what the operation would call):**
+**Test against the external system directly (before creating the operation):**
 
 ```bash
-# Test the external system's endpoint before creating the operation
 curl -u "api-user:s3cr3t" \
   "https://ticketing.example.com/api/v2/tickets/TKT-001"
 ```
@@ -553,10 +431,12 @@ curl -s -u "admin:password" -X POST \
     "coreState": "Submitted"
   }'
 
-# 2. Check the workflow run to see if the integration handler succeeded
+# 2. Check the workflow run to confirm the integration handler succeeded
 curl -s -u "admin:password" \
   "https://myspace.kinops.io/app/components/task/app/api/v2/runs?limit=5&include=details"
 ```
+
+If the run stalled, pull the real exception from the Task `/errors` endpoint (`GET /app/components/task/app/api/v2/errors?include=details&status=Active`). See `concepts/task-api-reference/SKILL.md` for the runs/errors response shapes.
 
 **Verify the External ID was written back:**
 
@@ -572,56 +452,30 @@ curl -s -u "admin:password" \
 
 | Gotcha | Fix |
 |--------|-----|
-| `401 Unauthorized` on Integrator API | Integrator API does not accept Basic Auth — use OAuth bearer token (Step 1) |
-| Token rejected after 12 hours | Default `expires_in=43200`; re-acquire and cache with a 30-second safety buffer |
-| Operation path variables not substituted | Path template syntax is `${parameters["Param Name"]}` — check quotes and escaping |
-| `executeIntegration` returns `{ error: ... }` but HTTP status is 200 | Integration ran but returned an error payload — check `error.message` and `error.key` |
-| CSRF error calling integration from browser | Include `'X-XSRF-TOKEN': getCsrfToken()` header — required for all browser-originated POSTs |
-| Output mapping values are `null` | Check the JSON path — use the UI Test tab to inspect the raw response body first |
-| Workflow handler has no `results.*` available | Only outputs declared in `outputMappings` are accessible downstream; add missing mappings |
-| Operation paths repeat `/api/v1` everywhere | The version prefix belongs in the Connection `url`, not on every Operation. See "Base URL strategy" in `skills/concepts/integrations/SKILL.md`. |
-| Double slash in request URL | Kinetic appends `operation.path` to `connection.url` literally. Either leave the trailing slash off the URL, or leave the leading slash off the path — pick one and be consistent. |
-| Basic Auth credentials in connection are wrong | Use `PUT /connections/{id}` with just the `credentials` block to update without changing other fields |
-| kapp-level integration returns 404 | Integration name on kapp must match `integrationName` in `executeIntegration` exactly (case-sensitive) |
-
----
-
-## Quick Reference — Integrator API Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/connections` | List all connections |
-| POST | `/connections` | Create a connection |
-| PUT | `/connections/{id}` | Update a connection (deep-merge credentials) |
-| DELETE | `/connections/{id}` | Delete a connection |
-| GET | `/connections/{id}/operations` | List operations for a connection |
-| POST | `/connections/{id}/operations` | Create an operation |
-| PUT | `/connections/{id}/operations/{opId}` | Update an operation |
-| DELETE | `/connections/{id}/operations/{opId}` | Delete an operation |
-
-All requests require `Authorization: Bearer <token>` and `Content-Type: application/json`.
+| `401 Unauthorized` on Integrator API | Integrator API does not accept Basic Auth — use the OAuth bearer token (Step 1) |
+| Token rejected after 12 hours | Default `expires_in=43200`; re-acquire and cache with a ~30-second safety buffer |
+| `/execute` returns `Unexpected field: inputs` | The body key is `parameters`, not `inputs` (Step 7) |
+| Parameter not substituted in `/execute` | Each key must match the operation's literal placeholder name, spaces/asterisks included (Step 7) |
+| `executeIntegration` returns `{ error: ... }` but HTTP status is 200 | Integration ran but returned an error payload — check `error.message` |
+| CSRF error calling integration from browser | Include `'X-XSRF-TOKEN': getCsrfToken()` — required for all browser POSTs |
+| Workflow handler has no `results.*` available | Only outputs declared in `outputMappings` are accessible downstream; add the missing mapping |
+| Workflow node fails with `RuntimeError` on a 4xx/5xx | `system_integration_v1` has no error_handling lever — output expressions must be defensive (`concepts/integrations`) |
+| kapp-level integration returns 404 | Integration name on the kapp must match `integrationName` in `executeIntegration` exactly (case-sensitive) |
+| Output mappings `null` / double-slash URL / repeated `/api/v1` | Connection + Operation schema and base-URL strategy in `concepts/integrations/SKILL.md` |
 
 ---
 
 ## Applying This Pattern to Specific Systems
 
-The same steps apply regardless of the target system. Adjust only the connection URL, credential type, and operation paths.
-
-| System | `url` | `credentials.type` | Notes |
-|--------|-------|--------------------|-------|
-| ServiceNow | `https://{instance}.service-now.com/api/now` | `basic` or `oauth2_client_credentials` | Append `/table/{table}` in operation paths |
-| Jira Cloud | `https://{org}.atlassian.net/rest/api/3` | `basic` (email + API token) | Use `api_key` for server instances |
-| Salesforce | `https://{instance}.salesforce.com/services/data/v59.0` | `oauth2_client_credentials` | Requires Connected App setup in Salesforce |
-| PagerDuty | `https://api.pagerduty.com` | `api_key` (`Authorization: Token token=...`) | Custom header auth |
-| Custom REST API | Your endpoint | `bearer` or `none` | Match whatever auth the API requires |
+The steps are identical regardless of target — adjust only the connection `url`, `credentials.type`, and operation paths. For example, ServiceNow uses `url: https://{instance}.service-now.com/api/now` with `basic` or `oauth2_client_credentials`; PagerDuty uses `url: https://api.pagerduty.com` with `api_key` header auth. The full per-system base-URL and auth table is in the **Base URL strategy** and **Connection auth types** sections of `concepts/integrations/SKILL.md`.
 
 ---
 
 ## Cross-References
 
-- `skills/concepts/integrations/SKILL.md` — full Connections/Operations reference, Bridges, Handlers, comparison table
-- `skills/concepts/api-basics/SKILL.md` — Core and Task API endpoints, auth, response shapes
-- `skills/api/authentication/SKILL.md` — OAuth 2.0 implicit grant flow, Integrator API base URLs, CSRF tokens
+- `skills/concepts/integrations/SKILL.md` — Connection/Operation schema, auth types, base-URL strategy, `{{Param*}}` rule, `system_integration_v1` details, defensive outputs, Bridges, comparison table
+- `skills/concepts/api-basics/SKILL.md` — base URLs, Integrator OAuth bearer flow
+- `skills/concepts/workflow-xml/SKILL.md` — workflow tree XML, handler parameters, ERB bindings
+- `skills/concepts/task-api-reference/SKILL.md` — Task API runs/errors endpoints and response shapes
 - `skills/front-end/mutations/SKILL.md` — `executeIntegration` helper, named integration wrappers
-- `skills/concepts/workflow-engine/SKILL.md` — workflow trees, `system_integration_v1` handler, deferred tasks
 - `skills/concepts/decision-frameworks/SKILL.md` — when to use Connections vs Bridges vs Handlers

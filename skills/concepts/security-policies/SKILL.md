@@ -80,18 +80,7 @@ Any other value returns: `Type must be "Discussion", "File Resource", "Form", "K
 
 Space-level definitions cannot be applied within a Kapp.
 
-### Available Binding Functions
-
-| Type | Available Bindings |
-|------|-------------------|
-| Space | `identity()`, `space()` |
-| Kapp | `identity()`, `space()`, `kapp()` |
-| Form | `identity()`, `space()`, `kapp()`, `form()` |
-| Submission | `identity()`, `space()`, `kapp()`, `form()`, `values()`, `submission()` |
-| Team | `identity()`, `space()`, `team()` |
-| User | `identity()`, `space()`, `user()` |
-
-**Note:** This table mirrors the "Definition Types and Scopes" tables above — `identity()` is available everywhere; a definition's scope determines which context bindings it adds (`space()` everywhere a space exists, plus `team()`/`user()`/`kapp()`/`form()`/`values()`/`submission()` per scope).
+**Binding availability rule:** `identity()` is available everywhere; a definition's scope determines which context bindings it adds (`space()` everywhere a space exists, plus `team()`/`user()`/`kapp()`/`form()`/`values()`/`submission()` per scope — see the per-scope tables above).
 
 ### KSL Core Functions
 

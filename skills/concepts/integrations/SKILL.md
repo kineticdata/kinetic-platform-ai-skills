@@ -23,27 +23,7 @@ A **Connection** represents an external system. It stores:
 
 Connections are created and managed in the Space console under Plugins > Connections.
 
-**Integrator REST API:** Connections and Operations can also be managed programmatically via the Integrator API at `{server}/app/integrator/api`. This API uses **OAuth 2.0 implicit grant** authentication (not Basic Auth like the Core/Task APIs). See the API Basics skill for the full OAuth flow. Key endpoints:
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/connections` | List all connections |
-| POST | `/connections` | Create a connection |
-| PUT | `/connections/{id}` | Update a connection (deep-merge credentials) |
-| GET | `/connections/{id}/operations` | List operations for a connection |
-| POST | `/connections/{id}/operations` | Create an operation |
-| PUT | `/connections/{id}/operations/{opId}` | Update an operation |
-| DELETE | `/connections/{id}/operations/{opId}` | Delete an operation |
-| POST | `/connections/{id}/restart` | Restart a connection |
-| POST | `/execute` | Execute an operation directly |
-| GET | `/export` | Export all connections and operations |
-| POST | `/import` | Import connections and operations |
-| POST | `/import/validate` | Validate import payload |
-| GET | `/healthz` | Health check (messaging + node process) |
-| GET | `/version` | Integrator version info |
-| POST | `/operations-search` | Search operations across connections |
-
-**Important:** The Integrator API returns **bare arrays** for list endpoints (not wrapped in an object like Core API). Example: `GET /connections` returns `[{...}, {...}]`, not `{"connections": [...]}`.
+**Integrator REST API:** Connections and Operations can also be managed programmatically via the Integrator API at `{server}/app/integrator/api`. This API uses **OAuth 2.0 implicit grant** authentication (not Basic Auth like the Core/Task APIs). See the API Basics skill for the full OAuth flow. It covers connection CRUD + test/restart, operation CRUD, direct `/execute`, bulk `/export` & `/import`, `/operations-search`, and unprotected `/healthz` / `/version` — see the full endpoint reference under "Integrator REST API — Detailed Schema" below.
 
 **OAuth token response details:** The redirect Location header fragment contains additional metadata beyond the access token:
 - `scope=full_access`
@@ -55,54 +35,9 @@ Connections are created and managed in the Space console under Plugins > Connect
 
 This metadata can be useful for confirming the token's identity and permissions without a separate API call.
 
-**Connection response shape:**
-```json
-{
-  "id": "a2ffa6fa-...",
-  "name": "ServiceNow Production",
-  "type": "http",
-  "config": { "configType": "http", "baseUrl": "https://instance.service-now.com", "auth": null, "caCert": null, "testPath": "" },
-  "status": { "healthy": true, "events": [{"message": "Started", "timestamp": "...", "kind": "normal"}] },
-  "secrets": {},
-  "description": "",
-  "documentationLink": "",
-  "insertedAt": "2024-12-19T17:44:32Z",
-  "lockVersion": 2,
-  "updatedAt": "2024-12-19T17:44:32Z"
-}
-```
+For the full Connection and Operation JSON shapes — with populated example values and per-type config breakdowns — see "Integrator REST API — Detailed Schema" below.
 
-**Operation response shape:**
-```json
-{
-  "id": "f865d438-...",
-  "name": "Fetch Incident",
-  "connectionId": "a2ffa6fa-...",
-  "config": {
-    "configType": "http",
-    "method": "GET",
-    "path": "/tables/{{table_name}}",
-    "params": {},
-    "headers": {},
-    "body": {"form": {}, "bodyType": "www_form_urlencoded"},
-    "includeEmptyParams": false,
-    "followRedirect": false,
-    "streamResponse": false
-  },
-  "outputs": {
-    "Assignee": {"value": ""},
-    "Description": {"value": ""},
-    "Incident Number": {"value": ""}
-  },
-  "notes": "",
-  "documentationLink": "",
-  "insertedAt": "...",
-  "lockVersion": 3,
-  "updatedAt": "..."
-}
-```
-
-**Note:** Operation `outputs` is an **object** (keyed by output name), not an array. Each output has a `value` field for mapping expressions. The `config.path` supports `{{variable}}` Mustache template syntax for dynamic paths. The asterisk-suffixed form `{{Param*}}` is one authoring convention; plain `{{Param}}` is the more common form in observed operations (the asterisk variant is uncommon). Both substitute the same way — the asterisk is part of the parameter's literal key, not a Mustache flag. See the Mustache-syntax table further down.
+**Note:** Operation `outputs` is an **object** (keyed by output name), not an array. Each output has a `value` field for mapping expressions. The `config.path` supports `{{variable}}` Mustache template syntax for dynamic paths (see the Mustache-syntax table further down, and the `*`-suffix note for how literal asterisks in a parameter key behave).
 
 **Connection auth types (observed from live API):**
 
@@ -149,42 +84,11 @@ An **Operation** defines a specific action within a Connection:
 
 Operations are testable from the platform UI before being used in forms or workflows.
 
-**Creating operations via API** (Integrator API, requires OAuth):
-
-```
-POST /app/integrator/api/connections/{connectionId}/operations
-```
-
-**Operation schema:**
-
-```json
-{
-  "name": "Operation Name",
-  "config": {
-    "configType": "http",
-    "method": "GET|POST|PUT|PATCH|DELETE",
-    "path": "/your/endpoint/{{PathParam}}",
-    "params": {"queryParam": "{{Query Param}}"},
-    "body": {
-      "bodyType": "raw",
-      "raw": "Mustache template string for request body"
-    },
-    "headers": {"accept": "application/json", "content-type": "application/json"},
-    "includeEmptyParams": false,
-    "followRedirect": false,
-    "streamResponse": false
-  },
-  "outputs": {
-    "OutputName": {"value": "body.response.field"},
-    "_Error": {"value": "body.error"},
-    "_Status Code": {"value": "statusCode"}
-  }
-}
-```
+**Creating operations via API** (Integrator API, requires OAuth): `POST /app/integrator/api/connections/{connectionId}/operations` with a `{name, config, outputs}` body (omit server-managed `id`/`lockVersion`/timestamps). For HTTP operations `config` carries `method`, `path` (with `{{PathParam}}` placeholders), `params` (e.g. `{"queryParam": "{{Query Param}}"}`), `body` (`bodyType: "raw"` + `raw` Mustache string), `headers`, and the `includeEmptyParams`/`followRedirect`/`streamResponse` flags. See "Operation Schema" and "Operation Config by Type" under the detailed schema for the full field reference and per-type variants.
 
 **Mustache template syntax for path and body:**
 
-Standard Mustache only — no Kinetic-specific extensions. There is **no** `{{Name*}}` "required" suffix; an asterisk inside a tag is taken literally as part of the parameter name (your input would render as `Name*` in the operation's parameter list). Required-ness is derived from where the variable appears: path variables are always required; body and query variables are optional unless the operation logic enforces them.
+Standard Mustache only — no Kinetic-specific extensions. (An asterisk inside a tag like `{{Name*}}` is literal, not a "required" flag — see "The `*` suffix" note below for how that affects callers and how required-ness is actually derived.)
 
 | Syntax | Purpose | Example |
 |--------|---------|---------|
@@ -219,7 +123,7 @@ Standard Mustache only — no Kinetic-specific extensions. There is **no** `{{Na
 
 **`children` use plain string expressions, NOT object wrappers.** Top-level outputs are objects (`{"value": "expression"}`), but `children` entries are bare strings (`"Name": "current.name"`). A common mistake is mirroring the top-level shape inside `children` — `{"Name": {"value": "current.name"}}` does not work. Stick to the asymmetry: top-level = objects with `value` key; `children` = string-to-expression map.
 
-**The `*` suffix is part of the parameter's *key*, not a Mustache flag.** If an operation's path or body uses `{{Year*}}`, the parameter's literal key is `Year*` — every caller (workflow node parameters, form `inputMappings`, direct execute payloads) must use that exact key, asterisk included. Passing `Year` without the asterisk against a `{{Year*}}` placeholder causes a silent miss: the placeholder isn't substituted and the request goes out malformed. The reverse holds for plain placeholders — passing `Year*` against a `{{Year}}` placeholder also misses. Match whatever the operation defines. In observed operations the asterisk variant is uncommon; plain `{{Param}}` is the more frequently observed authoring choice. The asterisk convention is one way to surface required-ness in the placeholder text itself — not a platform-level requirement.
+**The `*` suffix is part of the parameter's *key*, not a Mustache flag.** Mustache here is standard with no Kinetic-specific extensions — there is **no** `{{Name*}}` "required" suffix. If an operation's path or body uses `{{Year*}}`, the parameter's literal key is `Year*` (it renders as `Year*` in the operation's parameter list) — every caller (workflow node parameters, form `inputMappings`, direct execute payloads) must use that exact key, asterisk included. Passing `Year` without the asterisk against a `{{Year*}}` placeholder causes a silent miss: the placeholder isn't substituted and the request goes out malformed. The reverse holds for plain placeholders — passing `Year*` against a `{{Year}}` placeholder also misses. Match whatever the operation defines. In observed operations the asterisk variant is uncommon; plain `{{Param}}` is the more frequently observed authoring choice. The asterisk convention is one way to surface required-ness in the placeholder text itself — not a platform-level requirement. Actual required-ness is derived from where the variable appears: path variables are always required; body and query variables are optional unless the operation logic enforces them.
 
 ### Integrator REST API — Detailed Schema
 
@@ -232,7 +136,7 @@ The Integrator API (v6.1.6) is available at `/app/integrator/api/`. Most endpoin
 | GET | `/connections` | List all connections |
 | POST | `/connections` | Create a connection |
 | GET | `/connections/{id}` | Get a connection |
-| PUT/PATCH | `/connections/{id}` | Update a connection |
+| PUT/PATCH | `/connections/{id}` | Update a connection (deep-merge credentials) |
 | DELETE | `/connections/{id}` | Delete a connection |
 | POST | `/connections/{id}/test` | Test connection (accepts optional config overrides) |
 | POST | `/connections/{id}/restart` | Restart a connection |
@@ -252,26 +156,34 @@ The Integrator API (v6.1.6) is available at `/app/integrator/api/`. Most endpoin
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | `/execute` | Execute an operation (optional `?debug` query param for raw response) |
+| POST | `/operations-search` | Search operations across connections |
 | POST | `/operations/inspect` | Detect input parameters in an operation config |
 | POST | `/transform/test` | Test output transformation expressions |
-| GET | `/healthz` | Health check (unprotected) |
+| GET | `/export` | Export all connections and operations |
+| POST | `/import` | Import connections and operations |
+| POST | `/import/validate` | Validate import payload |
+| GET | `/healthz` | Health check (unprotected; messaging + node process) |
 | GET | `/version` | Build version info (unprotected) |
 
 **Integrator API list endpoints return bare arrays.** Unlike Core API endpoints — which wrap collections in an envelope object (e.g., `{"connections": [...], "nextPageToken": "..."}`) — Integrator API list endpoints (`GET /connections`, `GET /connections/{id}/operations`, etc.) return the array directly at the top level: `[{"id": "...", "name": "..."}, ...]`. Code that assumes a wrapping object (`response.connections`) will fail; index into the response itself.
 
 #### Connection Schema
 
+Field definitions with a representative populated response. `insertedAt`/`updatedAt` are server-managed; `secrets` values always read back as `null` (see "Gotcha — secrets are always null" above).
+
 ```json
 {
-  "id": "uuid",
-  "type": "http" | "postgres" | "mssql",
-  "name": "string (required)",
+  "id": "uuid",                                  // e.g. "a2ffa6fa-..."
+  "type": "http" | "postgres" | "mssql",         // e.g. "http"
+  "name": "string (required)",                   // e.g. "ServiceNow Production"
   "description": "",
   "documentationLink": "",
-  "config": { "configType": "http|postgres|mssql", ... },
+  "config": { "configType": "http|postgres|mssql", "baseUrl": "https://instance.service-now.com", "auth": null, "caCert": null, "testPath": "" },
   "secrets": {},
-  "status": { "healthy": false },
-  "lockVersion": 0
+  "status": { "healthy": false, "events": [{"message": "Started", "timestamp": "...", "kind": "normal"}] },
+  "lockVersion": 0,
+  "insertedAt": "2024-12-19T17:44:32Z",
+  "updatedAt": "2024-12-19T17:44:32Z"
 }
 ```
 
@@ -300,15 +212,34 @@ The Integrator API (v6.1.6) is available at `/app/integrator/api/`. Most endpoin
 
 #### Operation Schema
 
+`outputs` is an **object keyed by output name** (not an array); each output has a `value` field holding a mapping expression. A populated `config`/`outputs` example is shown inline below.
+
 ```json
 {
-  "id": "uuid",
-  "name": "string (required)",
+  "id": "uuid",                                  // e.g. "f865d438-..."
+  "name": "string (required)",                   // e.g. "Fetch Incident"
   "connectionId": "uuid (required)",
-  "config": { "configType": "http|postgres|mssql", ... },
-  "outputs": {},
+  "config": {
+    "configType": "http|postgres|mssql",
+    "method": "GET",
+    "path": "/tables/{{table_name}}",
+    "params": {},
+    "headers": {},
+    "body": {"form": {}, "bodyType": "www_form_urlencoded"},
+    "includeEmptyParams": false,
+    "followRedirect": false,
+    "streamResponse": false
+  },
+  "outputs": {
+    "Assignee": {"value": ""},
+    "Description": {"value": ""},
+    "Incident Number": {"value": ""}
+  },
   "notes": null,
-  "documentationLink": ""
+  "documentationLink": "",
+  "lockVersion": 0,
+  "insertedAt": "...",
+  "updatedAt": "..."
 }
 ```
 

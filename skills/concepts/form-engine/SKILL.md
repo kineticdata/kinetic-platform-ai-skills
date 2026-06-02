@@ -255,7 +255,7 @@ Every field in a form API payload requires ALL properties for its type. Missing 
   "choices": [{"label": "Option A", "value": "Option A"}, {"label": "Option B", "value": "Option B"}]
 }
 ```
-Note: `dataType` is `"json"` (not `"string"`). Values are stored as JSON arrays.
+Note: `dataType` is `"json"` (not `"string"`). Values are stored as JSON arrays. Write/read is asymmetric: submit a JSON **string** (`"[\"A\",\"B\"]"`) and it reads back as a native **array** (`["A", "B"]`). Use `indexOf()`, not `===`, for membership checks.
 
 #### `date` / `datetime` / `time` — 18 properties each
 
@@ -338,7 +338,7 @@ Button `renderType` values:
 {"type": "section", "renderType": null, "name": "Section Name", "title": "Display Title", "visible": true, "omitWhenHidden": null, "renderAttributes": {}, "elements": [...]}
 ```
 
-**Section schema is strict.** All four of `renderType`, `omitWhenHidden`, `renderAttributes`, and `events` must be present at PUT (each may be `null` or empty), even when the section has no events and no special rendering. Omitting any of them returns HTTP 400. The `events: []` shape applies to sections that don't define any — include the empty array, don't drop the key.
+**Section schema is strict.** `renderType`, `omitWhenHidden`, `renderAttributes`, `events`, and `title` must all be present at PUT (each may be `null` or empty), even when the section has no events and no special rendering. Omitting any of them returns HTTP 400. `renderType: null` is valid, but the key must be there. The `events: []` shape applies to sections that don't define any — include the empty array, don't drop the key. `title` is required too — use the section `name` as the title if no separate display label is needed.
 
 #### Page Elements
 
@@ -394,6 +394,8 @@ The `pattern` property is an **object** (not a string) with `regex` and `message
 ```
 
 Set to `null` for no pattern validation. **Do NOT pass a plain string** — the API rejects strings with "Pre-defined patterns are not supported yet."
+
+**Pattern may not work via the REST API at all.** The same "Pre-defined patterns are not supported yet" rejection has also been observed even when sending the correct `{regex, message}` object — the `pattern` property may only take effect when set through the form builder UI. When building forms via API, the reliable approach is to set `pattern: null` and enforce format validation with `constraints` (see Field Constraints below) instead.
 
 ### Default Values from Integrations
 
@@ -462,21 +464,6 @@ Use `choicesRunIf` to make a dropdown dependent on another field, and `inputMapp
     "label": "${integration('County Name')}",
     "value": "${integration('County Name')}"
   }
-}
-```
-
-### Content Elements (Inline HTML)
-
-Non-field elements for instructions, labels, or custom HTML:
-
-```json
-{
-  "type": "content",
-  "renderType": "html",
-  "name": "Instructions",
-  "text": "<div class=\"form-group\"><label class=\"field-label\">Please provide details.</label></div>",
-  "visible": true,
-  "renderAttributes": {}
 }
 ```
 
@@ -550,69 +537,16 @@ Constraints are **JavaScript expressions** that validate field values at submiss
 }
 ```
 
-### Choices (Dropdown, Radio, Checkbox)
-
-**Static choices:**
-```json
-{
-  "choicesDataSource": "custom",
-  "choices": [
-    { "label": "Approved", "value": "Approved" },
-    { "label": "Denied", "value": "Denied" }
-  ]
-}
-```
-
-**Integration-driven choices:**
-```json
-{
-  "choicesDataSource": "integration",
-  "choicesResourceName": "Departments",
-  "choicesResourceProperty": "Teams",
-  "choices": {
-    "label": "${integration('Name').replace(\"Departments::\", \"\")}",
-    "value": "${integration('Slug')}"
-  }
-}
-```
-
-### Buttons
-
-```json
-{
-  "type": "button",
-  "renderType": "submit-page",
-  "name": "Submit Button",
-  "label": "Submit",
-  "visible": true,
-  "enabled": true
-}
-```
-
-### Content (HTML)
-
-```json
-{
-  "type": "content",
-  "renderType": "html",
-  "name": "Summary Review HTML",
-  "text": "",
-  "visible": true
-}
-```
+For choices (static and integration-driven), button, and content element shapes, see the per-field-type templates, the Button Elements / Content Elements subsections, and the Integration-Driven Choices / Cascading Choices sections above.
 
 ---
 
 ## Gotchas
 
-- **API requires ALL field properties in POST/PUT** — missing properties cause 400 "Invalid Form". When creating forms via API, provide every property for each field (even if `null`). Different field types have different required property sets (see Render Type Property Rules above).
-- **`events: []` is required** — even when empty, the events array must be present on forms, pages, and fields in API payloads.
-- **Section `renderType` must be present** — `null` is valid, but omitting it causes API errors.
-- **Section `title` is required** — sections need both `renderType: null` AND a `title` property; omitting `title` causes a 400. Use the section `name` as the title if no separate display label is needed.
-- **`rows` is required on `text` fields and forbidden on `date`/`datetime`/`time`/`dropdown`/`radio`/`checkbox`/`attachment` fields** — both directions cause 400 errors. Text fields without `rows` fail with "Invalid Form"; non-text fields with `rows` fail the same way. The "Type-Specific Property Summary" table above is authoritative; double-check before PUTting.
+- **API requires ALL field properties in POST/PUT, `events: []` included** — see the Complete Field Property Reference and per-type templates above; missing any property (including the empty `events` array on forms, pages, sections, and fields) causes 400 "Invalid Form."
+- **`rows` belongs only on `text` fields** — required there, forbidden on every other type; both directions 400. See the Type-Specific Property Summary table above (authoritative).
 - **Field names: only letters, numbers, hyphens, and spaces.** Other characters — slashes (`/`), underscores (`_`), dots (`.`), or punctuation — are rejected with 400 `Invalid Form. The "<name>" field is invalid: Name may only contain letters, numbers, hyphens, and spaces`. Hit on attempts like `Make/Model` or `Asset_Tag`. Choose names accordingly; if you need to convey a slash, use a space (`Make Model`) or hyphen.
 - **Page `type` is round-trip-asymmetric.** GET responses return page entries with `"type": "page"`. But PUTting a freshly-POSTed form skeleton with `"type": "page"` returns `"Type must be confirmation or submittable"` — and PUTting `"submittable"` works only on a fresh skeleton, not after edits. The reliable workaround: **fetch a working form's full page structure and use it as your PUT template, replacing only the `elements` array**. Don't construct page JSON from scratch.
-- **Checkbox values: write as JSON string, read as native array** — submitting `"[\"A\",\"B\"]"` (string) reads back as `["A", "B"]` (array). Use `indexOf()` not `===` for membership checks.
 - **`K('field[X]').value(newValue)` triggers Change events** — can create infinite loops if the Change event sets the same field. Guard with `runIf` conditions.
 - **`hide()`/`show()` can conflict with builder conditions** — the form engine self-corrects, overriding programmatic changes.
 - **`K('submission').value(fieldName)` is cross-page only** — returns values from previous pages, not the current page.
@@ -622,7 +556,6 @@ Constraints are **JavaScript expressions** that validate field values at submiss
 - **Integration expressions use `${...}` syntax** — different from condition expressions which are raw JavaScript.
 - **Draft coreState bypasses ALL validation on creation** — but Draft→Submitted transitions via `PUT` DO enforce required field validation (including attachment fields). To submit a Draft with required attachments, upload files first via `POST /submissions/{id}/files`, then transition.
 - **Event `action` is a string, not an object** — events use `"action": "Set Fields"` (string) with a separate `"mappings"` array, NOT `"action": {"type": "setFields", "fields": [...]}`. Using an object causes `java.util.LinkedHashMap cannot be cast to java.lang.String`.
-- **`pattern` property rejected via REST API** — even as object `{regex, message}` format, the API returns "Pre-defined patterns are not supported yet." The pattern property may only work when set via the form builder UI. Always set to `null` in API payloads and use constraints for validation instead.
 - **Bridged resources require `status: "Active"`** — the `bridgedResources` array entries must include `"status": "Active"` or `"Inactive"`. Omitting it returns `Status must be "Active" or "Inactive"`.
 - **Attachment upload is a 2-step process** — (1) `POST /submissions/{id}/files` with multipart form data (`-F "FieldName=@file"`), (2) PUT the returned metadata as JSON string values on the submission. Attachment values are stored as JSON arrays of `{contentType, link, name, size}` objects.
 - **All active workflows matching source/event fire** — not just form-specific ones. If a kapp-level workflow or a workflow from another source group matches the event, it fires too. Plan for unexpected workflow runs when testing.

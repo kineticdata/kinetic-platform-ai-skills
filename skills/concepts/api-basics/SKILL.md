@@ -497,15 +497,11 @@ When creating many submissions programmatically:
 - **Team slugs are auto-generated hashes** — the `slug` field you provide in team creation is IGNORED. The API generates its own hash slug. Always read the slug from the create response.
 - **Dropdown fields need `choicesRunIf: null` AND `choicesResourceName: null`** — and do NOT support the `rows` property. Each renderType has its own required property set.
 - **Button elements need `renderAttributes: {}`** — omitting this on submit buttons causes a 400 error
-- **New kapp has 0 indexes** — kapp-level indexes must be explicitly created. System indexes (closedBy, createdBy, etc.) only appear on forms.
-- **Kapp-level `values[FieldName]` indexes return "field was not found" via REST API PUT** — tested April 2026, confirmed limitation. Form-level `values[FieldName]` indexes work fine via REST API. Kapp-level ones only exist on kapps set up via template import/Ruby SDK. Use system field indexes (`coreState`, `submittedBy`, `type`) for cross-form search via REST API.
-- **Kapp `formTypes` must be registered for `type` KQL** — `PUT /kapps/{kapp}` with `{"formTypes": [{"name": "Service"}]}` before `type` indexes return results
+- **KQL / index gotchas** (kapp `values[Field]` indexes fail via REST API PUT, kapp `formTypes` must be registered before `type` KQL works, kapp indexes start as `"New"` and must be built) — see `concepts/kql-and-indexing`.
 - **PUT on submission doesn't return values** — add `?include=values` to the PUT URL to see updated values in the response
-- **Form type "Service" is a dependency placeholder** — if submission creation returns `"The 'Service' definition is a dependency placeholder"`, the form type definition is incomplete. Register formTypes on the kapp.
 - **Task API sources endpoint returns `sourceRoots`** — not `sources`. The response key is `sourceRoots`, not `sources`.
 - **WebAPI invocation URL differs from admin API** — invoke at `/app/kapps/{kapp}/webApis/{slug}`, NOT at `/app/api/v1/kapps/{kapp}/webApis/{slug}`. Pass `?timeout=N` for synchronous response.
 - **PUT on kapp merges across top-level properties** — sending `{"formTypes": [...]}` does NOT wipe out `indexDefinitions`, and vice versa. But within each property, the array is a full **replacement** (not a merge). Always include all existing items when updating an array property.
-- **Kapp-level indexes must be built explicitly** — they start as `"New"` and return 400 errors when queried. Use `POST /kapps/{kapp}/backgroundJobs` with `{"type": "Build Index", "content": {"indexes": ["coreState", ...]}}`.
 - **Draft→Submitted enforces required field validation** — including attachment fields. Draft bypasses validation on *creation*, but `PUT` to transition `coreState` enforces all required field checks. Upload attachments first, then transition.
 
 ## Finding Workflows for a Kapp/Form
