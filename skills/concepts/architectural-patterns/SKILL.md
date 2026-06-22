@@ -308,6 +308,51 @@ For ongoing status sync (not just one-time callback):
 
 ---
 
+## Kinetic-as-ITSM-Frontend Pattern
+
+Used when Kinetic is the request-intake and tracking layer in front of a system-of-record ticketing platform (BMC Remedy, ServiceNow, Jira Service Management, Cherwell). Customers picking this pattern aren't replacing the SoR — they're putting a friendlier portal in front of it and using Kinetic to handle the intake form library, approvals, and the work-item handoff. The SoR keeps the official ticket, work-log, SLA clock, and reporting.
+
+### Shape
+
+Kinetic owns: form catalog (hundreds of intake forms), approval routing, requester-facing tracking. The SoR owns: ticket lifecycle, agent work, work-log, SLA, reporting. A workflow on the Kinetic side creates the SoR ticket, stores the SoR's ticket ID back on the Kinetic submission, and from then on the two sides stay in loose sync via an outbound workflow + an inbound webhook.
+
+### The four moving pieces
+
+1. **Fulfillment Case Type form attribute.** Each request form carries an attribute (often `Case Type`, `Ticket Type`, or `Fulfillment Type`) whose value drives which SoR ticket type, queue, or template gets created. The workflow reads `@form['attributes']['Case Type']` (or similar) to decide what to call into the SoR. This attribute is set at the form-definition level, not at submission time — it's part of the form's metadata, like the form's display name.
+
+2. **Assignment-group bridge.** A bridge model that resolves "what SoR queue / assignment group handles this case type" from a lookup table. The lookup typically lives in a Kinetic datastore form (one row per case type → assignment group → SLA tier), and the bridge is queried at submit time so the workflow knows where to send the ticket on the SoR side. This is the integration point where Kinetic's form catalog meets the SoR's operational topology.
+
+3. **Person/identity bridge.** A bridge model that resolves the requester's identity from LDAP/AD/HR — typically returning 10–20 denormalized fields (department, location, manager, cost center, employee ID, phone). The bridge is invoked from a Change event on the Requester field; the resulting fields land in a hidden section on the submission. See the identity-denormalization note in `recipes/create-submission-form` for the form-side mechanics.
+
+4. **Work-log denormalization datastore.** A Kinetic datastore form that mirrors the SoR's work-log entries for read-only display on the requester-facing tracking page. The SoR writes via webhook (one row per status change or agent update); the Kinetic tracking page reads via bridge. This exists so the requester can see "Assigned to Network Team — 6/12" without Kinetic needing live read access to the SoR.
+
+### Workflow shape
+
+The submit-side workflow (Kinetic → SoR) is:
+
+1. Read the form's `Case Type` attribute.
+2. Query the assignment-group bridge → get queue/group/SLA tier.
+3. Build the SoR create-ticket payload from the submission's values + the bridge result + the identity fields.
+4. Call the SoR's create-ticket endpoint via a Connection/Operation (`system_integration_v1`).
+5. Store the returned SoR ticket ID on the Kinetic submission (`Ticket ID` field).
+6. Optionally: write an initial row to the work-log datastore so the tracking page shows "Submitted" immediately.
+
+The receive-side flow (SoR → Kinetic) is a webhook or scheduled poll that updates the Kinetic submission's status and appends to the work-log datastore as the SoR ticket progresses.
+
+### What it looks like in real customer exports
+
+Customers running this pattern tend to have: a `Case Type` (or equivalent) form attribute on every intake form; a bridge model pointing at an assignment-group lookup; an Operation per SoR ticket type (create-incident, create-change, create-service-request); a `work-log` or `ticket-history` datastore form; and a webhook receiver under `webApis/` that handles inbound SoR updates. If you see all five of those shapes together, you're looking at this pattern.
+
+### When NOT to use this pattern
+
+Don't reach for this if Kinetic owns the fulfillment work — i.e., agents do their work inside Kinetic, in a `queue` kapp, against Kinetic-native work-item forms. In that case there's no SoR to sync with; use the standard fulfillment queue pattern instead. The ITSM-frontend pattern is specifically for "Kinetic is the portal, $other_system is the ticketing platform."
+
+### Common pitfall
+
+Don't try to keep the two sides in tight real-time sync. The webhook from the SoR will lag, will occasionally drop, and will sometimes deliver out of order. Build the Kinetic side to tolerate stale status (show "Last updated 6/12 14:32" on the tracking page) rather than depending on the work-log being current to the second. The work-log datastore is a cache, not a source of truth.
+
+---
+
 ## Bulk Operations
 
 ### Mass Submit (Validated, Triggers Workflows)
