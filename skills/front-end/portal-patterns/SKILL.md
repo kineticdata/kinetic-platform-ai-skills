@@ -98,26 +98,32 @@ navigate('/requests', { state: { persistToasts: true } });
 
 ## Routing Structure
 
-```
-PrivateRoutes
-├── /theme                    (spaceAdmin only)                 -> Theme
-├── /kapps/:kappSlug/forms/:formSlug/submissions/:submissionId  -> redirect
-├── /kapps/:kappSlug/forms/:formSlug/:submissionId?             -> Form
-├── /kapps/:kappSlug                                            -> redirect to /
-├── /actions/*                                                  -> Actions
-├── /requests/*                                                 -> Requests
-├── /forms/:formSlug/:submissionId?                             -> Form
-├── /profile                                                    -> Profile
-├── /settings/*                                                 -> SettingsRouting
-├── /login             -> redirect to /
-└── /*                 -> Home
+The pattern, not the specific routes: split into **PublicRoutes** (anonymous / login / password reset) and **PrivateRoutes** (everything that needs `loggedIn`). The auth state machine in `App.jsx` (see Bootstrap skill) renders one or the other.
 
-PublicRoutes
-├── /public/*          -> Placeholder (for public-facing content)
-├── /reset-password/:token?  -> ResetPassword
-├── /login             -> Login
-└── /*                 -> Login (catch-all)
+**Pattern skeleton — generic:**
+
 ```
+PublicRoutes
+├── /login                              -> Login component
+├── /reset-password/:token?             -> Password reset
+├── /public/*                           -> Anonymous content (optional)
+└── /*                                  -> Login (catch-all)
+
+PrivateRoutes
+├── /                                   -> Home / landing
+├── /forms/:formSlug/:submissionId?     -> CoreForm renderer
+├── /requests/*                         -> Request list/detail (your portal-specific)
+├── /actions/*                          -> Action queue (your portal-specific)
+├── /profile                            -> User profile
+├── /settings/*                         -> Settings (admin-only routes gated inside)
+└── /*                                  -> 404 / Home
+```
+
+**Routes you almost always need:** `/login`, `/forms/:formSlug/:submissionId?`, `/profile`, and a default `/`.
+
+**Routes that are portal-specific:** how you organize lists (`/requests/*` vs `/tickets` vs `/cases`), admin pages, theme editors, settings — these depend entirely on what your portal does. Don't copy a specific portal's URL table verbatim; design routes to match your information architecture.
+
+**Concrete reference implementation:** see the Reference Implementation Appendix at the bottom of this file for momentum-portal's exact route table — useful as a worked example but not a template to copy.
 
 ---
 
@@ -315,16 +321,43 @@ appActions.setSpace(data); // dispatches automatically
 
 **Theme system:** Theme config stored as JSON in a kapp attribute `"Theme"`, parsed at runtime, converted to CSS variables, and applied via `document.adoptedStyleSheets`.
 
-**Widget system:** Standalone React mini-apps rendered inside CoreForm fields via `bundle.widgets.Search(...)`. Widgets: Markdown, Search, Signature, Subform, Table.
+**Widget system:** Standalone React mini-apps rendered inside CoreForm fields via `bundle.widgets.Search(...)`. Widgets: 
+---
 
-**Form lifecycle callbacks:**
-- `created` -> navigate to submission route + toast
-- `updated` -> toast "save successful"
-- `completed` -> navigate away
-- `loaded` -> capture form reference
+## Reference Implementation Appendix — `momentum-portal`
 
-**URL -> field values:** `valuesFromQueryParams(searchParams)` parses `?values[Field Name]=value` from URL into `{ "Field Name": "value" }` for pre-filling forms.
+This appendix documents the routing, tech stack, and conventions of one specific reference portal (`github.com/kineticdata/momentum-portal`). It is **NOT a template** — copying these routes into a new portal is rarely the right move; design your own information architecture. But seeing one concrete worked example often helps when the pattern-level guidance above feels too abstract.
 
-**Confirmation modal:** Global `ConfirmationModal` at root, triggered via `openConfirm({ title, description, accept, cancel })` from anywhere.
+### Momentum's exact route table
 
-**Toast system:** Ark UI `createToaster` wrapper with `toastSuccess({ title })` / `toastError({...})` helpers.
+```
+PrivateRoutes (momentum-portal specific)
+├── /theme                    (spaceAdmin only)                 -> Theme editor
+├── /kapps/:kappSlug/forms/:formSlug/submissions/:submissionId  -> redirect to canonical
+├── /kapps/:kappSlug/forms/:formSlug/:submissionId?             -> Form
+├── /kapps/:kappSlug                                            -> redirect to /
+├── /actions/*                                                  -> Actions queue (approvals + assignments)
+├── /requests/*                                                 -> Submitter-side request history
+├── /forms/:formSlug/:submissionId?                             -> Form (kapp inferred from kappSlug attribute)
+├── /profile                                                    -> User profile + preferences
+├── /settings/*                                                 -> Admin settings (theme, kapps, forms)
+├── /login                                                      -> redirect (logged in users)
+└── /*                                                          -> Home dashboard
+
+PublicRoutes (momentum-portal specific)
+├── /public/*                  -> Placeholder for anonymous content
+├── /reset-password/:token?    -> ResetPassword
+├── /login                     -> Login
+└── /*                         -> Login (catch-all)
+```
+
+### Stack momentum uses
+
+- `@kineticdata/react ^6.1.1`
+- React 18, React Router v6
+- Redux Toolkit ≥ 2.0 (for `combineSlices().inject`)
+- Vite ≥ 5, `@vitejs/plugin-react`, `vite-plugin-svgr`
+- `@tailwindcss/vite` (Tailwind v4)
+- `@ark-ui/react` for primitives, DaisyUI for component classes
+
+If you're not building a clone of momentum, you don't need all of these — substitute whatever component primitives and CSS framework fit your project. The skills library was originally built against momentum, so examples in the skills sometimes lean on these tools; the platform behaviors they document are independent of any particular UI stack.

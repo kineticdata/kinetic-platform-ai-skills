@@ -7,6 +7,15 @@ user-invocable: true
 
 # Generate a Kinetic PDF Report
 
+> **⚠ Project-local dependency.** This command depends on a project-local module at `reports/report-style.mjs` and a reference doc at `docs/report-branding.md`. Neither ships with the skills library — they must exist in the project where this command is run. Required dependencies: `pdfkit`, Node ≥ 18.
+>
+> **If `reports/report-style.mjs` does not exist in the project, STOP.** Do not invent a substitute style module — the entire point of this command is to produce output consistent with the project's report-style API documented below. Tell the user the module is missing and offer one of:
+> 1. Copy `reports/report-style.mjs` from another project that has it.
+> 2. Skip the branded PDF and produce a plain Markdown report instead.
+> 3. Have the user provide the style module before re-running.
+>
+> The Style API table below assumes the canonical module shape. If the local module's API drifts from this table, prefer the local module — call it from a generator script written against the actual `report-style.mjs` exports rather than these documented ones.
+
 The user wants to generate a professional PDF report. All reports MUST use the shared style module for consistent branding.
 
 ## Step 1: Read Branding References

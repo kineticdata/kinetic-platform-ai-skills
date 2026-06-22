@@ -36,60 +36,28 @@ This recipe documents only the **portal-specific** layers (1, 3, 4, 5, 6). The s
 
 ## Part 1 — Platform Setup
 
-### 1.1 Create the Kapp
+The platform side is covered by other skills — this section is a checklist with pointers, not a duplicate walkthrough.
 
-Create a kapp to hold service request forms. See `skills/concepts/api-basics/SKILL.md` for endpoint details.
+| Step | What you're doing | Read |
+|---|---|---|
+| 1.1 | Create the kapp shell with formTypes, kapp-level indexes, categories, attributes, and security policies | `concepts/kapp-lifecycle` (end-to-end worked example) — or run `/kinetic-new-app` |
+| 1.2 | Create one form per service in the catalog | `recipes/create-submission-form` — the complete valid PUT body is in there |
+| 1.3 | Set a space attribute pointing the portal at the kapp | `PUT /app/api/v1/space` with `attributesMap: { "Service Portal Kapp Slug": ["service-portal"] }`. The portal's `appActions.setSpace` reads this to resolve `kappSlug`. |
+| 1.4 | Attach approval / fulfillment workflows | `recipes/add-approval-workflow` (deferral pattern) and `concepts/architectural-patterns` (fulfillment, SLA tracking) |
 
-```
-POST /app/api/v1/kapps
-Content-Type: application/json
-Authorization: Basic <base64(username:password)>
-
-{
-  "name": "Service Portal",
-  "slug": "service-portal",
-  "displayType": "Display Page",
-  "displayValue": "/"
-}
-```
-
-Set a space attribute so the portal can resolve the kapp slug at runtime:
-
-```
-PUT /app/api/v1/space
-{
-  "attributesMap": {
-    "Service Portal Kapp Slug": ["service-portal"]
-  }
-}
-```
-
-### 1.2 Create Service Forms
-
-Each service in the catalog is a form in the kapp. See `skills/recipes/create-submission-form/SKILL.md` for the full form-creation recipe.
-
-Best-practice form setup for a service catalog:
+**Service-portal-specific form conventions:**
 
 | Property | Value |
-|----------|-------|
-| `type` | `"Service"` — used to filter catalog listing |
+|---|---|
+| `type` | `"Service"` (must be registered in the kapp's `formTypes` — see `concepts/kapp-lifecycle`) |
 | `status` | `"Active"` |
-| `anonymous` | `false` (authenticated submissions) |
-| Form attribute `Icon` | icon name string (e.g. `"laptop"`) — displayed in the catalog |
+| `anonymous` | `false` |
+| Form attribute `Icon` | Icon name string (e.g. `"laptop"`) — displayed in the catalog tile |
 | Form attribute `Description` | Short description shown in the catalog tile |
-| Form attribute `Category` | Category name for grouping (alternative to kapp categories) |
+| Form attribute `Category` | Category name for grouping (optional alternative to kapp categories) |
+| Index: `values[Status]` | Required for KQL queries on the request list and request detail pages |
 
-Define indexes for any field used in KQL filters — at minimum `values[Status]`. See `skills/concepts/kql-and-indexing/SKILL.md`.
-
-### 1.3 Assign Forms to Categories
-
-Use the Kinetic Console to create kapp categories and assign forms. When fetching the kapp with `include=categories,categories.attributesMap`, each form carries a `categories` array.
-
-Alternatively, store a `Category` attribute on each form and group client-side — simpler to manage but requires fetching all forms at once.
-
-### 1.4 Workflow
-
-Attach a workflow tree to each service form to handle submission processing, approvals, and notifications. See `skills/concepts/workflow-engine/SKILL.md` and `skills/concepts/architectural-patterns/SKILL.md` for approval and fulfillment patterns.
+For everything in Part 1 other than the "kapp slug space attribute" pointer, the linked skills are authoritative — this recipe doesn't re-derive them.
 
 ---
 

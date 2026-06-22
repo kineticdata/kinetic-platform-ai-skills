@@ -419,3 +419,154 @@ bundle.widgets.Search.render({ container, field, kappSlug, formSlug });
 const instance = bundle.widgets.Search.get(widgetId);
 instance.destroy();
 ```
+
+### Worked Example — Build a Star-Rating Widget From Scratch
+
+The bullet list above describes the moving parts; this section is one complete widget, end-to-end, so the lifecycle is concrete.
+
+**Goal:** a star-rating widget that attaches to a text/integer form field, renders 5 clickable stars, and writes the chosen value back to the field.
+
+#### 1. Widget React component (`portal/src/components/kinetic-form/widgets/StarRating.jsx`)
+
+```jsx
+import { forwardRef, useEffect, useState, useImperativeHandle } from 'react';
+import { WidgetAPI } from './index';
+
+export const StarRating = forwardRef(function StarRating(
+  { field, max = 5, destroy },
+  ref,
+) {
+  const [value, setValue] = useState(() => Number(field?.value()) || 0);
+  const [hovered, setHovered] = useState(null);
+
+  // Public API exposed to the registrar via WidgetAPI.api
+  const api = useImperativeHandle(ref, () => ({
+    // Required: cleanup hook called by the MutationObserver when the container is removed
+    destroy() {
+      // No timers / listeners to release in this widget — included for the contract
+    },
+    // Optional: imperative setters that form JS can call
+    setValue(v) {
+      const n = Math.max(0, Math.min(max, Number(v) || 0));
+      setValue(n);
+      field?.value(String(n));
+    },
+    getValue() {
+      return value;
+    },
+    enable() {
+      field?.enable?.();
+    },
+    disable() {
+      field?.disable?.();
+    },
+  }), [value, max, field]);
+
+  // Sync the field if the widget mounts with a pre-existing value (draft resume)
+  useEffect(() => {
+    const initial = Number(field?.value()) || 0;
+    if (initial !== value) setValue(initial);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleSelect = (n) => {
+    setValue(n);
+    field?.value(String(n));
+    // Tell the form engine the field changed (triggers form-level change events)
+    field?.trigger?.('change');
+  };
+
+  return (
+    <WidgetAPI api={api}>
+      <div role="radiogroup" aria-label={field?.label() ?? 'Rating'}>
+        {Array.from({ length: max }, (_, i) => {
+          const n = i + 1;
+          const filled = (hovered ?? value) >= n;
+          return (
+            <button
+              key={n}
+              type="button"
+              role="radio"
+              aria-checked={value === n}
+              aria-label={`${n} star${n > 1 ? 's' : ''}`}
+              onClick={() => handleSelect(n)}
+              onMouseEnter={() => setHovered(n)}
+              onMouseLeave={() => setHovered(null)}
+              style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
+            >
+              <span aria-hidden="true">{filled ? '★' : '☆'}</span>
+            </button>
+          );
+        })}
+      </div>
+    </WidgetAPI>
+  );
+});
+```
+
+#### 2. Wire it into `bundle.widgets` (`portal/src/components/kinetic-form/widgets/widgets.js`)
+
+```js
+import { registerWidget } from './index';
+import { StarRating } from './StarRating';
+
+// Each widget gets an `instances` map + `get()` accessor + `render()` factory
+const StarRatingRegistry = {
+  instances: {},
+  get(id) { return this.instances[id]; },
+  render({ container, field, max, id }) {
+    return registerWidget(StarRatingRegistry, {
+      container,
+      Component: StarRating,
+      props: { field, max },
+      id,
+    });
+  },
+};
+
+// Attach to bundle.widgets so form-level JS can invoke it
+window.bundle = window.bundle || {};
+window.bundle.widgets = window.bundle.widgets || {};
+window.bundle.widgets.StarRating = StarRatingRegistry;
+```
+
+Import `widgets.js` somewhere that runs at startup (e.g. `main.jsx`) so the registration happens before any form renders.
+
+#### 3. Invoke from a form's Render event
+
+In the form-builder, set a custom Render event on the field (or page-load event) that mounts the widget into the field's container:
+
+```js
+// Form-engine context: K() and field bindings are available
+K.on('load', () => {
+  const field = K('field[Satisfaction]');
+  if (!field) return;
+  const container = field.element();             // the DOM node where the input lives
+  bundle.widgets.StarRating.render({
+    container,
+    field,
+    max: 5,
+    id: 'satisfaction-rating',                   // pick a stable id so re-renders find the same instance
+  });
+});
+```
+
+The widget mounts inline, replaces the default input, and writes back to `field.value()` on selection. The MutationObserver in `registerWidget` handles cleanup when the form unmounts.
+
+#### 4. What to verify
+
+- **First load.** Form renders, the field's default value (if any) shows as a filled-stars state.
+- **Click a star.** `field.value()` updates immediately; form-engine change events fire.
+- **Draft save and resume.** Reopen the submission — the widget reads the saved value and renders the correct filled state.
+- **Form unmount.** Navigate away. The MutationObserver detects the container removal and calls `api.destroy()` (verify by adding a `console.log` in `destroy()`).
+- **Re-mount with same id.** `registerWidget` returns the existing instance from `StarRatingRegistry.instances`, so calling `render(...)` on the same container twice doesn't create a duplicate React root.
+- **Accessibility.** Tab into the widget, arrow keys / click to select. Screen-reader announces "1 star, radio, not checked" etc. (the `aria-label`s on the buttons drive this).
+
+#### Key lifecycle takeaways
+
+- **`forwardRef` + `WidgetAPI`** are how the widget exposes an imperative API to non-React form JS. The form-engine doesn't speak React props; it speaks `instance.setValue(...)` / `.destroy()`.
+- **`field.value()` is the source of truth.** The widget keeps a local React state for rendering but writes back to the form field on every change. If you ever diverge them, the form-engine submission won't carry your widget's value.
+- **`destroy()` is the contract.** Even if your widget has nothing to clean up, define it — `registerWidget`'s MutationObserver assumes it can call it.
+- **One container = one widget.** The `data-widget-key` attribute on the container prevents double-mounts; respect it by always using a stable `id`.
+
+Widgets that need network calls (Search, Subform) follow the same pattern but add `useData` or `useEffect`+`fetch` inside the component body. Widgets that need to outlive form unmount (a global "Markdown" editor for example) skip the MutationObserver cleanup by not registering through `registerWidget` — but that's rare.

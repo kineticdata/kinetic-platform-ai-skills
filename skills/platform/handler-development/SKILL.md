@@ -196,6 +196,7 @@ headers = { "Authorization" => "Basic #{credentials}" }
 ### JWT (HMAC-SHA256)
 
 ```ruby
+java_import java.util.Base64
 java_import javax.crypto.Mac
 java_import javax.crypto.spec.SecretKeySpec
 

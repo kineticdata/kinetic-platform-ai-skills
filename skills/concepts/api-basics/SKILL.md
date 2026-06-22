@@ -450,13 +450,11 @@ Once Submitted, a submission can never return to Draft (only a space admin can d
 
 A space admin can use `PATCH /submissions/{id}` to force any state transition (including backwards), bypassing all validation and state rules. PATCH is the escape hatch for data corrections.
 
-### Closed Submissions Are Mutable
+### Closed Submissions Are Mutable (Brief)
 
-The state machine above governs `coreState` transitions only — it does NOT govern value mutations. Closed submissions are fully writable via every documented API path: `PUT /submissions/{id}` with a `values` body, `PATCH /submissions/{id}`, and from workflows via `routine_kinetic_submission_update_v1` (which is a PUT wrapper) and `kinetic_core_api_v1` (any method). All four paths return HTTP 200 with no error, no validation message, and no `coreState` side-effect when mutating values on a Closed submission. Verified May 2026 across a 12-cell test matrix (4 paths × 3 states); every cell mutated `values` successfully and left `coreState` unchanged.
+**Closed is a lifecycle marker, not a write lock.** `PUT /submissions/{id}`, `PATCH /submissions/{id}`, and workflow handlers (`routine_kinetic_submission_update_v1`, `kinetic_core_api_v1`) all successfully mutate `values` on Closed submissions with HTTP 200 and no side-effect on `coreState`. The `coreState` state machine governs state transitions only; it does not protect values.
 
-The platform treats `coreState` as a workflow / lifecycle indicator, not as a write-protection state. If your application needs "Closed = immutable" semantics, you must enforce it yourself — via security policies, workflow filters, or a separate audit-trail kapp. The API will not block post-closure mutations. See `architectural-patterns/SKILL.md` "Closure Is Not a Write Lock" for the design options.
-
-Note that this is about value writes, not state transitions. The transitions in the table above (`Closed → Submitted` returning "Unable to put a closed submission in the 'Submitted' core state", etc.) are still enforced on PUT — you cannot move a Closed submission backwards via the regular update endpoint. Only `values` are unguarded; `coreState` itself is still gated by the one-way state machine on PUT, with PATCH as the documented escape hatch.
+If your application needs "Closed = immutable" semantics, you enforce it yourself. See **`concepts/architectural-patterns` → "Closure Is Not a Write Lock"** for the canonical write-up of the design options (security policies, workflow filters, audit-trail kapps).
 
 ## Form and Submission Gotchas
 
@@ -506,47 +504,5 @@ When creating many submissions programmatically:
 
 ## Finding Workflows for a Kapp/Form
 
-The Task API `/trees` endpoint's `source` parameter filters by `sourceName`, NOT by kapp slug. All kapp/form/space-bound trees have `sourceName: "Kinetic Request CE"`. **Do NOT use `source={kappSlug}`** — it will return zero results.
-
-### Tree binding model
-
-| `platformItemType` | Scope | `sourceGroup` format | How to identify |
-|---------------------|-------|----------------------|-----------------|
-| `Space` | All kapps | Random UUID v4 | `platformItemId` = space UUID |
-| `Kapp` | All forms in a kapp | Random UUID v4 | `platformItemId` = kapp UUID |
-| `Form` | Single form | Random UUID v4 | `platformItemId` = form UUID |
-| `null` | WebAPI | `"WebApis > {kapp-slug}"` | Match kapp slug in `sourceGroup` |
-
-### The UUID mapping problem
-
-The Core REST API v1 does **not** expose internal UUIDs for kapps or forms. The `platformItemId` on trees is a UUID v1 (time-based) that encodes the entity's creation timestamp.
-
-**Solution: match by timestamp.**
-
-```javascript
-function uuidV1ToMs(uuid) {
-  const p = uuid.split('-');
-  if (p[2]?.[0] !== '1') return 0; // not UUID v1
-  const timeHex = p[2].slice(1) + p[1] + p[0];
-  const ts = BigInt('0x' + timeHex);
-  return Number((ts - 122192928000000000n) / 10000n);
-}
-
-function matchEntityByUUID(platformItemId, entities) {
-  const targetMs = uuidV1ToMs(platformItemId);
-  if (!targetMs) return null;
-  for (const e of entities)
-    if (Math.abs(targetMs - new Date(e.createdAt).getTime()) < 1000) return e;
-  return null;
-}
-```
-
-### Algorithm to find trees for a kapp
-
-1. Fetch all trees: `GET /trees?source=Kinetic+Request+CE&include=details&limit=500`
-2. Fetch all kapps with `include=details` (for `createdAt`)
-3. Fetch forms for the target kapp with `include=details`
-4. For each tree:
-   - **WebAPI:** `sourceGroup` starts with `"WebApis > {kappSlug}"`
-   - **Kapp-level:** `platformItemType === "Kapp"` and `matchEntityByUUID(platformItemId, kapps).slug === targetKapp`
-   - **Form-level:** `platformItemType === "Form"` and `matchEntityByUUID(platformItemId, forms)` returns a match
+Moved to **`concepts/workflow-creation` → "Finding Trees for a Kapp/Form (Discovery)"**. The tree-binding model, the UUID-v1 timestamp matching algorithm, and the end-to-end lookup algorithm all live there now since they're workflow-discovery concerns, not general API conventions.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           

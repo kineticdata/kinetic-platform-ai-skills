@@ -550,9 +550,13 @@ The connections, operations, and their UUIDs are implementation-specific — you
 
 See the Integrations concept skill (`concepts/integrations`) for Connection/Operation setup.
 
-### API Handler — `kinetic_core_api_v1` (Legacy — Avoid)
+### API Handler — `kinetic_core_api_v1` (Still Widely Used; Prefer `system_integration_v1` Where Practical)
 
-Makes REST API calls to Kinetic Core. **Do NOT use for new workflows.** Use `system_integration_v1` with Connections/Operations instead. This handler is being retired.
+Makes REST API calls to Kinetic Core. This handler predates the Integrator and is **not deprecated** — it remains in heavy active use across customer spaces (observed at roughly 2× the rate of `system_integration_v1`) and is a sensible choice when the target endpoint sits on the same Core API the handler is preconfigured against, or when the Integrator does not yet cover an authentication pattern (AWS request signing is one known case).
+
+For **new** workflows talking to external (non-Core) systems with Integrator-supported auth, prefer `system_integration_v1` + Connections/Operations: operations are reusable, dynamic inputs are named/typed, auth is centrally managed, and changing an endpoint updates every workflow using that operation. See the policy stance in the top-level `CLAUDE.md` Mandatory Rules.
+
+Choose based on what the integration needs, not on a blanket modern-vs-legacy preference.
 
 Configured with `api_username`, `api_password`, `api_location` properties.
 

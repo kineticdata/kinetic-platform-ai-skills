@@ -1,0 +1,123 @@
+# Kinetic Platform Skills — Source of Truth
+#
+# This file is the canonical manifest of every skill in the library.
+# CLAUDE.md, AGENTS.md, GEMINI.md, README.md, .cursor/rules/*.mdc, and
+# .github/copilot-instructions.md are GENERATED from this file via
+# `node scripts/build-indexes.mjs`. Do not edit those files directly.
+#
+# Schema:
+#   sections: ordered list of section blocks
+#     id: stable identifier
+#     title: human-readable section heading
+#     directory: where the skills in this section live
+#     description: one-line section blurb (shown above the table in README)
+#     skills: ordered list of skill entries
+#       name: skill folder name (must match the SKILL.md frontmatter `name:`)
+#       path: relative path from repo root to the SKILL.md
+#       title: display name in tables
+#       description: "Read when…" trigger text shown in the index tables
+#       tags: optional list of tags for filtering (cursor rules, plugin selectors, etc.)
+#         - "platform"     → included in .cursor/rules/kinetic-platform.mdc
+#         - "front-end"    → included in .cursor/rules/kinetic-front-end.mdc
+#         - "api"          → API reference skills
+#         - "command"      → user-invocable slash commands
+
+sections:
+  - id: recipes
+    title: "Recipes — Step-by-Step Guides"
+    directory: skills/recipes
+    description: "End-to-end guides for specific workflows or features"
+    skills:
+      - { name: create-submission-form, path: skills/recipes/create-submission-form/SKILL.md, title: "Create Submission Form",   description: "Create a form via API with fields, indexes, events, and handle submissions",                         tags: [platform] }
+      - { name: add-approval-workflow,  path: skills/recipes/add-approval-workflow/SKILL.md,  title: "Add Approval Workflow",     description: "Build an approval/deferral workflow where a submission waits for someone's decision",              tags: [platform] }
+      - { name: connect-external-system,path: skills/recipes/connect-external-system/SKILL.md,title: "Connect External System",   description: "Wire up a Connection/Operation to call an external REST API from workflows or forms",             tags: [platform] }
+      - { name: build-paginated-list,   path: skills/recipes/build-paginated-list/SKILL.md,   title: "Build Paginated List",      description: "Show a filterable, paginated list of submissions in a React portal",                              tags: [front-end] }
+      - { name: build-service-portal,   path: skills/recipes/build-service-portal/SKILL.md,   title: "Build Service Portal",      description: "Build a complete self-service portal (catalog, forms, request tracking, approvals)",              tags: [front-end] }
+
+  - id: concepts
+    title: "Concepts — Platform Fundamentals"
+    directory: skills/concepts
+    description: "Core platform concepts, APIs, and architecture topics"
+    skills:
+      - { name: api-basics,              path: skills/concepts/api-basics/SKILL.md,              title: "API Basics",              description: "Make any REST API call — endpoints, auth, query params, response shapes, submission CRUD. **Start here for API work.**",                                                                       tags: [platform] }
+      - { name: form-engine,             path: skills/concepts/form-engine/SKILL.md,             title: "Form Engine",             description: "Understand form JSON schema, field types and their required properties, choices, content, buttons. **Start here for form structure.**",                                                       tags: [platform] }
+      - { name: kapp-lifecycle,          path: skills/concepts/kapp-lifecycle/SKILL.md,          title: "Kapp Lifecycle",          description: "Kapp create/update/delete, formTypes registration, kapp indexes vs form indexes, categories, attributes, security assignment, PUT merge behavior",                                            tags: [platform] }
+      - { name: form-events-expressions, path: skills/concepts/form-events-expressions/SKILL.md, title: "Form Events & Expressions",description: "Form events (load/submit/change/click), K() JavaScript API, expression syntax, bundle.config overrides, form-level integrations",                                                          tags: [platform] }
+      - { name: kql-and-indexing,        path: skills/concepts/kql-and-indexing/SKILL.md,        title: "KQL & Indexing",          description: "Write search queries, create indexes, filter submissions. Read when you get KQL errors or need to search.",                                                                                    tags: [platform] }
+      - { name: pagination,              path: skills/concepts/pagination/SKILL.md,              title: "Pagination",              description: "Page through results — pageToken, 1000-record cap workarounds, keyset pagination",                                                                                                            tags: [platform] }
+      - { name: workflow-engine,         path: skills/concepts/workflow-engine/SKILL.md,         title: "Workflow Engine",         description: "Understand the execution model (trees, nodes, connectors, events, runs), deferrals/Queue Task pattern, run-status derivation, stuck-run repair",                                              tags: [platform] }
+      - { name: workflow-xml,            path: skills/concepts/workflow-xml/SKILL.md,            title: "Workflow XML",            description: "Handler reference — handler definition IDs, parameters, loops, deferrals, `system_integration_v1` pattern, ERB context table, connectors, gotchas",                                            tags: [platform] }
+      - { name: workflow-creation,       path: skills/concepts/workflow-creation/SKILL.md,       title: "Workflow Creation",       description: "Create/manage workflows — Core API two-step creation, kapp vs form, filters, supported events, tree title format, treeJson upload, sources",                                                  tags: [platform] }
+      - { name: task-api-reference,      path: skills/concepts/task-api-reference/SKILL.md,      title: "Task API Reference",      description: "Call the Task API v2 directly — trees/runs/handlers/sources endpoints, triggers & errors APIs, run/tree/task response shapes, meta resources",                                              tags: [platform] }
+      - { name: integrations,            path: skills/concepts/integrations/SKILL.md,            title: "Integrations",            description: "Set up Connections/Operations (preferred), choose between integration mechanisms (Connections vs Bridges vs Handlers vs File Resources), and learn the Integrator REST schema, import/management gotchas, and SMTP/handler-property quirks", tags: [platform] }
+      - { name: file-resources,          path: skills/concepts/file-resources/SKILL.md,          title: "File Resources",          description: "Stream files from external systems (S3, SharePoint, CMS, legacy DMS) into the Kinetic UI — distinct from the built-in attachment form-field type",                                            tags: [platform] }
+      - { name: loghub-api,              path: skills/concepts/loghub-api/SKILL.md,              title: "LogHub API",              description: "Read real-time platform logs — endpoint, Bearer-JWT auth signed with oauthSigningKey, NDJSON shape, correlationId joining",                                                                  tags: [platform] }
+      - { name: decision-frameworks,     path: skills/concepts/decision-frameworks/SKILL.md,     title: "Decision Frameworks",     description: "Choose between approaches — which integration type, where to store data, workflow vs real-time",                                                                                              tags: [platform] }
+      - { name: architectural-patterns,  path: skills/concepts/architectural-patterns/SKILL.md,  title: "Architectural Patterns",  description: "Implement approvals, deferrals, fulfillment queues, SLA tracking, external system sync",                                                                                                     tags: [platform] }
+      - { name: robots,                  path: skills/concepts/robots/SKILL.md,                  title: "Robots",                  description: "Scheduled automation — robot-definitions/executions/next-execution forms, the execution routine, robot tree pattern, creating/scheduling a robot, gotchas",                                  tags: [platform] }
+      - { name: webapis-and-webhooks,    path: skills/concepts/webapis-and-webhooks/SKILL.md,    title: "WebAPIs & Webhooks",      description: "Create custom REST endpoints (WebAPIs) or event-driven triggers (webhooks)",                                                                                                                  tags: [platform] }
+      - { name: users-and-teams,         path: skills/concepts/users-and-teams/SKILL.md,         title: "Users & Teams",           description: "Manage users/teams — CRUD, memberships, management patterns",                                                                                                                                tags: [platform] }
+      - { name: security-policies,       path: skills/concepts/security-policies/SKILL.md,       title: "Security Policies",       description: "KSL security expressions, policy definitions, binding functions, Core (JS) vs Task (Ruby) policy layers, space-admin bypass, access control",                                                tags: [platform] }
+      - { name: attribute-definitions,   path: skills/concepts/attribute-definitions/SKILL.md,   title: "Attribute Definitions",   description: "Define custom metadata on space/kapp/form/user/userProfile/team/category — per-scope endpoints, allowsMultiple semantics, resolution hierarchy",                                              tags: [platform] }
+      - { name: submission-activities,   path: skills/concepts/submission-activities/SKILL.md,   title: "Submission Activities",   description: "Per-submission audit trail / timeline — /submissions/{id}/activities CRUD, include=activities,activities.details, workflow-generated activity types",                                       tags: [platform] }
+      - { name: models,                  path: skills/concepts/models/SKILL.md,                  title: "Models (Data Views)",     description: "Query external data from forms via bridge models and bridged resources",                                                                                                                     tags: [platform] }
+      - { name: ruby-sdk,                path: skills/concepts/ruby-sdk/SKILL.md,                title: "Ruby SDK",                description: "Script admin operations, bulk imports, migrations using the `kinetic_sdk` gem",                                                                                                              tags: [platform] }
+      - { name: template-provisioning,   path: skills/concepts/template-provisioning/SKILL.md,   title: "Template Provisioning",   description: "Export/import entire spaces, write install.rb provisioning scripts",                                                                                                                        tags: [platform] }
+
+  - id: front-end
+    title: "Front-End — React Portal Development"
+    directory: skills/front-end
+    description: "React portal patterns, UI components, data hooks, state management"
+    skills:
+      - { name: bootstrap,        path: skills/front-end/bootstrap/SKILL.md,        title: "Bootstrap",         description: "Set up a new React portal — installation, KineticLib, CoreForm prerequisites, Vite dev proxy, auth state machine",                                                       tags: [front-end] }
+      - { name: portal-patterns,  path: skills/front-end/portal-patterns/SKILL.md,  title: "Portal Patterns",   description: "Portal architecture — routing, Redux setup, useData hook, context fetching, kappSlug resolution, project structure, reference implementation",                            tags: [front-end] }
+      - { name: forms,            path: skills/front-end/forms/SKILL.md,            title: "Forms",             description: "Render forms in React — CoreForm component, callbacks, globals.jsx, widget system",                                                                                          tags: [front-end] }
+      - { name: data-fetching,    path: skills/front-end/data-fetching/SKILL.md,    title: "Data Fetching",     description: "Fetch submissions/data in React — useData, usePaginatedData, defineKqlQuery",                                                                                                tags: [front-end] }
+      - { name: mutations,        path: skills/front-end/mutations/SKILL.md,        title: "Mutations",         description: "Create/update/delete submissions from React — executeIntegration, submission API functions",                                                                                tags: [front-end] }
+      - { name: state,            path: skills/front-end/state/SKILL.md,            title: "State",             description: "Manage portal state — regRedux, actions, toasts, confirmation modals",                                                                                                       tags: [front-end] }
+      - { name: testing,          path: skills/front-end/testing/SKILL.md,          title: "Testing",           description: "Test portal components, hooks, KQL builders, workflow generators — Vitest + RTL + MSW patterns, mocking @kineticdata/react, CoreForm stubs",                                  tags: [front-end] }
+      - { name: accessibility,    path: skills/front-end/accessibility/SKILL.md,    title: "Accessibility",     description: "ARIA patterns for pagination, status messages, form errors, modals, toasts, CoreForm, theme contrast — focus management on route change, axe testing",                       tags: [front-end] }
+
+  - id: api
+    title: "API Reference"
+    directory: skills/api
+    description: "API reference and integration patterns"
+    skills:
+      - { name: authentication,             path: skills/api/authentication/SKILL.md,   title: "Authentication",            description: "Authenticate API calls — Basic Auth, OAuth 2.0 for Integrator, SAML SSO",                                                                                                                       tags: [api] }
+      - { name: using-the-api,              path: skills/api/using-the-api/SKILL.md,    title: "Using the API",             description: "Understand API conventions — space-level endpoints, request patterns, error shapes",                                                                                                            tags: [api] }
+      - { name: core,         path: skills/api/core/SKILL.md,             title: "Core API Reference",        description: "Look up Core API v1 endpoint URLs, methods, params, body presence — forms, kapps, spaces, submissions, users, teams, attributes, categories, webapis, webhooks, security policy definitions",  tags: [api] }
+      - { name: integrator,   path: skills/api/integrator/SKILL.md,       title: "Integrator API Reference",  description: "Look up Integrator REST endpoint shapes for connections + operations (OAuth-only, separate base path) — includes the credential-wipe warning",                                                tags: [api] }
+      - { name: task,         path: skills/api/task/SKILL.md,             title: "Task API Reference",        description: "Look up Task API v2 endpoint shapes for trees, runs, handlers (separate /app/components/task base path)",                                                                                     tags: [api] }
+
+  - id: platform
+    title: "Platform — Handlers, Bugs, Troubleshooting"
+    directory: skills/platform
+    description: "Handler development, known bugs, troubleshooting"
+    skills:
+      - { name: handler-development,  path: skills/platform/handler-development/SKILL.md,  title: "Handler Development",   description: "Build a custom Task handler — zero-dependency architecture, file structure, auth, packaging, handler catalog",     tags: [platform] }
+      - { name: known-bugs,           path: skills/platform/known-bugs/SKILL.md,           title: "Known Bugs",            description: "Check confirmed platform bugs with symptoms, impact, and tested workarounds",                                       tags: [platform] }
+      - { name: troubleshooting,      path: skills/platform/troubleshooting/SKILL.md,      title: "Troubleshooting",       description: "Diagnose workflow failures, stuck runs, error management, and common API error patterns",                          tags: [platform] }
+      - { name: sso-and-identity,     path: skills/platform/sso-and-identity/SKILL.md,     title: "SSO & Identity",        description: "SAML/SSO/OIDC configuration, JIT user provisioning, attribute mapping, allowed IPs, service-account patterns",   tags: [platform] }
+
+  - id: commands
+    title: "Commands — Slash-Command Skills (user-invocable)"
+    directory: skills/commands
+    description: "User-invocable slash-command skills that drive the platform through the raw Core/Task REST API"
+    skills:
+      - { name: kinetic-new-app,          path: skills/commands/kinetic-new-app/SKILL.md,          title: "/kinetic-new-app",          description: "Scaffold a complete application — forms, indexes, seed data, UI",                                          tags: [command] }
+      - { name: kinetic-workflow,         path: skills/commands/kinetic-workflow/SKILL.md,         title: "/kinetic-workflow",         description: "Create a workflow tree (event-triggered, WebAPI, or routine)",                                              tags: [command] }
+      - { name: kinetic-create-connection,path: skills/commands/kinetic-create-connection/SKILL.md,title: "/kinetic-create-connection",description: "Create a Connection + Operations for an external system via the Integrator API",                          tags: [command] }
+      - { name: kinetic-create-handler,   path: skills/commands/kinetic-create-handler/SKILL.md,   title: "/kinetic-create-handler",   description: "Scaffold a custom Task handler — init.rb, node.xml, info.xml, packaging",                                  tags: [command] }
+      - { name: kinetic-debug-run,        path: skills/commands/kinetic-debug-run/SKILL.md,        title: "/kinetic-debug-run",        description: "Debug a workflow execution — find failures and diagnose root causes",                                       tags: [command] }
+      - { name: kinetic-test-workflow,    path: skills/commands/kinetic-test-workflow/SKILL.md,    title: "/kinetic-test-workflow",    description: "Test a workflow with synthetic input + assertions on per-node outputs",                                     tags: [command] }
+      - { name: kinetic-explain-workflow, path: skills/commands/kinetic-explain-workflow/SKILL.md, title: "/kinetic-explain-workflow", description: "Export and explain a workflow tree in human-readable form",                                                  tags: [command] }
+      - { name: kinetic-export-form,      path: skills/commands/kinetic-export-form/SKILL.md,      title: "/kinetic-export-form",      description: "Export a single form's definition to JSON for version control",                                            tags: [command] }
+      - { name: kinetic-health,           path: skills/commands/kinetic-health/SKILL.md,           title: "/kinetic-health",           description: "Run a comprehensive platform health check",                                                                 tags: [command] }
+      - { name: kinetic-indexes,          path: skills/commands/kinetic-indexes/SKILL.md,          title: "/kinetic-indexes",          description: "Audit and manage search indexes for a form",                                                                tags: [command] }
+      - { name: kinetic-bump-indexes,     path: skills/commands/kinetic-bump-indexes/SKILL.md,     title: "/kinetic-bump-indexes",     description: "Analyze a form's KQL queries and recommend + build the minimum compound indexes",                            tags: [command] }
+      - { name: kinetic-kql,              path: skills/commands/kinetic-kql/SKILL.md,              title: "/kinetic-kql",              description: "Build KQL queries with index awareness (generation-only)",                                                  tags: [command] }
+      - { name: kinetic-migrate,          path: skills/commands/kinetic-migrate/SKILL.md,          title: "/kinetic-migrate",          description: "Copy forms and data between kapps (same or different servers)",                                            tags: [command] }
+      - { name: kinetic-policy,           path: skills/commands/kinetic-policy/SKILL.md,           title: "/kinetic-policy",           description: "Build KSL security-policy expressions for the ABAC model (generation-only)",                                tags: [command] }
+      - { name: kinetic-audit-permissions,path: skills/commands/kinetic-audit-permissions/SKILL.md,title: "/kinetic-audit-permissions",description: "Resolve effective permissions on a kapp/form/submission",                                                  tags: [command] }
+      - { name: kinetic-report,           path: skills/commands/kinetic-report/SKILL.md,           title: "/kinetic-report",           description: "Generate a branded PDF report (generation-only; needs the project's report-style module)",                  tags: [command] }
+      - { name: kinetic-seed,             path: skills/commands/kinetic-seed/SKILL.md,             title: "/kinetic-seed",             description: "Generate and load realistic seed data into a form",                                                         tags: [command] }

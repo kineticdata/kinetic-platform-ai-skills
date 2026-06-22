@@ -4,90 +4,100 @@ A shareable AI skills library for building on the Kinetic Platform. Organized fo
 
 ## Skills
 
-### Recipes (`skills/recipes/`)
+<!-- BEGIN GENERATED:skills -->
+### Recipes — Step-by-Step Guides
 
 | Skill | Description |
 |-------|-------------|
-| [create-submission-form](skills/recipes/create-submission-form/SKILL.md) | Step-by-step recipe for creating forms with fields, indexes, events, and submission handling |
-| [add-approval-workflow](skills/recipes/add-approval-workflow/SKILL.md) | Recipe for adding deferral-based approval workflows to forms |
-| [connect-external-system](skills/recipes/connect-external-system/SKILL.md) | Recipe for connecting to external REST APIs using Connections and Operations |
-| [build-paginated-list](skills/recipes/build-paginated-list/SKILL.md) | Recipe for building paginated submission lists in React portals |
-| [build-service-portal](skills/recipes/build-service-portal/SKILL.md) | End-to-end recipe for building a self-service portal |
+| [create-submission-form](skills/recipes/create-submission-form/SKILL.md) | "Create a form via API with fields |
+| [add-approval-workflow](skills/recipes/add-approval-workflow/SKILL.md) | Build an approval/deferral workflow where a submission waits for someone's decision |
+| [connect-external-system](skills/recipes/connect-external-system/SKILL.md) | Wire up a Connection/Operation to call an external REST API from workflows or forms |
+| [build-paginated-list](skills/recipes/build-paginated-list/SKILL.md) | "Show a filterable |
+| [build-service-portal](skills/recipes/build-service-portal/SKILL.md) | "Build a complete self-service portal (catalog |
 
-### Concepts (`skills/concepts/`)
-
-| Skill | Description |
-|-------|-------------|
-| [api-basics](skills/concepts/api-basics/SKILL.md) | Base URLs, authentication, Core API v1 and Task API v2 endpoints, response formats, submission PATCH, and common gotchas |
-| [kql-and-indexing](skills/concepts/kql-and-indexing/SKILL.md) | KQL operators, form index definitions, compound indexes, and query gotchas |
-| [pagination](skills/concepts/pagination/SKILL.md) | Core API pageToken pagination, 1000-record cap, keyset pagination, Task API offset pagination |
-| [workflow-engine](skills/concepts/workflow-engine/SKILL.md) | Workflow execution model, nodes/connectors/events/coreState, deferrals & Queue Task pattern, run-status derivation, stuck-run repair |
-| [workflow-xml](skills/concepts/workflow-xml/SKILL.md) | XML/treeJson schema, task nodes, flow control, ERB context, system handlers, return node rules, critical node flags |
-| [workflow-creation](skills/concepts/workflow-creation/SKILL.md) | Create/manage workflows — Core API two-step creation, kapp vs form, filters, supported events, tree title format, sources |
-| [task-api-reference](skills/concepts/task-api-reference/SKILL.md) | Task API v2 endpoints (trees/runs/handlers/sources), triggers & errors APIs, run/tree/task response shapes, meta resources |
-| [decision-frameworks](skills/concepts/decision-frameworks/SKILL.md) | Integration type selection, data storage patterns, workflow execution model |
-| [architectural-patterns](skills/concepts/architectural-patterns/SKILL.md) | Deferral pattern, approvals, fulfillment, work routing, SLA tracking, external system sync, bulk operations |
-| [robots](skills/concepts/robots/SKILL.md) | Scheduled automation — robot definition/execution/next-execution forms, the execution routine, robot tree pattern, scheduling, and gotchas |
-| [form-engine](skills/concepts/form-engine/SKILL.md) | Form JSON schema, field types, events, expressions, K() JavaScript API, bundle.config overrides |
-| [form-events-expressions](skills/concepts/form-events-expressions/SKILL.md) | Form events (load/submit/change/click), K() JavaScript API, expression syntax, bundle.config overrides, form-level integrations |
-| [integrations](skills/concepts/integrations/SKILL.md) | Connections/Operations, Bridges, Handlers, File Resources — when to use each |
-| [models](skills/concepts/models/SKILL.md) | Bridge Data Models — read-only data views backed by bridge adapters for querying external data from forms and portals |
-| [webapis-and-webhooks](skills/concepts/webapis-and-webhooks/SKILL.md) | WebAPIs (custom REST endpoints), Webhooks (event triggers), security, callback patterns |
-| [users-teams-security](skills/concepts/users-teams-security/SKILL.md) | Users, Teams, KSL security definitions, two-layer security model, policy endpoints, attribute definitions, submission activities |
-| [security-policies](skills/concepts/security-policies/SKILL.md) | KSL security expressions, policy definitions/CRUD, binding functions, attribute definitions, activities, Task engine security, access control |
-
-#### Provisioning & Automation
+### Concepts — Platform Fundamentals
 
 | Skill | Description |
 |-------|-------------|
-| [ruby-sdk](skills/concepts/ruby-sdk/SKILL.md) | Kinetic Ruby SDK (kinetic_sdk gem) for environment provisioning, data migrations, and scripted administration |
-| [template-provisioning](skills/concepts/template-provisioning/SKILL.md) | Template export/import structure, install.rb scripts, connection/operation JSON schema, bootstrap patterns |
+| [api-basics](skills/concepts/api-basics/SKILL.md) | "Make any REST API call — endpoints |
+| [form-engine](skills/concepts/form-engine/SKILL.md) | "Understand form JSON schema |
+| [kapp-lifecycle](skills/concepts/kapp-lifecycle/SKILL.md) | "Kapp create/update/delete |
+| [form-events-expressions](skills/concepts/form-events-expressions/SKILL.md) | "Form events (load/submit/change/click) |
+| [kql-and-indexing](skills/concepts/kql-and-indexing/SKILL.md) | "Write search queries |
+| [pagination](skills/concepts/pagination/SKILL.md) | "Page through results — pageToken |
+| [workflow-engine](skills/concepts/workflow-engine/SKILL.md) | "Understand the execution model (trees |
+| [workflow-xml](skills/concepts/workflow-xml/SKILL.md) | "Handler reference — handler definition IDs |
+| [workflow-creation](skills/concepts/workflow-creation/SKILL.md) | "Create/manage workflows — Core API two-step creation |
+| [task-api-reference](skills/concepts/task-api-reference/SKILL.md) | "Call the Task API v2 directly — trees/runs/handlers/sources endpoints |
+| [integrations](skills/concepts/integrations/SKILL.md) | "Set up Connections/Operations (preferred) |
+| [file-resources](skills/concepts/file-resources/SKILL.md) | "Stream files from external systems (S3 |
+| [loghub-api](skills/concepts/loghub-api/SKILL.md) | "Read real-time platform logs — endpoint |
+| [decision-frameworks](skills/concepts/decision-frameworks/SKILL.md) | "Choose between approaches — which integration type |
+| [architectural-patterns](skills/concepts/architectural-patterns/SKILL.md) | "Implement approvals |
+| [robots](skills/concepts/robots/SKILL.md) | "Scheduled automation — robot-definitions/executions/next-execution forms |
+| [webapis-and-webhooks](skills/concepts/webapis-and-webhooks/SKILL.md) | Create custom REST endpoints (WebAPIs) or event-driven triggers (webhooks) |
+| [users-and-teams](skills/concepts/users-and-teams/SKILL.md) | "Manage users/teams — CRUD |
+| [security-policies](skills/concepts/security-policies/SKILL.md) | "KSL security expressions |
+| [attribute-definitions](skills/concepts/attribute-definitions/SKILL.md) | "Define custom metadata on space/kapp/form/user/userProfile/team/category — per-scope endpoints |
+| [submission-activities](skills/concepts/submission-activities/SKILL.md) | "Per-submission audit trail / timeline — /submissions/{id}/activities CRUD |
+| [models](skills/concepts/models/SKILL.md) | Query external data from forms via bridge models and bridged resources |
+| [ruby-sdk](skills/concepts/ruby-sdk/SKILL.md) | "Script admin operations |
+| [template-provisioning](skills/concepts/template-provisioning/SKILL.md) | "Export/import entire spaces |
 
-### Front-End (`skills/front-end/`)
-
-| Skill | Description |
-|-------|-------------|
-| [bootstrap](skills/front-end/bootstrap/SKILL.md) | KineticLib setup, app context fetching, Vite config, auth state machine |
-| [portal-patterns](skills/front-end/portal-patterns/SKILL.md) | Portal architecture — routing, Redux/regRedux, useData hook, context fetching, kappSlug resolution, project structure |
-| [forms](skills/front-end/forms/SKILL.md) | CoreForm vs client-side decision, KineticForm wrapper, CoreForm usage, globals.jsx, widget system |
-| [data-fetching](skills/front-end/data-fetching/SKILL.md) | useData, usePaginatedData, defineKqlQuery, searchSubmissions |
-| [mutations](skills/front-end/mutations/SKILL.md) | executeIntegration, submission CRUD, profile/kapp/space updates |
-| [state](skills/front-end/state/SKILL.md) | regRedux, appActions, theme, toasts, confirmation modal, utilities |
-
-### API Reference (`skills/api/`)
-
-| Skill | Description |
-|-------|-------------|
-| [authentication](skills/api/authentication/SKILL.md) | Authentication patterns for Core, Integrator, and Task APIs |
-| [using-the-api](skills/api/using-the-api/SKILL.md) | Common API usage patterns, request/response conventions |
-
-### Platform (`skills/platform/`)
-
-| Skill | Description |
-|-------|-------------|
-| [handler-development](skills/platform/handler-development/SKILL.md) | Building custom Kinetic Task handlers — architecture, file structure, auth, packaging, handler catalog |
-| [known-bugs](skills/platform/known-bugs/SKILL.md) | Confirmed platform bugs with symptoms, impact, and tested workarounds |
-| [troubleshooting](skills/platform/troubleshooting/SKILL.md) | Diagnosing workflow failures, stuck runs, error management, and common API error patterns |
-
-### Commands (`skills/commands/`)
-
-User-invocable slash-command skills that drive the platform through the raw Core/Task REST API (an MCP server that wraps those calls is optional). `kinetic-kql` and `kinetic-policy` are generation-only; `kinetic-report` uses the project's report-style module.
+### Front-End — React Portal Development
 
 | Skill | Description |
 |-------|-------------|
-| [kinetic-new-app](skills/commands/kinetic-new-app/SKILL.md) | Scaffold a complete application — forms, indexes, seed data, UI |
-| [kinetic-workflow](skills/commands/kinetic-workflow/SKILL.md) | Create a workflow tree (event-triggered, WebAPI, or routine) |
+| [bootstrap](skills/front-end/bootstrap/SKILL.md) | "Set up a new React portal — installation |
+| [portal-patterns](skills/front-end/portal-patterns/SKILL.md) | "Portal architecture — routing |
+| [forms](skills/front-end/forms/SKILL.md) | "Render forms in React — CoreForm component |
+| [data-fetching](skills/front-end/data-fetching/SKILL.md) | "Fetch submissions/data in React — useData |
+| [mutations](skills/front-end/mutations/SKILL.md) | "Create/update/delete submissions from React — executeIntegration |
+| [state](skills/front-end/state/SKILL.md) | "Manage portal state — regRedux |
+| [testing](skills/front-end/testing/SKILL.md) | "Test portal components |
+| [accessibility](skills/front-end/accessibility/SKILL.md) | "ARIA patterns for pagination |
+
+### API Reference
+
+| Skill | Description |
+|-------|-------------|
+| [authentication](skills/api/authentication/SKILL.md) | "Authenticate API calls — Basic Auth |
+| [using-the-api](skills/api/using-the-api/SKILL.md) | "Understand API conventions — space-level endpoints |
+| [core](skills/api/core/SKILL.md) | "Look up Core API v1 endpoint URLs |
+| [integrator](skills/api/integrator/SKILL.md) | "Look up Integrator REST endpoint shapes for connections + operations (OAuth-only |
+| [task](skills/api/task/SKILL.md) | "Look up Task API v2 endpoint shapes for trees |
+
+### Platform — Handlers, Bugs, Troubleshooting
+
+| Skill | Description |
+|-------|-------------|
+| [handler-development](skills/platform/handler-development/SKILL.md) | "Build a custom Task handler — zero-dependency architecture |
+| [known-bugs](skills/platform/known-bugs/SKILL.md) | "Check confirmed platform bugs with symptoms |
+| [troubleshooting](skills/platform/troubleshooting/SKILL.md) | "Diagnose workflow failures |
+| [sso-and-identity](skills/platform/sso-and-identity/SKILL.md) | "SAML/SSO/OIDC configuration |
+
+### Commands — Slash-Command Skills (user-invocable)
+
+| Skill | Description |
+|-------|-------------|
+| [kinetic-new-app](skills/commands/kinetic-new-app/SKILL.md) | "Scaffold a complete application — forms |
+| [kinetic-workflow](skills/commands/kinetic-workflow/SKILL.md) | "Create a workflow tree (event-triggered |
+| [kinetic-create-connection](skills/commands/kinetic-create-connection/SKILL.md) | Create a Connection + Operations for an external system via the Integrator API |
+| [kinetic-create-handler](skills/commands/kinetic-create-handler/SKILL.md) | "Scaffold a custom Task handler — init.rb |
 | [kinetic-debug-run](skills/commands/kinetic-debug-run/SKILL.md) | Debug a workflow execution — find failures and diagnose root causes |
+| [kinetic-test-workflow](skills/commands/kinetic-test-workflow/SKILL.md) | Test a workflow with synthetic input + assertions on per-node outputs |
 | [kinetic-explain-workflow](skills/commands/kinetic-explain-workflow/SKILL.md) | Export and explain a workflow tree in human-readable form |
-| [kinetic-health](skills/commands/kinetic-health/SKILL.md) | Comprehensive platform health check |
+| [kinetic-export-form](skills/commands/kinetic-export-form/SKILL.md) | Export a single form's definition to JSON for version control |
+| [kinetic-health](skills/commands/kinetic-health/SKILL.md) | Run a comprehensive platform health check |
 | [kinetic-indexes](skills/commands/kinetic-indexes/SKILL.md) | Audit and manage search indexes for a form |
-| [kinetic-kql](skills/commands/kinetic-kql/SKILL.md) | Build KQL queries with index awareness |
+| [kinetic-bump-indexes](skills/commands/kinetic-bump-indexes/SKILL.md) | Analyze a form's KQL queries and recommend + build the minimum compound indexes |
+| [kinetic-kql](skills/commands/kinetic-kql/SKILL.md) | Build KQL queries with index awareness (generation-only) |
 | [kinetic-migrate](skills/commands/kinetic-migrate/SKILL.md) | Copy forms and data between kapps (same or different servers) |
-| [kinetic-policy](skills/commands/kinetic-policy/SKILL.md) | Build KSL security-policy expressions for the ABAC model |
-| [kinetic-report](skills/commands/kinetic-report/SKILL.md) | Generate a branded PDF report |
+| [kinetic-policy](skills/commands/kinetic-policy/SKILL.md) | Build KSL security-policy expressions for the ABAC model (generation-only) |
+| [kinetic-audit-permissions](skills/commands/kinetic-audit-permissions/SKILL.md) | Resolve effective permissions on a kapp/form/submission |
+| [kinetic-report](skills/commands/kinetic-report/SKILL.md) | Generate a branded PDF report (generation-only; needs the project's report-style module) |
 | [kinetic-seed](skills/commands/kinetic-seed/SKILL.md) | Generate and load realistic seed data into a form |
-
----
+<!-- END GENERATED:skills -->
 
 ## Usage
 
@@ -255,29 +265,4 @@ These directories are for KD employees and are not intended for customer use:
    - Keep content generic — avoid references to specific project codebases or environments
 
 5. **Register the skill** in these files:
-   - `CLAUDE.md` — add a row to the appropriate skill-index table (the index is read on demand; there are no `@`-imports)
-   - `AGENTS.md` **and** `GEMINI.md` — these mirror `CLAUDE.md` for Codex and Gemini; add the same row (or just re-copy `CLAUDE.md` into both)
-   - `README.md` — add a row to the appropriate skills table
-   - `.cursor/rules/kinetic-platform.mdc` or `kinetic-front-end.mdc` — add an `@` import
-   - `.github/copilot-instructions.md` — add to the skill list at the bottom
-
-### Updating an Existing Skill
-
-Edit the `SKILL.md` file directly. No other files need to change unless you rename the skill folder.
-
-### Renaming or Moving a Skill
-
-If you rename a skill folder, update all references:
-- `SKILL.md` frontmatter `name` (must match new folder name)
-- `CLAUDE.md` index row + path (and mirror into `AGENTS.md` / `GEMINI.md`)
-- `README.md` table link
-- `.cursor/rules/*.mdc` import paths
-- `.github/copilot-instructions.md`
-- Cross-references in other `SKILL.md` files
-
-### Style Guidelines
-
-- **Be factual** — document observed behavior, not assumptions
-- **Include code examples** — show real API calls, payloads, and response shapes
-- **Document gotchas** — call out non-obvious behavior, common mistakes, and error messages
-- **Stay generic** — skills should apply to any Kinetic Platform project, not just one codebase
+   - `CLAUDE.md` — add a row t

@@ -155,11 +155,13 @@ curl -u "admin:password" -X POST \
   -H "Content-Type: application/json" \
   -d '{
     "name": "Requested For",
-    "key": "f1",
+    "key": "0c5f1e7a9b2d4c8e83a1f6b0d4e9c2a7",
     "dataType": "string",
     "renderType": "text"
   }'
 ```
+
+The `key` is a GUID with dashes stripped (32 hex chars), not a name-derived string — see the Form Engine skill's *Field Keys* section.
 
 **Gotcha:** Submitting values for fields not defined on the form returns **500**. Always verify field names with `?include=fields` before submitting.
 

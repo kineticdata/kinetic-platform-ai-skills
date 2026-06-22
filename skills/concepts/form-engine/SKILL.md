@@ -45,7 +45,7 @@ A form definition retrieved via `GET /kapps/{kapp}/forms/{form}?include=pages,in
 |----------|-------------|
 | `name` | Display name |
 | `slug` | URL-safe identifier |
-| `type` | Classification (e.g., "Service", "Approval", "Task") — queryable for UI views |
+| `type` | Classification label ONLY (e.g., "Service", "Approval", "Task", "Data", "Utility") — see "Form `type` is cosmetic" below |
 | `status` | "Active" or "Inactive" |
 | `anonymous` | Whether unauthenticated submissions are allowed — **must be a JSON boolean (`true`/`false`)**; passing a string (`"false"`) is rejected at PUT |
 | `submissionLabelExpression` | Template for submission display labels using expression syntax |
@@ -62,6 +62,23 @@ The top-level `notes` field is intended for developer-facing documentation: what
 **Reading `notes` back requires `?include=details`.** `GET /forms/{slug}` without `?include=details` returns the form WITHOUT the `notes` field — the key is omitted from the response entirely, not returned as `null`. Counterintuitively, `?include=notes` alone is silently ignored and produces the same response shape as no include at all; the `notes` keyword is non-functional on this endpoint. Only `details` (the system-metadata include) surfaces the field. Characterized May 2026 across six probes on v1 (`/app/api/v1/kapps/{kapp}/forms/{slug}`); there is no v2 of this endpoint (`/app/api/v2/kapps/.../forms/...` returns 404). Agents that PUT a note and then GET with `?include=notes` to verify will see no notes field and may incorrectly conclude the PUT failed — always use `?include=details` for the verification GET.
 
 Populating `notes` is a recommended default for any new form — both for developer onboarding and for the form's own audit trail.
+
+### Form `type` is cosmetic — it does NOT affect rendering or behavior
+
+The `type` field (`Service`, `Approval`, `Task`, `Data`, `Utility`, `Exercise`, etc.) is **purely a categorization label**. It does not change how a form renders, what JavaScript runs, whether the page is interactive, or any runtime behavior. A `Data` form and a `Service` form with identical pages/fields/events behave identically. `type` exists only to group/filter forms in admin and portal listing views.
+
+**Do not chase a rendering or load problem by changing `type`.** If a custom form (e.g. a dashboard built on a `Data` form) won't render, the cause is somewhere else — security policy, missing `categorizations`, a JS error in a Load event, a missing required field property, or a portal-SPA state issue (see "Stuck on a spinner → check the console" below). Switching `Data` → `Utility` → `Service` is a dead end; it will not fix a render failure because the renderer doesn't branch on `type`. (Learned the hard way June 2026 — burned several deploy iterations switching types before realizing the renderer ignores the field entirely.)
+
+### Stuck on a spinner → check the browser console FIRST
+
+When a form (or the whole portal) renders only the loading spinner and never shows content, **the browser console almost always has the actual error** — go there before guessing at the form definition. The spinner is the SPA's "still mounting" state; if mounting threw, it never clears, but the thrown error is logged.
+
+Common console signatures and what they mean:
+- `TypeError: KD.Bundle is not a constructor` / `Cannot read properties of undefined (reading 'load')` (from `app/bundle.js` or `app/spa/assets/index-*.js`) — a **bundle/SPA-level failure**, not your form content. Frequently a stale portal-SPA state after rapidly creating/deleting forms in one session, or a kapp bundle problem. Fix attempts in order: hard reload at the portal ROOT url (no hash route) so the SPA re-fetches its form list; sign out/in for a fresh session; try another browser. This error reproducing on a form that worked earlier (and that you didn't touch) is the tell that it's SPA state, not your form.
+- A `ReferenceError` / `TypeError` whose stack points at `eval` or `doCustomAction` — the error is in YOUR Load/Change/Click event JavaScript. Read the message; it names the failing reference.
+- `Cannot read properties of null (reading 'element')` on Load — an event references a `K('section[X]')` / `K('field[X]')` that doesn't exist (e.g. you deleted the element but left the event). See "When deleting a field or section, audit every event" below.
+
+The anti-pattern is editing and re-deploying the form definition repeatedly to see if the spinner clears. One console read tells you whether the problem is your content, your event JS, or the platform/SPA — and saves a pile of blind redeploys.
 
 ---
 
@@ -126,7 +143,7 @@ Group fields visually. Support layout via `renderAttributes`:
   "visible": true,
   "defaultValue": null,
   "defaultDataSource": "none",
-  "key": "f1",              // Unique field key — ties values to submissions (see Field Keys below)
+  "key": "20f8b1836fa244bf8b4947dba9015edb",  // GUID, dashes stripped — opaque stable id (see Field Keys below)
   "pattern": null,          // Regex validation object — see Pattern Validation section below
   "constraints": [],        // JavaScript expression constraints — see Constraints section below
   "events": [...],
@@ -138,15 +155,16 @@ Group fields visually. Support layout via `renderAttributes`:
 
 ### Field Keys
 
-Every field has a `key` — a unique string that is the **stable identifier** linking field values to submissions at the storage level. Conventions:
+Every field has a `key` — a unique, opaque string that is the **stable identifier** linking field values to submissions at the storage level. Conventions:
 
-- Use sequential keys: `"f1"`, `"f2"`, `"f3"`, etc. The form builder UI auto-increments from the highest existing key.
+- **Default to a GUID.** A field key should be a generated GUID/UUID with its dashes removed — a 32-character lowercase hex string, e.g. `20f8b1836fa244bf8b4947dba9015edb`. This is what the form builder generates for new fields. Field keys are **alphanumeric-only**, so a standard dashed UUID (`20f8b183-6fa2-44bf-8b49-47dba9015edb`) is rejected — strip the dashes.
+- **Do NOT derive the key from the field name.** Don't turn `First Name` into `FirstName`, `firstName`, or `first_name`. The key is deliberately decoupled from the display name; keep it opaque.
 - Keys must be **unique within a form** — duplicates cause undefined behavior.
-- Keys are **not auto-generated** by the API — you must provide them when creating fields.
+- Keys are **not auto-generated by the API** — you must supply one when creating a field (generate a GUID, strip the dashes).
 
-**Why keys matter:** Submission values are stored by field key internally, not by field name. This means you can **change a field's type** (e.g., dropdown → text) without losing data: delete the old field, create a new field with the same `key`, and all existing submission values remain accessible. This also means renaming a field doesn't affect stored data.
+**Why keys matter:** Submission values are stored by field key internally, not by field name. This means you can **change a field's type** (e.g., dropdown → text) without losing data: delete the old field, create a new field with the same `key`, and all existing submission values remain accessible. It also means renaming a field doesn't affect stored data — but that only holds when the key is an opaque GUID rather than a name-derived string (rename `First Name` → `Given Name` and a name-derived key would no longer match its stored values).
 
-The `include=values.raw` response shows values keyed by field key (e.g., `"f1": {"name": "Status", "value": "Open"}`) — useful for debugging or accessing orphaned values from deleted fields.
+The `include=values.raw` response shows values keyed by field key (e.g., `"20f8b1836fa244bf8b4947dba9015edb": {"name": "Status", "value": "Open"}`) — useful for debugging or accessing orphaned values from deleted fields.
 
 ### Field Render Types
 
@@ -201,7 +219,7 @@ Every field in a form API payload requires ALL properties for its type. Missing 
 ```json
 {
   "type": "field", "renderType": "text", "dataType": "string",
-  "name": "Field Name", "key": "f1", "label": "Display Label",
+  "name": "Field Name", "key": "<32-char-guid-no-dashes>", "label": "Display Label",
   "enabled": true, "visible": true, "required": false, "requiredMessage": null,
   "defaultValue": null, "defaultDataSource": "none", "defaultResourceName": null,
   "pattern": null, "constraints": [], "events": [],
@@ -216,7 +234,7 @@ Every field in a form API payload requires ALL properties for its type. Missing 
 ```json
 {
   "type": "field", "renderType": "dropdown", "dataType": "string",
-  "name": "Field Name", "key": "f1", "label": "Display Label",
+  "name": "Field Name", "key": "<32-char-guid-no-dashes>", "label": "Display Label",
   "enabled": true, "visible": true, "required": false, "requiredMessage": null,
   "defaultValue": null, "defaultDataSource": "none", "defaultResourceName": null,
   "pattern": null, "constraints": [], "events": [],
@@ -231,7 +249,7 @@ Every field in a form API payload requires ALL properties for its type. Missing 
 ```json
 {
   "type": "field", "renderType": "radio", "dataType": "string",
-  "name": "Field Name", "key": "f1", "label": "Display Label",
+  "name": "Field Name", "key": "<32-char-guid-no-dashes>", "label": "Display Label",
   "enabled": true, "visible": true, "required": false, "requiredMessage": null,
   "defaultValue": null, "defaultDataSource": "none", "defaultResourceName": null,
   "pattern": null, "constraints": [], "events": [],
@@ -246,7 +264,7 @@ Every field in a form API payload requires ALL properties for its type. Missing 
 ```json
 {
   "type": "field", "renderType": "checkbox", "dataType": "json",
-  "name": "Field Name", "key": "f1", "label": "Display Label",
+  "name": "Field Name", "key": "<32-char-guid-no-dashes>", "label": "Display Label",
   "enabled": true, "visible": true, "required": false, "requiredMessage": null,
   "defaultValue": null, "defaultDataSource": "none", "defaultResourceName": null,
   "pattern": null, "constraints": [], "events": [],
@@ -262,7 +280,7 @@ Note: `dataType` is `"json"` (not `"string"`). Values are stored as JSON arrays.
 ```json
 {
   "type": "field", "renderType": "date", "dataType": "string",
-  "name": "Field Name", "key": "f1", "label": "Display Label",
+  "name": "Field Name", "key": "<32-char-guid-no-dashes>", "label": "Display Label",
   "enabled": true, "visible": true, "required": false, "requiredMessage": null,
   "defaultValue": null, "defaultDataSource": "none", "defaultResourceName": null,
   "pattern": null, "constraints": [], "events": [],
@@ -276,7 +294,7 @@ Change `renderType` to `"datetime"` or `"time"` as needed. No type-specific prop
 ```json
 {
   "type": "field", "renderType": "attachment", "dataType": "file",
-  "name": "Field Name", "key": "f1", "label": "Display Label",
+  "name": "Field Name", "key": "<32-char-guid-no-dashes>", "label": "Display Label",
   "enabled": true, "visible": true, "required": false, "requiredMessage": null,
   "defaultValue": null, "defaultDataSource": "none", "defaultResourceName": null,
   "pattern": null, "constraints": [], "events": [],

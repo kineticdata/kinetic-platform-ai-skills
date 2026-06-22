@@ -7,9 +7,13 @@ description: "Use when a Kinetic API/workflow behaves unexpectedly and you suspe
 
 Confirmed bugs discovered through hands-on testing. Each includes the symptom, impact assessment, and a tested workaround.
 
+> **`last_verified`** dates indicate when the bug was most recently observed on a live environment. If you're reading this more than ~6 months after the most-recent date, re-verify before assuming the bug is still present — Kinetic does ship platform fixes. To re-verify, run the symptom reproduction described in the bug against your environment and update the date (or remove the entry) accordingly.
+
 ---
 
 ## Bug 1: `/trees/{title}/export` Returns Wrong Tree
+
+`last_verified: 2026-04-08` · Platform: 6.1.x
 
 **Symptom:** The export endpoint returns an incorrect or stale tree definition for trees that were created via the Core API and have `versionId: "1"`.
 
@@ -22,6 +26,8 @@ Confirmed bugs discovered through hands-on testing. Each includes the symptom, i
 ---
 
 ## Bug 2: `run.tree` Is an Object, Not a String
+
+`last_verified: 2026-04-08` · Platform: 6.1.x
 
 **Symptom:** `run.tree` in Task API responses is a JSON object (`{name, title, sourceName, ...}`), not a string. Code like `run.tree || "Unknown"` displays `[object Object]`.
 
@@ -36,6 +42,8 @@ const treeName = (typeof run.tree === 'object' ? run.tree?.name : run.tree) || '
 
 ## Bug 3: `/submissions/{id}/submit` Does Not Exist
 
+`last_verified: 2026-04-08` · Platform: 6.1.x
+
 **Symptom:** `POST /submissions/{id}/submit` returns **404 Not Found**.
 
 **Impact:** Code following older documentation that references a `submit` endpoint fails silently or crashes.
@@ -46,6 +54,8 @@ const treeName = (typeof run.tree === 'object' ? run.tree?.name : run.tree) || '
 
 ## Bug 4: WebAPI `timeout` > 30 Causes 500
 
+`last_verified: 2026-04-08` · Platform: 6.1.x
+
 **Symptom:** Calling a WebAPI with `timeout=60` (or any value > 30) returns HTTP 500. The tree execution starts but creates an orphan run — the run never receives its completion signal back to the caller.
 
 **Impact:** The caller gets an error, but the workflow still executes in the background with no way to get its result. Repeated retries create multiple orphan runs.
@@ -55,6 +65,8 @@ const treeName = (typeof run.tree === 'object' ? run.tree?.name : run.tree) || '
 ---
 
 ## Bug 5: Security Policy Evaluation Returns 500 Instead of 403
+
+`last_verified: 2026-04-08` · Platform: 6.1.x
 
 **Symptom:** When a non-admin user accesses a resource that has a security policy with a `Display` endpoint referencing a failing policy expression, the API returns HTTP **500** instead of the expected 403.
 
@@ -68,6 +80,8 @@ const treeName = (typeof run.tree === 'object' ? run.tree?.name : run.tree) || '
 ---
 
 ## Bug 6: SMTP Handler Omits `Handler Error Message` on Success
+
+`last_verified: 2026-04-08` · Platform: 6.1.x
 
 **Symptom:** The `smtp_email_send_v1` handler sends the email successfully (task status: Closed, `Message Id` returned), but a downstream node referencing `@results['Send Email']['Handler Error Message']` fails with `IndexError`. The Return node shows `originator: "ENGINE Run Error"`.
 
@@ -86,21 +100,8 @@ const treeName = (typeof run.tree === 'object' ? run.tree?.name : run.tree) || '
 
 ## Bug 7: `GET /errors` Hard-Caps at 5 Results
 
+`last_verified: 2026-04-08` · Platform: 6.1.x
+
 **Symptom:** The Task API errors endpoint returns a maximum of **5 error records per request**, regardless of the `limit` parameter value.
 
-**Impact:** Dashboards and error management UIs that expect to load 25 or 100 errors per page only see 5. Total error counts may be significantly underreported.
-
-**Workaround:** Paginate with `offset` to retrieve all errors:
-
-```js
-const allErrors = [];
-let offset = 0;
-while (true) {
-  const r = await fetch(`/errors?include=details&status=Active&limit=5&offset=${offset}`);
-  const data = await r.json();
-  const errors = data.errors || [];
-  allErrors.push(...errors);
-  if (errors.length < 5) break;
-  offset += 5;
-}
-```
+**Impact:** Dashboards and error management UIs that expect to load 25 or 100 errors per pa

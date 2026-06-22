@@ -207,42 +207,61 @@ The full set of Integrator endpoints (get/update/delete connection and operation
 
 ## Step 4 — Use Operations in Workflows
 
-Invoke any Operation from a workflow using the built-in `system_integration_v1` handler. The `connection` and `operation` parameters take the UUIDs from Steps 2 and 3; `parameters.*` map by name to the operation's parameters.
+Invoke any Operation from a workflow using the built-in `system_integration_v1` handler. The `connection` and `operation` parameters take the UUIDs from Steps 2 and 3; `parameters.*` keys map by name to the operation's declared parameters.
 
-```xml
-<!-- In tree XML — create an external ticket on form submission -->
-<task definition_id="system_integration_v1" name="Create External Ticket">
-  <parameters>
-    <parameter id="connection">1415539c-ab12-4e67-8f2d-000000000001</parameter>
-    <parameter id="operation">7750b186-cd34-5f89-a012-000000000003</parameter>
-    <parameter id="parameters.Summary"><%= @values['Summary'] %></parameter>
-    <parameter id="parameters.Description"><%= @values['Description'] %></parameter>
-    <parameter id="parameters.Priority"><%= @values['Priority'] %></parameter>
-    <parameter id="parameters.Assignee"><%= @values['Assigned Team'] %></parameter>
-  </parameters>
-</task>
+The library standardizes on **treeJson** for tree definitions (see `docs/GLOSSARY.md`). Two nodes that (a) call the external operation and (b) write its result back to the originating submission via a second `system_integration_v1` call against the Kinetic Platform Connection:
+
+```json
+{
+  "nodes": [
+    { "id": "start", "definitionId": "system_start_v1",
+      "defers": false, "deferrable": false,
+      "configured": true, "visible": false, "version": 1,
+      "name": "Start", "parameters": [], "messages": [],
+      "position": {"x": 10, "y": 10},
+      "dependents": {"task": [{"type": "Complete", "content": "si_1"}]} },
+
+    { "id": "si_1", "definitionId": "system_integration_v1",
+      "configured": true, "visible": true, "version": 1,
+      "defers": false, "deferrable": false,
+      "name": "Create External Ticket",
+      "parameters": [
+        { "id": "connection", "value": "<external-system-connection-uuid>" },
+        { "id": "operation",  "value": "<create-ticket-operation-uuid>" },
+        { "id": "parameters.Summary",     "value": "<%= @values['Summary'] %>" },
+        { "id": "parameters.Description", "value": "<%= @values['Description'] %>" },
+        { "id": "parameters.Priority",    "value": "<%= @values['Priority'] %>" },
+        { "id": "parameters.Assignee",    "value": "<%= @values['Assigned Team'] %>" }
+      ],
+      "messages": [], "position": {"x": 200, "y": 10},
+      "dependents": {"task": [{"type": "Complete", "content": "si_2"}]} },
+
+    { "id": "si_2", "definitionId": "system_integration_v1",
+      "configured": true, "visible": true, "version": 1,
+      "defers": false, "deferrable": false,
+      "name": "Write Ticket ID to Submission",
+      "parameters": [
+        { "id": "connection", "value": "<kinetic-platform-connection-uuid>" },
+        { "id": "operation",  "value": "<update-submission-operation-uuid>" },
+        { "id": "parameters.Submission Id*", "value": "<%= @submission['Id'] %>" },
+        { "id": "parameters.Values [Object]", "value": "<%= { 'Ticket ID': @results['Create External Ticket']['Ticket Id'], 'Ticket URL': @results['Create External Ticket']['Ticket URL'] }.to_json %>" }
+      ],
+      "messages": [], "position": {"x": 400, "y": 10},
+      "dependents": "" }
+  ]
+}
 ```
 
-After the handler runs, its outputs (the operation's `outputMappings`) are available downstream:
+After the first `system_integration_v1` node runs, its outputs (the operation's `outputMappings`) are available downstream:
 
 ```
 @results['Create External Ticket']['Ticket Id']
 @results['Create External Ticket']['Ticket URL']
 ```
 
-Write these back to the submission so the portal can display them:
+The second node writes them back via an `Update Submission` Operation on the built-in Kinetic Platform Connection. **Use `system_integration_v1` for the write-back, not the legacy `kinetic_request_ce_submission_update_v1` handler.** Set up the `Update Submission` Operation once (PUT `/submissions/{{Submission Id*}}` with a `{{{Values [Object]}}}` body) and you can call it from any workflow that needs to write submission values.
 
-```xml
-<task definition_id="kinetic_request_ce_submission_update_v1" name="Write Ticket ID to Submission">
-  <parameters>
-    <parameter id="submission_id"><%= @submission['Id'] %></parameter>
-    <parameter id="Ticket ID"><%= @results['Create External Ticket']['Ticket Id'] %></parameter>
-    <parameter id="Ticket URL"><%= @results['Create External Ticket']['Ticket URL'] %></parameter>
-  </parameters>
-</task>
-```
-
-> `system_integration_v1` has **no `error_handling` lever** — a non-defensive output expression or a 4xx/5xx response fails the whole run. Make every output expression defensive. Handler parameter details and ERB binding rules are in `concepts/workflow-xml/SKILL.md`; the defensive-expression requirement is in `concepts/integrations/SKILL.md`.
+> `system_integration_v1` has **no `error_handling` lever** — a non-defensive output expression or a 4xx/5xx response fails the whole run. Make every output expression defensive (`.to_s`, `rescue`, presence checks). Handler parameter details and ERB binding rules are in `concepts/workflow-xml`; the defensive-expression requirement is in `concepts/integrations`.
 
 ---
 

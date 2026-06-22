@@ -62,13 +62,15 @@ For each form:
 
 ## Step 4: Create and Build Indexes
 
-For each form:
+**Sequencing matters.** Index *definitions* are metadata; index *data* must be built separately. A form created via `POST /forms` with `indexDefinitions` in the body has the definitions but the indexes themselves are in state `"New"` and will return empty results when queried until you trigger a build. Order:
 
-1. Get index definitions from source form (included in the `GET ...?include=fields,indexDefinitions,attributesMap` response from Step 3)
-2. **Always preserve 5 system indexes** on the target: closedBy, createdBy, handle, submittedBy, updatedBy
-3. Add all custom indexes from the source
-4. Build indexes: `POST /app/api/v1/kapps/{target-kapp}/forms/{form}/backgroundJobs` with body `{"type":"Build Index","content":{"indexes":[...]}}` for the new indexes
-5. Poll until all indexes are "Built"
+1. **Get index definitions from source form** (included in the `GET ...?include=fields,indexDefinitions,attributesMap` response from Step 3).
+2. **Form is already created in Step 3** with the index definitions inline in the POST body. Verify they landed: `GET /app/api/v1/kapps/{target-kapp}/forms/{form}?include=indexDefinitions` — every custom definition should appear with `status: "New"`.
+3. **Always preserve 5 system indexes** on the target: closedBy, createdBy, handle, submittedBy, updatedBy. System indexes are auto-created and arrive built; do not include them in the build job.
+4. **Trigger the build** for the *custom* indexes (system indexes are already built — including them in the build job is a no-op but wastes API calls): `POST /app/api/v1/kapps/{target-kapp}/forms/{form}/backgroundJobs` with body `{"type":"Build Index","content":{"indexes":[{"name":"values[Custom Field]"}, ...]}}`.
+5. **Poll until built.** `GET /app/api/v1/kapps/{target-kapp}/forms/{form}/backgroundJobs` reports per-job progress. The index `status` field on the form's `indexDefinitions` transitions `New → Building → Built`. **Cap the poll loop** — set a max wait (e.g. 5 minutes) so a stuck build doesn't hang the migration; report unbuilt indexes in Step 6 instead.
+
+> **Don't copy submissions in Step 5 until all custom indexes report `Built`.** If a workflow on the target form runs a `submissions-search` against an unbuilt index it 400s — and bulk submission creation will trigger workflows. Build first, then copy.
 
 ## Step 5: Copy Submissions (Optional)
 

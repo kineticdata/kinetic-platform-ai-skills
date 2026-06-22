@@ -1,207 +1,81 @@
-# Kinetic Workflow Tree Pitfalls — Hard-Won Lessons
+# Kinetic Workflow Tree Pitfalls — Validator Rule Catalogue
 
-Every rule below was learned through silent failure on real engines — no stack trace, no error message, just a run that "completes" without doing what it should. The [scripts/](scripts/) directory encodes these as machine-checkable rules so you don't repeat the discovery.
+This file is the **citable rule catalogue** referenced by section number from the validator scripts (`§ 1`, `§ 2`, …). It is intentionally terse — each section is a one-paragraph rule + symptom + validator reference. For full discussion, examples, and worked treeJson, read the main [SKILL.md](SKILL.md).
 
-Each pitfall is structured as **Symptom → Cause → Rule → Why it matters**.
-
----
-
-## 1. Start node must be literal `start`, defers=false
-
-**Symptom**
-`java.lang.RuntimeException` with zero triggers created. Run status perpetually `Started`. Tree looks fine in the UI.
-
-**Cause**
-Start node was named `system_start_v1_1` (or any other id), or had `defers=true`.
-
-**Rule**
-Start node must be EXACTLY:
-```json
-{ "id": "start", "definitionId": "system_start_v1", "defers": false, "deferrable": false }
-```
-No exceptions.
-
-**Why it matters**
-The engine treats `start` as a special literal, not as a conforming instance of the node ID convention. Deviating breaks the engine's tree bootstrap before any triggers fire.
-
-**Validator check** → `validate-workflow.mjs`: violates if Start node's id, defers, or deferrable diverges.
+> **Why this file is short.** The previous version of PITFALLS.md duplicated extensive prose from SKILL.md. That duplication has been removed to make SKILL.md the single canonical source. Validator scripts still cite `PITFALLS.md § N` because the rule numbering is stable; the rules themselves are catalogued here as one-paragraph anchors.
 
 ---
 
-## 2. Non-start node IDs must follow `{definition_id}_{N}` with globally unique suffixes
+## § 1 — Start node must be literal `start`, defers=false
 
-**Symptom**
-Tree appears to work in the builder UI, but at runtime only the Start trigger closes. No downstream node fires. Errors endpoint shows NPE on trigger advance.
+**Rule.** Start node MUST be `{ "id": "start", "definitionId": "system_start_v1", "defers": false, "deferrable": false }`. No deviation.
 
-**Cause**
-Node ID doesn't match the convention (`echo_node`, `create_notification`, etc.), OR two nodes share the same numeric suffix, OR `<lastID>` is less than the highest suffix used. The parser silently drops the mis-named / duplicate-suffix node.
+**Symptom of violation.** `java.lang.RuntimeException` on tree bootstrap; zero triggers created; run status perpetually `Started`.
 
-**Rule**
-- Every non-start node: `id` = `{definition_id}_{N}` where `N` is a unique positive integer.
-- Suffixes are globally unique across ALL nodes in the tree (not per-definition-id).
-- `<lastID>` = max suffix actually used.
-
-```xml
-<!-- CORRECT -->
-<task id="start" definition_id="system_start_v1">...</task>
-<task id="utilities_echo_v1_2" definition_id="utilities_echo_v1">...</task>
-<task id="kinetic_core_api_connection_v1_3" definition_id="kinetic_core_api_connection_v1">...</task>
-<lastID>3</lastID>
-
-<!-- WRONG (engine silently drops one of these) -->
-<task id="utilities_echo_v1_1" ...>   <!-- start implicitly takes _1 -->
-<task id="kinetic_core_api_connection_v1_1" ...>  <!-- duplicate _1 -->
-```
-
-**Why it matters**
-The engine's parser uses the suffix-N to index nodes. Duplicates get overwritten; non-conforming IDs get skipped. No warning, no diagnostic — the tree just doesn't have the nodes you thought it had.
-
-**Validator check** → `validate-workflow.mjs`: violates on non-conforming IDs, duplicate suffixes, and `lastID` < max.
+**Validator check** → `validate-workflow.mjs`: violates if Start node's id, defers, or deferrable diverges. **Full discussion:** SKILL.md → "Critical Node Flags".
 
 ---
 
-## 3. `kinetic_core_api_connection_v1` path is **server-root-relative**
+## § 2 — Non-start node IDs must follow `{definition_id}_{N}` with globally unique suffixes
 
-**Symptom**
-Tree executes all nodes (visible in `/runs/{id}/tasks`), but the handler returns HTTP 404 with error body:
-```json
-{"error":"The page you were looking for doesn't exist."}
-```
-Run appears "complete" but nothing downstream happened.
+**Rule.** Every non-start node `id` = `{definition_id}_{N}` where `N` is a unique positive integer across the entire tree (not per-definition-id). `<lastID>` must equal the maximum suffix used. Every dependent `content` must resolve to an existing node ID.
 
-**Cause**
-Path parameter was written as if relative to `/app/api/v1/`:
-```
-/kapps/notifications/forms/notification/submissions    ← 404
-```
+**Symptom of violation.** Tree appears to work in the builder but at runtime only the Start trigger closes. No downstream node fires. The parser silently drops the mis-named or duplicate-suffix node.
 
-**Rule**
-Always prepend `/app/api/v1/` for Core API, or `/app/components/task/app/api/v2/` for Task API:
-```
-/app/api/v1/kapps/notifications/forms/notification/submissions    ← correct
-/app/api/v1/me                                                     ← Connection Test example
-```
-
-**Reference**
-The Integration-Catalog-installed "Kinetic Core API Connection Test" routine uses `/app/api/v1/me` — confirming the prefix is part of the path, not baked into the connection base URL.
-
-**Validator check** → `validate-workflow.mjs`: violates on `kinetic_core_api_connection_v1` nodes whose `path` doesn't start with `/app/api/v1/` or `/app/components/task/`.
+**Validator check** → `validate-workflow.mjs`: violates on non-conforming IDs, duplicate suffixes, `lastID < max`, or dangling dependents. **Full discussion:** SKILL.md → "Node IDs and lastID".
 
 ---
 
-## 4. Debug runs via `/runs/{id}/tasks`, NOT `/triggers`
+## § 3 — `kinetic_core_api_connection_v1` path is server-root-relative
 
-**Symptom**
-Run status reports `Started` indefinitely. `/triggers?runId={id}` shows only the Start trigger, Closed with empty `results: {}`. Looks like the tree is stuck or the engine is broken.
+**Rule.** The handler's `path` parameter must be the full server-root-relative path. Prepend `/app/api/v1/` for Core or `/app/components/task/` for Task endpoints.
 
-**Cause**
-Non-deferrable handlers (`defers=false`) execute inline during the parent trigger's processing and **never create their own trigger record**. They only appear in the **tasks** view.
+**Symptom of violation.** Tree executes all nodes (visible in `/runs/{id}/tasks`) but the handler returns HTTP 404 with body `{"error":"The page you were looking for doesn't exist."}`. The "Kinetic Core API Connection Test" routine ships with `/app/api/v1/me` — confirming the prefix is part of the path, not baked into the connection base URL.
 
-**Rule**
-When debugging any workflow run:
-```bash
-# WRONG — only shows triggers (one per deferrable boundary)
-GET /app/components/task/app/api/v2/triggers?runId={id}
-
-# RIGHT — shows every node's execution + handler errors + results
-GET /app/components/task/app/api/v2/runs/{id}/tasks?include=details
-```
-
-The `tasks` response carries `nodeName`, `status`, `duration`, and full `results` including `"Handler Error Message"` and `"Response Body"` — the information that was "missing" when you looked at triggers.
-
-**Why it matters**
-Multiple hours lost to debugging "why isn't my tree firing?" The tree was firing; the final step was 404-ing; the evidence lived at an endpoint nobody thought to query.
-
-**Tool** → `workflow-debug.mjs` always queries the tasks endpoint, decodes handler errors, and colors failure statuses red.
+**Validator check** → `validate-workflow.mjs`: violates on `kinetic_core_api_connection_v1` nodes whose `path` doesn't start with `/app/api/v1/` or `/app/components/task/`. **Full discussion:** SKILL.md → "kinetic_core_api_v1 / kinetic_core_api_connection_v1 path rules".
 
 ---
 
-## 5. Every `definition_id` must exist as an installed handler on the target engine
+## § 4 — Debug runs via `/runs/{id}/tasks`, NOT `/triggers`
 
-**Symptom**
-Same as pitfall #2: only Start trigger fires, no error message at the trigger level, NPE possibly appears in `/errors`.
+**Rule.** When debugging, query `GET /app/components/task/app/api/v2/runs/{id}/tasks?include=details` — non-deferrable handlers (`defers=false`) execute inline and never create their own trigger record, so they don't appear in `/triggers?runId=`. The `tasks` view carries `nodeName`, `status`, `duration`, and full `results` including `Handler Error Message` and `Response Body`.
 
-**Cause**
-Tree references a handler (e.g., `utilities_echo_v1`, `smtp_email_send_v1`) that isn't installed on the Task engine of the target space. The engine fails to resolve it and aborts tree advance silently.
+**Symptom of "violation" (misuse).** You query `/triggers?runId={id}` and see only the Start trigger Closed with empty `results: {}`, conclude the tree is stuck, miss the actual failure that lives in tasks.
 
-**Rule**
-Before PUTting a tree, list installed handlers and confirm each non-system `definition_id` is present:
-```bash
-curl -u user:pass "<server>/app/components/task/app/api/v2/handlers?limit=500"
-```
-
-Note: the list endpoint paginates and sometimes hides handlers. If one "seems missing," try fetching it directly by ID:
-```bash
-curl -u user:pass "<server>/app/components/task/app/api/v2/handlers/utilities_echo_v1"
-```
-The direct-GET is authoritative.
-
-**Validator check** → `validate-workflow.mjs`: for every non-`system_*` `definition_id` in the tree, performs a live GET on the engine and fails if the handler isn't found.
+**Tool** → `workflow-debug.mjs` queries the tasks endpoint by default. **Full discussion:** SKILL.md → "Debugging Runs" and `concepts/task-api-reference`.
 
 ---
 
-## 6. Routine nodes in a calling tree must be deferrable
+## § 5 — Every `definition_id` must exist as an installed handler on the target engine
 
-**Symptom**
-Routine runs, but the caller tree's `@results['Node Name']` only contains `Run Id`, `Source Id`, `Tree Id` — not the routine's actual outputs (`status`, `description`, `result`, etc.).
+**Rule.** Before PUTting a tree, verify every non-`system_*` `definitionId` has an installed handler. Direct-GET `/handlers/{definitionId}` is authoritative; the list endpoint sometimes hides handlers due to pagination.
 
-**Cause**
-The routine-call node was configured with `defers=false` / `deferrable=false`. The engine fires the routine synchronously, returns control immediately, and never waits for the routine to complete — so outputs never populate.
+**Symptom of violation.** Same observable as § 2 — only Start trigger fires, no visible error. The engine fails to resolve the unknown handler and aborts tree advance silently.
 
-**Rule**
-Routine nodes in a calling tree (analogous to Wait / Join nodes) must have:
-```json
-{
-  "defers": true,
-  "deferrable": true,
-  "messages": [
-    { "type": "Create" },
-    { "type": "Update" },
-    { "type": "Complete" }
-  ]
-}
-```
-
-Only Start, Echo, Noop, and other truly-non-blocking system nodes should be `defers=false`.
-
-**Why it matters**
-You'll write a tree that calls a routine, see it "succeed," and then be mystified why downstream nodes can't access the routine's return values. The routine returned them; the caller just never waited to collect them.
+**Validator check** → `validate-workflow.mjs`: for every non-system `definition_id` in the tree, performs a live GET on the engine and fails if the handler isn't found. **Full discussion:** SKILL.md → "Handler Reference".
 
 ---
 
-## 7. Global Routines must use `sourceName: "-"` and `sourceGroup: "-"`
+## § 6 — Routine nodes in a calling tree must be deferrable
 
-**Symptom**
-Routine appears in the tree list, but the workflow builder fails to load it. Title lookup returns an error.
+**Rule.** A routine-call node in the caller tree MUST have `defers: true`, `deferrable: true`, and `messages: [{type:"Create"},{type:"Update"},{type:"Complete"}]`. The engine then waits for the routine to complete and populates `@results['Node Name']` with the routine's actual outputs.
 
-**Cause**
-Routine was created with `sourceName: "Kinetic Request CE"` (the default for form-event trees). This produces a compound title that the tree list API reports differently than the title the builder expects.
+**Symptom of violation.** Routine runs but the caller's `@results['Node Name']` only contains `Run Id`, `Source Id`, `Tree Id` — never the routine's `status`, `description`, `result`, etc. Caller fires the routine synchronously, returns control immediately, never waits.
 
-**Rule**
-When POSTing a new Global Routine:
-```json
-{ "type": "Global Routine", "sourceName": "-", "sourceGroup": "-", "name": "..." }
-```
-
-Check every code path that creates routines: workflow builder, space admin pages, kapp admin pages, integration catalog, server-side provisioners. Especially check HTML form default values — `value="Kinetic Request CE"` is a common sneaky culprit.
-
-**Run API** also takes these params: `POST /runs?sourceName=-&sourceGroup=-&name={name}`.
-
-**Why it matters**
-Silent provisioning bug: the routine gets created but becomes unmanageable via the UI afterward. Three separate fixes landed in one session because the bad default was repeated across the codebase.
+**Validator check** → not currently checked (heuristic-only). **Full discussion:** SKILL.md → "Routine Invocation".
 
 ---
 
-## Meta-lesson — why these scripts exist
+## § 7 — Global Routines must use `sourceName: "-"` and `sourceGroup: "-"`
 
-The Kinetic Task engine prioritizes throughput over diagnostics. Violating any rule above results in **no stack trace, no log line, no error notification** — just a tree that doesn't do what you wrote. Every pitfall in this list cost at least an hour to rediscover.
+**Rule.** When creating a Global Routine, set `sourceName: "-"` and `sourceGroup: "-"`. Default `sourceName: "Kinetic Request CE"` produces a compound title the builder cannot load. Run API equivalent: `POST /runs?sourceName=-&sourceGroup=-&name={name}`.
 
-The validator, debugger, and PreToolUse hook in [scripts/](scripts/) turn these rules into machine-enforced invariants:
+**Symptom of violation.** Routine appears in the tree list but the workflow builder fails to load it; title lookup errors.
 
-- Can't PUT an invalid tree — the hook blocks the bash call
-- Can't miss a handler error — `workflow-debug.mjs` hits the tasks endpoint by default
-- Can't ship with a mis-numbered node — `validate-workflow.mjs` runs before every PUT
+**Validator check** → not currently checked. **Full discussion:** SKILL.md → "Routines and Sources" and `concepts/workflow-creation`.
 
-Install the hook once per machine, colocate trees with `scripts/put-workflow.mjs`, and the failure modes above become impossible rather than merely unlikely.
+---
 
-See `scripts/README.md` for install and usage.
+## Meta-lesson
+
+The Task engine prioritizes throughput over diagnostics — violating any rule above results in **no stack trace, no log line, no error notification**, just a tree that doesn't do what you wrote. The scripts in [`scripts/`](scripts/) turn these rules into machine-enforced invariants. Install the PreToolUse hook once per machine (`node skills/concepts/workflow-xml/scripts/install-hook.mjs`) and the failure modes above become impossible rather than merely unlikely. See [`scripts/README.md`](scripts/README.md) for install and usage.

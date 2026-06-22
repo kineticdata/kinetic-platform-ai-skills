@@ -5,30 +5,36 @@ globs: ["**/*.js", "**/*.ts", "**/*.rb", "**/*.yaml", "**/*.yml"]
 
 Apply the following knowledge when writing code that interacts with the Kinetic Platform REST API or Task workflow engine.
 
+<!-- BEGIN GENERATED:imports -->
+@../../skills/recipes/create-submission-form/SKILL.md
+@../../skills/recipes/add-approval-workflow/SKILL.md
+@../../skills/recipes/connect-external-system/SKILL.md
 @../../skills/concepts/api-basics/SKILL.md
+@../../skills/concepts/form-engine/SKILL.md
+@../../skills/concepts/kapp-lifecycle/SKILL.md
+@../../skills/concepts/form-events-expressions/SKILL.md
 @../../skills/concepts/kql-and-indexing/SKILL.md
 @../../skills/concepts/pagination/SKILL.md
 @../../skills/concepts/workflow-engine/SKILL.md
 @../../skills/concepts/workflow-xml/SKILL.md
+@../../skills/concepts/workflow-creation/SKILL.md
+@../../skills/concepts/task-api-reference/SKILL.md
+@../../skills/concepts/integrations/SKILL.md
+@../../skills/concepts/file-resources/SKILL.md
+@../../skills/concepts/loghub-api/SKILL.md
 @../../skills/concepts/decision-frameworks/SKILL.md
 @../../skills/concepts/architectural-patterns/SKILL.md
 @../../skills/concepts/robots/SKILL.md
-@../../skills/concepts/form-engine/SKILL.md
-@../../skills/concepts/integrations/SKILL.md
 @../../skills/concepts/webapis-and-webhooks/SKILL.md
-@../../skills/concepts/users-teams-security/SKILL.md
+@../../skills/concepts/users-and-teams/SKILL.md
+@../../skills/concepts/security-policies/SKILL.md
+@../../skills/concepts/attribute-definitions/SKILL.md
+@../../skills/concepts/submission-activities/SKILL.md
+@../../skills/concepts/models/SKILL.md
 @../../skills/concepts/ruby-sdk/SKILL.md
 @../../skills/concepts/template-provisioning/SKILL.md
-@../../skills/concepts/form-events-expressions/SKILL.md
-@../../skills/concepts/workflow-creation/SKILL.md
-@../../skills/concepts/task-api-reference/SKILL.md
-@../../skills/concepts/security-policies/SKILL.md
-@../../skills/concepts/models/SKILL.md
 @../../skills/platform/handler-development/SKILL.md
 @../../skills/platform/known-bugs/SKILL.md
 @../../skills/platform/troubleshooting/SKILL.md
-@../../skills/recipes/create-submission-form/SKILL.md
-@../../skills/recipes/add-approval-workflow/SKILL.md
-@../../skills/recipes/connect-external-system/SKILL.md
-@../../skills/api/authentication/SKILL.md
-@../../skills/api/using-the-api/SKILL.md
+@../../skills/platform/sso-and-identity/SKILL.md
+<!-- END GENERATED:imports -->

@@ -1,4 +1,4 @@
-<!-- AUTO-GENERATED from OpenAPI spec. Do not edit manually. -->
+<!-- AUTO-GENERATED from OpenAPI spec. Do not edit manually below this line. -->
 <!-- Source: oas/integrator.json -->
 <!-- Regenerate: node scripts/generate-api-reference.mjs -->
 
@@ -7,6 +7,17 @@
 Source: Kinetic Integrator REST API v6.1.7
 
 > Generated from the OpenAPI spec — endpoints + parameters only. For base URLs, authentication, pagination, `include` conventions, and worked examples see `concepts/api-basics`, `api/authentication`, and `api/using-the-api`.
+
+> ## ⚠️ NEVER PUT/PATCH credentials on an existing connection
+>
+> The connection `properties` object stores authentication credentials (passwords, API keys, OAuth secrets). **GET responses return these fields masked as `null`.** If you read a connection, modify any field, and write the whole object back via `PUT /api/connections/{id}` or `PATCH /api/connections/{id}`, the masked-as-`null` values **overwrite the real credentials permanently** with no way to recover them. The connection will start failing authentication and the original secrets are gone.
+>
+> **Safe-update rule:**
+> 1. Always PATCH a strict allowlist of fields you intend to change (`name`, `status`, non-secret properties).
+> 2. **Never** send `properties` containing credential keys back unless you are deliberately rotating them with the real new values.
+> 3. To rotate credentials, set only the credential keys you are rotating — do not round-trip the GET body.
+>
+> This is the single most destructive operation in the Integrator API. See the **Integrations** concept skill for the full pattern.
 
 ### `GET /api/connections`
 **Operation:** `IntegratorWeb.ConnectionController.index`

@@ -1,6 +1,6 @@
 # Skills Library Gap Analysis (2026-04-08, updated 2026-04-09)
 
-> **Historical snapshot.** This audit covered the 26 skills that existed at the time. The library has since grown (the `commands/` and `platform/` categories were added, among others); newer skills are not represented below. Kept for reference.
+> **Historical snapshot — archived 2026-06-13.** This audit covered the 26 skills that existed in April 2026. The library has since grown (the `commands/` and `platform/` categories were added, among others); newer skills are not represented below. For the current audit and active backlog see `SKILLS-AUDIT-2026-06-13.md` at the repo root and the `CHANGELOG.md`. Kept for historical reference only.
 
 Comprehensive audit from three angles: live API testing on demo.kinops.io, `@kineticdata/react` package inspection, and newcomer doc audit of all 26 skill files.
 
@@ -103,6 +103,7 @@ Comprehensive audit from three angles: live API testing on demo.kinops.io, `@kin
 | 56 | **`hasIntersection` nature contradicted** — one file said built-in, another said inline JS | form-engine, users-teams-security | **FIXED** — reconciled as inline JS helper |
 | 57 | **`pattern` property contradicted** — one section said not implemented, another showed working syntax | form-engine | **FIXED** — reconciled as object format |
 | 58 | **Platform-issued API keys absence undocumented** — no skill stated that the platform does not issue per-user API keys / PATs and that there is no API-key-only account type; readers were left to infer the service-account pattern (regular user + password + Basic Auth) | authentication, users-teams-security | **FIXED** — "No Platform-Issued API Keys" callout added to authentication skill; "Service Accounts (No API Keys)" subsection added to users-teams-security skill |
+| 59 | **Browser-facing URLs confused with API endpoints** — only API base URLs (`/app/api/v1/...`) were documented; no coverage of the hash-routed user-portal URL pattern (`/#/kapps/<kapp>/forms/<slug>`) or the Space Console editor URL pattern (`/app/console/#/kapps/<kapp>/forms/edit/<slug>/general`). Led to a shared link of the form `/app/kapps/services/forms/<slug>` that resolves to nothing in a browser. | authentication | **FIXED** — "Browser-Facing URLs (UI Routes vs. API Endpoints)" section added to authentication skill with the three URL patterns (portal, console form editor, console kapp settings/datastore), hash-routing explanation, self-hosted host-swap rule, and a shared-link gotcha. |
 
 ---
 

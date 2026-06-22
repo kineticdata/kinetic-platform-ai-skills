@@ -1,9 +1,11 @@
 ---
-name: users-teams-security
-description: Use when creating, updating, deleting, searching, or inspecting Kinetic users or teams — managing memberships, user vs profile attributes, spaceAdmin/enabled flags, allowedIps, the /users, /me, or /teams Core API endpoints, KQL user search (q=username=*), keyset pagination (nextPageToken), or include params (attributes, memberships, authorization).
+name: users-and-teams
+description: Use when creating, updating, deleting, searching, or inspecting Kinetic users or teams — managing memberships, user vs profile attributes, spaceAdmin/enabled flags, allowedIps, the /users, /me, or /teams Core API endpoints, KQL user search (q=username=*), keyset pagination (nextPageToken), or include params (attributes, memberships, authorization). For security policy expressions / KSL / KSL bindings, see the `security-policies` skill — NOT this one.
 ---
 
-# Users, Teams, and Security
+# Users and Teams
+
+> **Scope:** users, teams, memberships, user/profile attributes. For access-control rules (KSL, security policy definitions, attribute definitions), see `concepts/security-policies`. The two skills are intentionally separate — this one covers identity, the other covers authorization.
 
 ---
 

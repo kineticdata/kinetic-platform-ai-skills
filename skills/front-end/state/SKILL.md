@@ -5,6 +5,8 @@ description: "Use when managing app state or UI chrome in a Kinetic React portal
 
 # State Management
 
+> **Version requirements.** `regRedux` below uses `@reduxjs/toolkit`'s `combineSlices(...).inject(slice, { overrideExisting: true })` API, which **requires RTK ≥ 2.0** (2024+). On older RTK there is no `combineSlices` and no `.inject` — the file will fail at module load with `TypeError: combineSlices is not a function` or `rootReducer.inject is not a function`. Pin: `"@reduxjs/toolkit": "^2.0.0"` (or later). If you must support older RTK, replace `regRedux` with a static `combineReducers` setup and forfeit the runtime slice-injection convenience.
+
 ## `regRedux` — Dynamic Slice Registration
 
 `regRedux` registers a named Redux slice at runtime and returns dispatch-wrapped action functions. No `useDispatch` needed — actions can be called anywhere.
@@ -153,12 +155,20 @@ const viewActions = regRedux(
   { ...calcViewState() },
   { handleResize(state) { calcViewState(state); } },
 );
-window.addEventListener('resize', throttle(viewActions.handleResize, 200));
+
+// SSR / test-environment guard — window is undefined in Node-based test runners
+// (Vitest, Jest with node env) and during SSR. Touching it at module load throws
+// ReferenceError before any test gets a chance to set up jsdom.
+if (typeof window !== 'undefined') {
+  window.addEventListener('resize', throttle(viewActions.handleResize, 200));
+}
 
 // Breakpoints (Tailwind defaults):
 // xs: 0–639, sm: 640–767, md: 768–1023, lg: 1024–1279, xl: 1280–1535, 2xl: 1536+
 // mobile: xs|sm,  tablet: md|lg,  desktop: xl|2xl
 ```
+
+> **No listener cleanup.** The resize listener is attached for the lifetime of the module — there is no `removeEventListener`. In a long-running SPA that's fine; in hot-reload during dev it can accumulate listeners across reloads. If that becomes a problem, export an `initViewActions()` function that registers the listener and returns a cleanup function, and call it from `App` inside a `useEffect`.
 
 **Selectors:**
 ```js

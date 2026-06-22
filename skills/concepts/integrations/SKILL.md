@@ -469,92 +469,19 @@ K('bridgedResource[People]').load({
 
 ## Handlers (Workflow-Only)
 
-Small Ruby programs executed within workflows. Legacy for most use cases, but still needed for complex logic that can't be expressed as a single REST call.
+Small Ruby programs executed within workflows. The authoring side — file structure, init.rb/node.xml/info.xml schema, class-naming rules, packaging, testing, and the common-system-handlers catalogue — is documented in **`platform/handler-development`**. From the integration-choice perspective, the key facts are:
 
-### File Structure
+- Handlers run **server-side in the Task engine** (or remotely on a Kinetic Agent for cross-network reach).
+- Workflows are async — handlers are not suitable for real-time client-side interactions.
+- Use a custom handler only when the integration can't be expressed as a single REST call. Otherwise prefer `system_integration_v1` + an Operation.
 
-```
-handler/
-  init.rb          ← Ruby code (initialize + execute methods)
-process/
-  node.xml         ← Parameters, results, configuration
-  info.xml         ← System-wide config properties (info values)
-test/
-  simple_input.rb  ← Test variable bindings
-  simple_output.xml ← Expected results
-```
-
-### Handler Code Pattern
-
-```ruby
-class KineticRequestCeUserRetrieveV1
-  def initialize(input)
-    # Retrieve config from node.xml
-    @info_values = {}
-    @parameters = {}
-    # ... parse input XML
-  end
-
-  def execute
-    # Perform API interaction
-    # Return results as XML
-    <<-RESULTS
-    <results>
-      <result name="Username">#{@user['username']}</result>
-      <result name="Handler Error Message"></result>
-    </results>
-    RESULTS
-  end
-end
-```
-
-### Key Details
-
-- **Class naming:** Remove underscores from ZIP filename, capitalize each word (e.g., `kinetic_request_ce_user_retrieve_v1.zip` → `KineticRequestCeUserRetrieveV1`)
-- **Results in node.xml:** Only results declared in `node.xml` appear in workflow builder dropdowns. Extra results from Ruby code are returned but not discoverable.
-- **Info values:** System-wide configuration (connection URLs, API keys) set during handler import in the console
-- **Testing:** Use the Kinetic Test Harness for local development before uploading
-- **Upload:** ZIP the handler directory and import via Task API (`POST /handlers`) or console UI
-
-### Where Handlers Run
-
-- **Default:** In the Kinetic Task workflow engine (server-side)
-- **Agent handlers:** Execute on a remote Kinetic Agent for cross-network integrations
-- **Always async:** Workflows are asynchronous — handlers are not suitable for real-time client-side interactions
-
-### Common System Handlers
-
-| Definition ID | Purpose |
-|---------------|---------|
-| `system_start_v1` | Workflow entry point |
-| `system_tree_return_v1` | Return results from a routine |
-| `system_integration_v1` | Execute a Connection/Operation |
-| `utilities_create_trigger_v1` | Complete or update a deferred task |
-| `utilities_echo_v1` | Pass-through for debugging |
+For the handler import workflow (`POST /handlers` multipart, `?force=true`), see the "Handler Import & Management Gotchas" section below and `api/task/handlers.md`.
 
 ---
 
 ## File Resources
 
-Similar to Bridges but optimized for streaming files rather than data payloads.
-
-### Architecture
-
-```
-File Adapter (installed on Agent)
-  → File Resource (configured instance)
-    → Streams files to the frontend
-```
-
-### Use Cases
-
-- Displaying knowledge articles from an external CMS
-- Streaming files from S3 or SharePoint
-- Serving documents from legacy document management systems
-
-### When to Use
-
-Only when you need to stream file content from an external system into the Kinetic UI. For standard file upload/download on forms, use the built-in `attachment` field type.
+Moved to **`concepts/file-resources`**. Use that skill when you need to stream files from an external system (S3, SharePoint, legacy DMS) into the Kinetic UI. Not to be confused with the built-in `attachment` form-field type for submission-attached uploads.
 
 ---
 
@@ -574,56 +501,7 @@ Only when you need to stream file content from an external system into the Kinet
 
 ## LogHub API (Real-Time Logs)
 
-The LogHub API provides access to real-time platform logs.
-
-### Endpoint
-
-```
-GET /app/loghub/api/v1/logs?limit=25&format=ndjson&start={ISO}&end={ISO}&tail=true
-```
-
-### Authentication
-
-Requires **Bearer JWT** (NOT Basic Auth). The JWT must be signed with the space's `oauthSigningKey` using HMAC-SHA256.
-
-JWT payload:
-```json
-{
-  "clientId": "system",
-  "displayName": "Admin",
-  "email": "admin@example.com",
-  "exp": 1234567890,
-  "iss": "kinetic-data",
-  "spaceAdmin": true,
-  "spaceSlug": "my-space",
-  "username": "admin"
-}
-```
-
-Retrieve the signing key: `GET /app/api/v1/space?include=details` → `space.oauthSigningKey`
-
-### Response Format
-
-NDJSON (one JSON object per line). The last line is metadata with `nextPageToken`.
-
-### Log Entry Fields
-
-| Field | Description |
-|-------|-------------|
-| `timestamp` | ISO 8601 timestamp |
-| `level` | `INFO`, `DEBUG`, `WARN`, `ERROR` |
-| `message` | Log message text |
-| `app.component` | `core` or `task` |
-| `app.user` | Username associated with the request |
-| `app.requestPath` | API path |
-| `app.requestMethod` | HTTP method |
-| `app.responseStatus` | HTTP response code |
-| `app.responseTime` | Response time in ms |
-| `app.correlationId` | Request correlation ID |
-
-### Availability
-
-**Not available on all servers.** Check whether the LogHub endpoint exists before building features that depend on it.
+Moved to **`concepts/loghub-api`**. LogHub is a separate API surface (different base path, different auth — Bearer JWT signed with the space's `oauthSigningKey`) and conceptually belongs alongside the API skills rather than under integrations.
 
 ---
 
@@ -725,3 +603,4 @@ PUT/DELETE /app/api/v1/platformComponents/agents/{slug}
 ```
 
 Body: `{ "slug": "my-agent", "url": "https://agent.example.com", "secret": "shared-secret" }`
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             

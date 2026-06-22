@@ -1,6 +1,6 @@
 ---
 name: authentication
-description: "Use when authenticating to a Kinetic API or fixing a 401/403 — picking Basic Auth (Core/Task) vs the Integrator OAuth 2.0 bearer token, resolving \"Authorization header must contain a bearer token\", looking for a (nonexistent) per-user API key/personal access token, setting up a service account, handling CSRF tokens, self-signed certs, or SAML SSO coexistence with Basic Auth."
+description: "Use when authenticating to a Kinetic API or fixing a 401/403 — picking Basic Auth (Core/Task) vs the Integrator OAuth 2.0 bearer token, resolving \"Authorization header must contain a bearer token\", looking for a (nonexistent) per-user API key/personal access token, setting up a service account, handling CSRF tokens, self-signed certs, or SAML SSO coexistence with Basic Auth. Also covers the distinction between Core API endpoint URLs (`/app/api/v1/...`) and browser-facing portal/console URLs (hash-routed: `https://<space>.kinops.io/#/kapps/<kapp>/forms/<slug>` for user view, `https://<space>.kinops.io/app/console/#/kapps/<kapp>/forms/edit/<slug>/general` for the Space Console editor)."
 ---
 
 # Authentication
@@ -23,7 +23,7 @@ The Kinetic Platform has three API surfaces, all proxied through the Core server
 - There is **no "API-key-only" account type**. Every authenticated principal is a regular `user` record with a `username` and a `password`.
 - The "API Key" auth types you see elsewhere in the platform (e.g., the Integrator Connection auth modes `api_key` / `raw_bearer_token`, or handler `info` values) describe credentials for **external systems Kinetic talks to**, not credentials Kinetic issues for itself.
 
-What to do instead — see [Service Accounts](../../concepts/users-teams-security/SKILL.md#service-accounts-no-api-keys) in the users-teams-security skill. The short version: create a regular user, give it a strong password, mark it `enabled: true`, and authenticate API calls with Basic Auth (Core/Task) or the OAuth implicit grant (Integrator) using that username + password. Rotate by `PUT /users/{username}` with a new `password`.
+What to do instead — see [Service Accounts](../../concepts/users-and-teams/SKILL.md#service-accounts-no-api-keys) in the users-and-teams skill. The short version: create a regular user, give it a strong password, mark it `enabled: true`, and authenticate API calls with Basic Auth (Core/Task) or the OAuth implicit grant (Integrator) using that username + password. Rotate by `PUT /users/{username}` with a new `password`.
 
 ## SAML SSO
 
@@ -154,6 +154,28 @@ Core:       https://<server>/kinetic/<space-slug>/app/api/v1
 Task:       https://<server>/kinetic/<space-slug>/app/components/task/app/api/v2
 Integrator: https://<server>/kinetic/<space-slug>/app/integrator/api
 ```
+
+## Browser-Facing URLs (UI Routes vs. API Endpoints)
+
+**Critical distinction — do not confuse these:**
+
+| Purpose | URL pattern | Example |
+|---------|-------------|---------|
+| **API endpoint** (curl, SDK, server code) | `https://<space>.kinops.io/app/api/v1/<resource>` | `https://demo.kinops.io/app/api/v1/kapps/services/forms/my-form` |
+| **User-facing portal** (browser link to open a form) | `https://<space>.kinops.io/#/kapps/<kappSlug>/forms/<formSlug>` | `https://demo.kinops.io/#/kapps/services/forms/my-form` |
+| **Space Console — form editor** (admin link to edit a form in the UI) | `https://<space>.kinops.io/app/console/#/kapps/<kappSlug>/forms/edit/<formSlug>/general` | `https://demo.kinops.io/app/console/#/kapps/services/forms/edit/my-form/general` |
+| **Space Console — kapp settings** | `https://<space>.kinops.io/app/console/#/kapps/<kappSlug>/settings` | |
+| **Space Console — datastore form** | `https://<space>.kinops.io/app/console/#/datastore/forms/<formSlug>` | |
+| **Task Console** | `https://<space>.kinops.io/app/components/task/app/` | |
+
+**Key rules:**
+
+- The portal app uses **hash routing** — paths after the `#` are NOT sent to the server; the React SPA handles routing client-side. So `/#/kapps/...` is correct, `/app/kapps/...` is NOT a real URL.
+- The Space Console is served at `/app/console/` and ALSO uses hash routing inside that path.
+- `/app/api/v1/...` is the **Core API** — only for programmatic clients. Hitting it in a browser shows raw JSON, not a UI.
+- Self-hosted deployments swap the `<space>.kinops.io` host for `<server>/kinetic/<space-slug>` and prepend that to **API URLs only** — UI URLs work the same once you're at the right host.
+
+**Gotcha — sharing form links with users:** if you paste `/app/kapps/services/forms/<slug>` (API path) into a chat, recipients hitting it in a browser get a 404 or raw JSON. Always use the hash-routed `/#/kapps/services/forms/<slug>` for human-shareable links.
 
 ## Self-Signed Certificates
 

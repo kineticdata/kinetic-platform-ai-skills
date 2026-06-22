@@ -95,13 +95,15 @@ Content-Type: application/json
 
 > Field/section/button JSON, render types (`text`, `dropdown`, `radio`, `checkbox`, `date`, `attachment`, …), the required-property set per type (and which are forbidden, e.g. `rows` on choice fields), choice-field shapes, conditional `visible`/`required` expressions, and the hidden-section + `omitWhenHidden: false` pattern are all documented in `concepts/form-engine`. Build each element from those templates. The points below are the recipe-specific layout decisions.
 
+Each field's `key` is a unique **GUID** (UUID with dashes stripped, 32 hex chars) — *not* a name-derived string like `location`. Keys are opaque so a field can be renamed or retyped without breaking stored values; see `concepts/form-engine` (Field Keys).
+
 **Field layout for a submission-driven form.** Most forms organize fields into three categories:
 
 - **User-facing input fields** (`visible: true`) — what the requester fills in (Location, Category, Description, Priority, Preferred Date, Attachments).
 - **Status / routing fields** — populated by workflows, not the requester. A `Status` text field with `defaultValue: "New"` is the primary one (it becomes the main KQL filter — see Step 3).
 - **Hidden system fields** — metadata written by workflows (Assigned Team, Deferral Token), placed in a section with `visible: false` + `omitWhenHidden: false` so their values still submit. (`omitWhenHidden: false` is the load-bearing property here — see `concepts/form-engine`.)
 
-**Representative PUT body** (abbreviated — one field per shape; expand using the form-engine templates for each element):
+**Complete minimal PUT body** (every required property filled in for each renderType — paste this and it PUTs cleanly against a live kapp; expand fields by following the same per-type property set):
 
 ```json
 {
@@ -122,26 +124,98 @@ Content-Type: application/json
           "type": "section", "name": "Request Details", "title": "Request Details",
           "visible": true, "omitWhenHidden": null, "renderAttributes": {},
           "elements": [
-            { "type": "field", "name": "Location", "renderType": "text", "dataType": "string", "rows": 1, "required": true, "...": "see text template" },
-            { "type": "field", "name": "Category", "renderType": "dropdown", "dataType": "string", "choicesDataSource": "custom", "choicesRunIf": null, "choicesResourceName": null, "choices": [{ "label": "Plumbing", "value": "Plumbing" }, { "label": "Other", "value": "Other" }], "...": "see dropdown template" },
-            { "type": "field", "name": "Description", "renderType": "text", "dataType": "string", "rows": 5, "required": true, "...": "see text template" },
-            { "type": "field", "name": "Priority", "renderType": "radio", "dataType": "string", "defaultValue": "Normal", "choicesDataSource": "custom", "choicesRunIf": null, "choicesResourceName": null, "choices": [{ "label": "Low", "value": "Low" }, { "label": "Urgent", "value": "Urgent" }], "...": "see radio template" },
-            { "type": "field", "name": "Attachments", "renderType": "attachment", "dataType": "file", "renderAttributes": { "allowMultiple": "true" }, "...": "see attachment template" }
+            {
+              "type": "field", "name": "Location", "key": "7c9e6679742548a4b0d2e6f3a1b5c8d0",
+              "renderType": "text", "dataType": "string", "rows": 1,
+              "label": "Location", "required": true, "enabled": true, "visible": true,
+              "defaultValue": null, "defaultDataSource": "none",
+              "constraints": [], "events": [], "renderAttributes": {},
+              "helpText": null, "omitWhenHidden": null, "pattern": null
+            },
+            {
+              "type": "field", "name": "Category", "key": "1f2e3d4c5b6a79880f1e2d3c4b5a6978",
+              "renderType": "dropdown", "dataType": "string",
+              "label": "Category", "required": true, "enabled": true, "visible": true,
+              "defaultValue": null, "defaultDataSource": "custom",
+              "choicesDataSource": "custom",
+              "choicesRunIf": null, "choicesResourceName": null,
+              "choices": [
+                { "label": "Plumbing", "value": "Plumbing" },
+                { "label": "Electrical", "value": "Electrical" },
+                { "label": "HVAC", "value": "HVAC" },
+                { "label": "Other", "value": "Other" }
+              ],
+              "constraints": [], "events": [], "renderAttributes": {},
+              "helpText": null, "omitWhenHidden": null, "pattern": null
+            },
+            {
+              "type": "field", "name": "Description", "key": "a3b1c2d4e5f60718293a4b5c6d7e8f90",
+              "renderType": "text", "dataType": "string", "rows": 5,
+              "label": "Description", "required": true, "enabled": true, "visible": true,
+              "defaultValue": null, "defaultDataSource": "none",
+              "constraints": [], "events": [], "renderAttributes": {},
+              "helpText": null, "omitWhenHidden": null, "pattern": null
+            },
+            {
+              "type": "field", "name": "Priority", "key": "b4c2d3e5f60718293a4b5c6d7e8f901a",
+              "renderType": "radio", "dataType": "string",
+              "label": "Priority", "required": true, "enabled": true, "visible": true,
+              "defaultValue": "Normal", "defaultDataSource": "custom",
+              "choicesDataSource": "custom",
+              "choicesRunIf": null, "choicesResourceName": null,
+              "choices": [
+                { "label": "Low", "value": "Low" },
+                { "label": "Normal", "value": "Normal" },
+                { "label": "Urgent", "value": "Urgent" }
+              ],
+              "constraints": [], "events": [], "renderAttributes": {},
+              "helpText": null, "omitWhenHidden": null, "pattern": null
+            },
+            {
+              "type": "field", "name": "Attachments", "key": "c5d3e4f60718293a4b5c6d7e8f901a2b",
+              "renderType": "attachment", "dataType": "file",
+              "label": "Attachments", "required": false, "enabled": true, "visible": true,
+              "defaultValue": null, "defaultDataSource": "none",
+              "constraints": [], "events": [],
+              "renderAttributes": { "allowMultiple": "true" },
+              "helpText": null, "omitWhenHidden": null, "pattern": null
+            }
           ]
         },
         {
           "type": "section", "name": "Status Fields", "title": "Status",
           "visible": true, "omitWhenHidden": null, "renderAttributes": {},
           "elements": [
-            { "type": "field", "name": "Status", "renderType": "text", "dataType": "string", "rows": 1, "defaultValue": "New", "...": "see text template" }
+            {
+              "type": "field", "name": "Status", "key": "d6e4f50718293a4b5c6d7e8f901a2b3c",
+              "renderType": "text", "dataType": "string", "rows": 1,
+              "label": "Status", "required": false, "enabled": false, "visible": true,
+              "defaultValue": "New", "defaultDataSource": "none",
+              "constraints": [], "events": [], "renderAttributes": {},
+              "helpText": null, "omitWhenHidden": null, "pattern": null
+            }
           ]
         },
         {
           "type": "section", "name": "Hidden System Questions",
           "visible": false, "omitWhenHidden": false, "renderAttributes": {},
           "elements": [
-            { "type": "field", "name": "Assigned Team", "renderType": "text", "dataType": "string", "rows": 1, "...": "see text template" },
-            { "type": "field", "name": "Deferral Token", "renderType": "text", "dataType": "string", "rows": 1, "...": "see text template" }
+            {
+              "type": "field", "name": "Assigned Team", "key": "assigned_team",
+              "renderType": "text", "dataType": "string", "rows": 1,
+              "label": "Assigned Team", "required": false, "enabled": true, "visible": true,
+              "defaultValue": null, "defaultDataSource": "none",
+              "constraints": [], "events": [], "renderAttributes": {},
+              "helpText": null, "omitWhenHidden": null, "pattern": null
+            },
+            {
+              "type": "field", "name": "Deferral Token", "key": "deferral_token",
+              "renderType": "text", "dataType": "string", "rows": 1,
+              "label": "Deferral Token", "required": false, "enabled": true, "visible": true,
+              "defaultValue": null, "defaultDataSource": "none",
+              "constraints": [], "events": [], "renderAttributes": {},
+              "helpText": null, "omitWhenHidden": null, "pattern": null
+            }
           ]
         },
         {
@@ -154,7 +228,15 @@ Content-Type: application/json
 }
 ```
 
-The `"...": "see ... template"` placeholders stand in for the full required-property set each element type needs — fill them from `concepts/form-engine` before PUTting, or the API returns `400 Invalid Form`.
+**Why this body works:** every renderType carries exactly the properties the validator requires for that type — no extras (which the validator silently accepts but you don't need), no omissions (which return `400 Invalid Form`).
+
+- `text` fields require `rows` (1 for single-line, more for textarea); dropdown/radio/checkbox/attachment must NOT include `rows`.
+- choice fields (`dropdown`, `radio`, `checkbox`) require `choicesDataSource`, `choicesRunIf: null`, `choicesResourceName: null`, and a `choices: [{label, value}]` array.
+- the submit `button` element requires `renderAttributes: {}` (omitting it 400s).
+- the hidden `Status Fields` section sets fields to `enabled: false` so the user can't edit Status from the form (workflows still write it via the API).
+- the hidden section uses `visible: false, omitWhenHidden: false` — the `false` is load-bearing; `null` would strip the hidden fields from the submission and break the deferral callback.
+
+For renderTypes not shown here (date, datetime, time, number, table, signature, file picker), see the per-type templates in `concepts/form-engine`. The pattern is the same: one minimal property set per renderType.
 
 ---
 

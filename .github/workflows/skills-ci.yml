@@ -1,0 +1,105 @@
+# Skills library CI
+#
+# Runs on every push / PR:
+#   - Lints SKILL.md files for frontmatter, links, last_verified freshness, manifest coverage
+#   - Checks that generated index files (CLAUDE.md / AGENTS.md / GEMINI.md / README.md / .cursor/rules/*) are in sync with skills.yaml
+#
+# Optional jobs (gated on secrets):
+#   - Runs the recipe verifiers against a real Kinetic environment if SKILLS_CI_SPACE_URL is set.
+#   - Schedules a weekly known-bugs verification job.
+#
+# Required secrets to enable the live-environment jobs:
+#   SKILLS_CI_SPACE_URL    # e.g. https://demo.kinops.io
+#   SKILLS_CI_USER         # service account username
+#   SKILLS_CI_PASS         # service account password
+
+name: skills-ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:    # manual trigger
+  schedule:
+    - cron: '0 6 * * 1' # weekly Monday 06:00 UTC — known-bugs verification
+
+jobs:
+  # --- Lint & manifest drift (always runs, fast) -----------------------------
+  lint:
+    name: Lint skills
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Lint skill files
+        run: node scripts/lint-skills.mjs
+      - name: Check generated indexes are in sync with skills.yaml
+        run: node scripts/build-indexes.mjs --check
+
+  # --- Recipe verifiers (live env, gated on secrets) -------------------------
+  recipes:
+    name: Recipe verifiers
+    runs-on: ubuntu-latest
+    needs: lint
+    # Only run when the required secret is present (avoids failing PRs from forks).
+    if: ${{ github.event_name != 'schedule' && vars.SKILLS_CI_HAS_LIVE_ENV == 'true' }}
+    env:
+      SKILLS_CI_SPACE_URL: ${{ secrets.SKILLS_CI_SPACE_URL }}
+      SKILLS_CI_USER:      ${{ secrets.SKILLS_CI_USER }}
+      SKILLS_CI_PASS:      ${{ secrets.SKILLS_CI_PASS }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run all recipe verifiers
+        run: |
+          chmod +x tests/recipes/*.sh tests/recipes/lib/*.sh
+          ./tests/recipes/run-all.sh \
+            "$SKILLS_CI_SPACE_URL" \
+            "$SKILLS_CI_USER" \
+            "$SKILLS_CI_PASS"
+
+  # --- Weekly known-bugs verification (scheduled only) -----------------------
+  known-bugs:
+    name: Verify known bugs
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule'
+    env:
+      SKILLS_CI_SPACE_URL: ${{ secrets.SKILLS_CI_SPACE_URL }}
+      SKILLS_CI_USER:      ${{ secrets.SKILLS_CI_USER }}
+      SKILLS_CI_PASS:      ${{ secrets.SKILLS_CI_PASS }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Verify known bugs against live environment
+        run: |
+          node scripts/verify-known-bugs.mjs \
+            --space "$SKILLS_CI_SPACE_URL" \
+            --user  "$SKILLS_CI_USER" \
+            --pass  "$SKILLS_CI_PASS" \
+            --exit-on-fixed
+      - name: Open issue if any bug appears fixed
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: 'known-bugs verification: one or more bugs appear fixed',
+              body: 'The weekly `verify-known-bugs.mjs` run detected bugs that may have been resolved by the platform. Re-check each FIXED bug manually and remove its entry from `skills/platform/known-bugs/SKILL.md` if confirmed. See the workflow logs for details.',
+              labels: ['known-bugs', 'maintenance'],
+            });
+      - name: Commit bumped last_verified dates (if any)
+        if: success()
+        run: |
+          if ! git diff --quiet skills/platform/known-bugs/SKILL.md; then
+            git config user.name  'skills-ci-bot'
+            git config user.email 'skills-ci-bot@users.noreply.github.com'
+            git add skills/platform/known-bugs/SKILL.md
+            git commit -m 'chore(known-bugs): bump last_verified dates (CI)'
+            git push
+          fi

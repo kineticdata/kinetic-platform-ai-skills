@@ -105,7 +105,7 @@ The `treeXml` must be ONLY the `<taskTree>` inner element — NOT the full `<tre
 ## Step 5: Verify
 
 After creation:
-1. List workflows/trees to confirm it exists
-2. For event trees: create a test submission to trigger it
-3. For WebAPIs: invoke with `?timeout=10` to test synchronously
-4. Check `GET /app/components/task/app/api/v2/triggers` (filter `?runId={id}` or `?status=Active`) for any failures
+1. List workflows/trees to confirm it exists.
+2. For event trees: create a test submission to trigger it.
+3. For WebAPIs: invoke with `?timeout=10` to test synchronously. **`timeout` must be ≤ 30** — values >30 return HTTP 500 with an orphan run (the tree executes in the background but the caller never receives results). See `platform/known-bugs` Bug 4. For trees that legitimately take longer than 30 seconds, omit `timeout` to get a `{runId}` back immediately and poll `GET /app/components/task/app/api/v2/runs/{runId}` for completion.
+4. Check `GET /app/components/task/app/api/v2/triggers` (filter `?runId={id}` or `?status=Active`) for any failures, and `GET /app/components/task/app/api/v2/errors?include=details&status=Active` for surfaced engine errors.

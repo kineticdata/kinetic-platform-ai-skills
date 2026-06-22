@@ -50,6 +50,22 @@ export function useData(fn, params) {
 
 **Race condition safety:** Timestamp-based stale response rejection — if params change before the previous fetch resolves, the old response is discarded.
 
+> ## ⚠ Param-object identity hazard
+> The `useCallback` dep on `params` (line 31) uses reference equality. **A new object literal every render is a new reference**, which means `executeQuery` is a new function every render, which means the `useEffect` at line 33 fires every render, which means the component re-fetches on every render. The timestamp-stale check silently masks this — the result is correct, but the network traffic is multiplied.
+>
+> **Always memoize the params object** with `useMemo` keyed on its actual contents:
+>
+> ```jsx
+> // ❌ WRONG — new object literal every render, refetches every render
+> const { response } = useData(fetchSubmission, { id });
+>
+> // ✅ RIGHT — stable reference unless `id` changes
+> const params = useMemo(() => ({ id }), [id]);
+> const { response } = useData(fetchSubmission, params);
+> ```
+>
+> Also pass a stable `fn` reference. Imported helpers from `@kineticdata/react` are stable by module identity, but **don't define a fetch wrapper inline** in your component — define it outside the component or wrap with `useCallback`.
+
 **Error handling:** `@kineticdata/react` fetch functions do NOT reject promises on HTTP errors — they resolve with `{ error: "message" }` in the response. Check `response.error` after loading completes:
 
 ```jsx
@@ -167,6 +183,8 @@ Internal hook used by `usePaginatedData`. Manages a stack of `pageToken` values 
 
 ```js
 // portal/src/helpers/hooks/usePagination.js
+import { useState, useCallback } from 'react';
+
 export function usePagination() {
   const [pagination, setPagination] = useState({
     pageToken: undefined,
@@ -185,21 +203,36 @@ export function usePagination() {
 
   // Move to previous page: pop from stack
   const prev = useCallback(() => {
-    setPagination(({ pageToken: nextPageToken, previousPageTokens: [pageToken, ...previousPageTokens] }) => ({
-      pageToken, previousPageTokens, nextPageToken,
+    setPagination(({ previousPageTokens: [pageToken, ...rest], nextPageToken }) => ({
+      pageToken,
+      nextPageToken,
+      previousPageTokens: rest,
     }));
+  }, []);
+
+  // Called by usePaginatedData after each fetch to record the server-returned nextPageToken.
+  // Stable identity (no deps) so it's safe to put in effect dep arrays.
+  const setNextPageToken = useCallback((token) => {
+    setPagination((p) => ({ ...p, nextPageToken: token ?? undefined }));
+  }, []);
+
+  // Reset to first page — call when filters change.
+  const resetPagination = useCallback(() => {
+    setPagination({ pageToken: undefined, nextPageToken: undefined, previousPageTokens: [] });
   }, []);
 
   return {
     pageToken: pagination.pageToken,
-    setNextPageToken: ...,          // called by usePaginatedData after each fetch
+    setNextPageToken,
     pageNumber: pagination.previousPageTokens.length + 1,
-    resetPagination: ...,
+    resetPagination,
     previousPage: pagination.previousPageTokens.length > 0 ? prev : undefined,
     nextPage: pagination.nextPageToken ? next : undefined,
   };
 }
 ```
+
+> **Why all the `useCallback`s with empty deps.** `setNextPageToken` and `resetPagination` are read by `usePaginatedData`'s `useEffect` dep array — if they got a new identity on every render, the effect would re-run forever. Wrapping them in `useCallback` with `[]` (using the functional `setPagination` form so we don't need to depend on state) gives them stable identity for the lifetime of the hook instance.
 
 `previousPage` and `nextPage` are `undefined` (not functions) when unavailable — use this to disable navigation buttons directly.
 
@@ -241,6 +274,14 @@ usePoller(reloadData);  // Pass reloadData directly; poller stops if fn becomes 
 ```
 
 Pass `undefined` to stop polling (e.g. when submission is closed).
+
+> ## ⚠ Schedule resets to 5s on every `fn` identity change
+> The `useEffect` dep is `[fn]` (line 256). `reloadData` is a `useCallback` keyed on `params`, so **any params change produces a new `reloadData`, which tears down the poller and starts a fresh one at the initial 5-second interval**. A page that updates `params` every few seconds (search filter typing, route change, etc.) will permanently hold the poller at 5s and never reach the 60s ceiling.
+>
+> **Mitigations:**
+> - Memoize `params` (the same fix as the `useData` param-object identity hazard above) so `reloadData` is stable across renders where the underlying values didn't change.
+> - If you need a long-lived poll that survives unrelated re-renders, wrap the fetch in a ref-backed indirection: `const fnRef = useRef(reloadData); fnRef.current = reloadData; usePoller(useCallback(() => fnRef.current(), []))`. The poller now sees a constant function while the underlying fetch is always current.
+> - For polls that should genuinely reset on dependency change (different submission, different filter), the current behavior is correct — the schedule reset reflects "the thing being polled has changed."
 
 ---
 

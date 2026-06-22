@@ -216,7 +216,341 @@ return (
 3. `kapp && profile` loaded -> PrivateRoutes
 4. `timedOut` (session expired while logged in) -> overlay dialog with Login
 
-For context fetching (space, profile, kapp), kappSlug resolution, and routing structure, see the [Portal Patterns skill](../portal-patterns/SKILL.md).
+For context fetching (space, profile, kapp), kappSlug resolution, and the larger routing structure, see the [Portal Patterns skill](../portal-patterns/SKILL.md). The minimum boilerplate to reach a running portal is below.
+
+---
+
+## Zero-to-Running — Minimum Boilerplate
+
+Everything below is the smallest set of files that boots a portal end-to-end from this skill alone. Each is a complete file (no `...` placeholders, no cross-skill detours). Drop these into a fresh Vite project to reach a logged-in `Home` route.
+
+### `src/redux.js`
+
+```js
+import { configureStore, combineSlices, createSlice } from '@reduxjs/toolkit';
+
+const init = createSlice({
+  name: 'init',
+  initialState: false,
+  reducers: { regRedux: () => true },
+});
+
+const rootReducer = combineSlices(init);
+
+export const store = configureStore({
+  reducer: rootReducer,
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: {
+        ignoredActions: ['view/handleResize', 'confirm/open'],
+        ignoredPaths: ['confirm.options.accept', 'confirm.options.cancel'],
+      },
+    }),
+});
+
+export const regRedux = (name, initialState, reducers) => {
+  const slice = createSlice({
+    name,
+    initialState,
+    reducers: Object.fromEntries(
+      Object.entries(reducers).map(([k, v]) => [k, (state, { payload }) => v(state, payload)]),
+    ),
+  });
+  rootReducer.inject(slice, { overrideExisting: true });
+  store.dispatch(init.actions.regRedux());
+  return Object.fromEntries(
+    Object.entries(slice.actions).map(([k, v]) => [k, (...args) => store.dispatch(v(...args))]),
+  );
+};
+
+// Minimum app state — extend in your own appActions file
+export const appActions = regRedux(
+  'app',
+  { space: null, profile: null, kapp: null, kappSlug: null, error: null },
+  {
+    setSpace(state, { space, error }) { state.space = space; state.error = error ?? null; state.kappSlug = space?.attributesMap?.['Service Portal Kapp Slug']?.[0] ?? 'services'; },
+    setProfile(state, { profile, error }) { state.profile = profile; state.error = error ?? null; },
+    setKapp(state, { kapp, error }) { state.kapp = kapp; state.error = error ?? null; },
+  },
+);
+```
+
+### `src/helpers/hooks/useData.js`
+
+```js
+import { useCallback, useEffect, useMemo, useState } from 'react';
+
+export function useData(fn, params) {
+  const [[response, lastTimestamp], setData] = useState([null, null]);
+
+  const executeQuery = useCallback(() => {
+    if (params) {
+      const timestamp = new Date().getTime();
+      setData(([d]) => [d, timestamp]);
+      fn(params).then((response) => {
+        setData(([d, ts]) => (ts === timestamp ? [response, null] : [d, ts]));
+      });
+    } else {
+      setData(([, ts]) => [null, ts]);
+    }
+  }, [fn, params]);
+
+  useEffect(() => { executeQuery(); }, [executeQuery]);
+
+  return useMemo(
+    () => ({
+      initialized: !!params,
+      loading: !!params && (!response || !!lastTimestamp),
+      response,
+      actions: { reloadData: executeQuery },
+    }),
+    [params, response, lastTimestamp, executeQuery],
+  );
+}
+```
+
+> Remember to `useMemo` the `params` object at the call site (see the param-identity hazard warning in `front-end/data-fetching`).
+
+### `src/components/Loading.jsx` and `Error.jsx`
+
+```jsx
+// Loading.jsx
+export const Loading = () => (
+  <div role="status" aria-live="polite">Loading…</div>
+);
+
+// Error.jsx
+export const Error = ({ error, header }) => (
+  <div role="alert" className="p-4">
+    {header && <h2>Error</h2>}
+    <p>{String(error?.message ?? error)}</p>
+  </div>
+);
+```
+
+### `src/components/Toaster.jsx` (stub)
+
+```jsx
+// Replace with your real toast system later — this is the minimum to make App.jsx render.
+export const Toaster = () => null;
+```
+
+### `src/components/ConfirmationModal.jsx` (stub)
+
+```jsx
+export const ConfirmationModal = () => null;
+```
+
+### `src/routes/PublicRoutes.jsx`
+
+```jsx
+import { Routes, Route, Navigate } from 'react-router-dom';
+
+export const Login = ({ onLogin }) => {
+  const submit = async (e) => {
+    e.preventDefault();
+    const form = new FormData(e.currentTarget);
+    await onLogin?.({ username: form.get('username'), password: form.get('password') });
+  };
+  return (
+    <form onSubmit={submit}>
+      <label>Username <input name="username" autoComplete="username" /></label>
+      <label>Password <input name="password" type="password" autoComplete="current-password" /></label>
+      <button type="submit">Sign in</button>
+    </form>
+  );
+};
+
+export const PublicRoutes = ({ loginProps }) => (
+  <Routes>
+    <Route path="/login" element={<Login {...loginProps} />} />
+    <Route path="*" element={<Navigate to="/login" replace />} />
+  </Routes>
+);
+```
+
+### `src/routes/PrivateRoutes.jsx`
+
+```jsx
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+
+const Home = () => {
+  const profile = useSelector((s) => s.app.profile);
+  const kapp = useSelector((s) => s.app.kapp);
+  return (
+    <div>
+      <h1>Hello {profile?.displayName ?? profile?.username}</h1>
+      <p>You are on the {kapp?.name ?? 'no'} kapp.</p>
+    </div>
+  );
+};
+
+export const PrivateRoutes = () => (
+  <Routes>
+    <Route path="/" element={<Home />} />
+    <Route path="*" element={<Navigate to="/" replace />} />
+  </Routes>
+);
+```
+
+### `src/App.jsx`
+
+```jsx
+import { useEffect, useMemo } from 'react';
+import { useSelector } from 'react-redux';
+import { fetchSpace, fetchProfile, fetchKapp } from '@kineticdata/react';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { Loading } from './components/Loading';
+import { Error as ErrorView } from './components/Error';
+import { Toaster } from './components/Toaster';
+import { ConfirmationModal } from './components/ConfirmationModal';
+import { PublicRoutes } from './routes/PublicRoutes';
+import { PrivateRoutes } from './routes/PrivateRoutes';
+import { Login } from './routes/PublicRoutes';
+import { appActions } from './redux';
+import { useData } from './helpers/hooks/useData';
+
+export const App = ({ initialized, loggedIn, loginProps, timedOut, serverError }) => {
+  const space = useSelector((s) => s.app.space);
+  const profile = useSelector((s) => s.app.profile);
+  const kapp = useSelector((s) => s.app.kapp);
+  const kappSlug = useSelector((s) => s.app.kappSlug);
+  const error = useSelector((s) => s.app.error);
+
+  // Space
+  const spaceParams = useMemo(
+    () => initialized
+      ? loggedIn ? { include: 'attributesMap,kapps' } : { public: true, include: 'attributesMap,kapps' }
+      : null,
+    [initialized, loggedIn],
+  );
+  const spaceQuery = useData(fetchSpace, spaceParams);
+  useEffect(() => {
+    if (spaceQuery.initialized && !spaceQuery.loading) appActions.setSpace(spaceQuery.response ?? {});
+  }, [spaceQuery.initialized, spaceQuery.loading, spaceQuery.response]);
+
+  // Profile (logged-in only)
+  const profileParams = useMemo(
+    () => initialized && loggedIn ? { include: 'profileAttributesMap,attributesMap,memberships' } : null,
+    [initialized, loggedIn],
+  );
+  const profileQuery = useData(fetchProfile, profileParams);
+  useEffect(() => {
+    if (profileQuery.initialized && !profileQuery.loading) appActions.setProfile(profileQuery.response ?? {});
+  }, [profileQuery.initialized, profileQuery.loading, profileQuery.response]);
+
+  // Kapp (logged-in + kappSlug resolved)
+  const kappParams = useMemo(
+    () => initialized && loggedIn && kappSlug ? { kappSlug, include: 'attributesMap,categories' } : null,
+    [initialized, loggedIn, kappSlug],
+  );
+  const kappQuery = useData(fetchKapp, kappParams);
+  useEffect(() => {
+    if (kappQuery.initialized && !kappQuery.loading) appActions.setKapp(kappQuery.response ?? {});
+  }, [kappQuery.initialized, kappQuery.loading, kappQuery.response]);
+
+  return (
+    <>
+      <div className="flex-c-st flex-auto overflow-auto">
+        <header id="app-header" className="flex-none" />
+        <main id="app-main" className="flex-auto">
+          {serverError || error ? (
+            <ErrorView error={serverError || error} header={true} />
+          ) : !initialized || !space ? (
+            <Loading />
+          ) : !loggedIn ? (
+            <PublicRoutes loginProps={loginProps} />
+          ) : kapp && profile ? (
+            <ErrorBoundary>
+              <PrivateRoutes />
+              {timedOut && <dialog open><Login {...loginProps} /></dialog>}
+            </ErrorBoundary>
+          ) : (
+            <Loading />
+          )}
+          <Toaster />
+        </main>
+        <footer id="app-footer" />
+      </div>
+      <div id="app-panels" />
+      <ConfirmationModal />
+    </>
+  );
+};
+```
+
+### Final wiring — verify
+
+After creating the seven files above plus the `index.html`, `main.jsx` / `index.jsx`, `globals.js`, and `vite.config.js` shown earlier:
+
+```bash
+node src/setupEnv.cjs                # or manually write .env.development.local
+npm install
+npm run dev                          # http://localhost:3000
+```
+
+Expected: login form renders, submit goes through the Vite proxy, on success you land on Home with your `displayName` and the kapp name. If any of these fail, the next sections (Vite Config, Environment Configuration, Production Build) cover the proxy/cookie/CORS issues you'll most likely hit.
+
+The pieces above are the **minimum** — for a real portal extend `appActions` with the `themeActions`, `viewActions`, toast/confirm helpers, full `useData` poll wrapper, `usePaginatedData`, and route components from the dedicated skills:
+
+- `front-end/portal-patterns` — full app context fetching, routing pattern, `attributesMap` reading
+- `front-end/state` — full state module, theme/view actions, `getAttributeValue`
+- `front-end/data-fetching` — `usePaginatedData`, `usePoller`, `defineKqlQuery`
+- `front-end/mutations` — `createSubmission`/`updateSubmission`/`executeIntegration`, file uploads, optimistic UI
+- `front-end/forms` — `<CoreForm>` and the widget system
+
+---
+
+## Error Boundaries — Catch Render Errors
+
+The auth state machine above handles **load** errors (`serverError`/`error` from KineticLib). It does NOT catch **render** errors — a `CoreForm` crash, a malformed `searchSubmissions` response that throws inside a `.map()`, or a Redux selector that throws will blank the whole portal. Wrap route content in a React `ErrorBoundary` so a single component fault doesn't take down the page.
+
+A minimal boundary you can paste into `portal/src/components/ErrorBoundary.jsx`:
+
+```jsx
+import { Component } from 'react';
+
+export class ErrorBoundary extends Component {
+  state = { error: null };
+
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+
+  componentDidCatch(error, info) {
+    // Hook for your telemetry. Avoid throwing here.
+    console.error('Render error:', error, info?.componentStack);
+  }
+
+  reset = () => this.setState({ error: null });
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div role="alert" className="p-4">
+          <h2>Something went wrong</h2>
+          <pre className="text-sm">{String(this.state.error?.message ?? this.state.error)}</pre>
+          <button onClick={this.reset}>Try again</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+```
+
+Wrap each major boundary in `App.jsx`:
+
+```jsx
+<ErrorBoundary>
+  <PrivateRoutes />
+</ErrorBoundary>
+```
+
+Layer multiple boundaries — one around the layout chrome, one inside each route — so a `CoreForm` crash on the request-detail page doesn't unmount the navigation. Routing libraries (React Router v6.4+) also expose route-level `errorElement` which can replace or complement this pattern.
+
+**Don't** wrap the whole `<App>` in a single ErrorBoundary above the auth machine — auth/load errors are already handled there and a render boundary above them swallows the more specific error UI. Boundaries go inside, not above.
 
 ---
 
@@ -297,11 +631,41 @@ The `global` shimming is handled in `index.html` via `window.global ||= window;`
 
 ## Environment Configuration
 
-`portal/src/setupEnv.cjs` creates `.env.development.local` with:
+Vite expects env vars to be prefixed `VITE_` (anything else is filtered out of `import.meta.env`). The reference portal uses **`REACT_APP_*`** legacy names because it predates Vite; the `vite.config.js` above re-exposes them by reading via `loadEnv(mode, process.cwd(), '')` (the empty `prefixes` argument disables filtering) and shimming `process.env`. Two valid choices:
+
+**Option A — Use VITE_ prefix (recommended for new portals):**
+
 ```
+# .env.development.local
+VITE_PROXY_HOST=https://<space>.kinops.io
+```
+
+Then change `vite.config.js` to read `env.VITE_PROXY_HOST` instead of `env.REACT_APP_PROXY_HOST`. Any source file that needs the host reads `import.meta.env.VITE_PROXY_HOST`.
+
+**Option B — Keep REACT_APP_ for parity with the reference portal:**
+
+```
+# .env.development.local
 REACT_APP_PROXY_HOST=https://<space>.kinops.io
 ```
 
-Run it once after cloning: `node src/setupEnv.cjs`.
+The Vite config above already loads these via the empty-prefix `loadEnv` call and re-exports them through the `define: { 'process.env': env }` shim. Code can read `process.env.REACT_APP_PROXY_HOST` exactly as it would in a CRA app. The `portal/src/setupEnv.cjs` helper in the reference portal writes `.env.development.local` with this prefix automatically — run it once after cloning: `node src/setupEnv.cjs`.
 
-Set `REACT_APP_PROXY_HOST` to the Kinetic base URL (e.g. `https://myspace.kinops.io`).
+Whichever you pick, **set the value to the Kinetic base URL** (e.g. `https://myspace.kinops.io`).
+
+---
+
+## Production Build & Deploy
+
+`npm run build` produces a static bundle in `dist/` — `index.html`, hashed JS/CSS, source maps if enabled. There is no Node server requirement.
+
+**Where to host the bundle:**
+
+- **Same-origin (recommended).** Deploy the `dist/` contents into the Kinetic server's bundle root so the portal is served from the same origin as the API. This avoids the CORS/cookie complexity the Vite dev proxy works around — no `Origin` header rewriting, no `SameSite=None` stripping. Path conventions are deployment-specific (cloud kinops vs customer-managed); check with your platform team.
+- **Different origin.** Serve the bundle from a CDN or separate host. You'll need (a) CORS enabled on the Kinetic server for that origin, (b) cookies set with `SameSite=None; Secure` and a valid HTTPS chain, (c) every API call in the portal pointed at the absolute Kinetic URL rather than a same-origin relative path. The same-origin path is significantly less work.
+
+**Production environment variables.** The Vite build inlines values at build time — `.env.production` (committed defaults) or `.env.production.local` (gitignored secrets) supply the values. **Don't** put secrets in client-side env vars; anything in the bundle is public. The proxy host that mattered in dev is not used in production builds (the portal calls relative paths against the host it's served from).
+
+**Source maps.** `npm run build` ships source maps by default. Strip them for production (`build.sourcemap: false` in `vite.config.js`) or upload them to a sourcemap-only error-reporting service rather than serving them publicly.
+
+**Cache headers.** Hashed asset filenames let you set `Cache-Control: max-age=31536000, immutable` on `assets/*`. `index.html` should be `Cache-Control: no-cache` so a deploy is visible on the next request.

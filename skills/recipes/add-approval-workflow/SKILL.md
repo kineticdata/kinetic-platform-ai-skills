@@ -181,16 +181,18 @@ This tree fires on your form's **Submission Created** (or **Submission Submitted
 
 ### Node-by-node walkthrough
 
+The deferral is **carried by the Create Approval node itself** (`defers: true`) — it is not a separate step. The node creates the child approval submission, then pauses the run on the same node until the approval callback completes the deferral. After the deferral completes, the next nodes branch on the returned `Decision`.
+
 ```
 Start
   └─(Complete)─► Determine Approver
   └─(Complete)─► Update Status to Pending
-  └─(Complete)─► Create Approval Submission   [creates child submission in Draft]
-  └─(Complete)─► Deferral Step                [pauses here — token lives on @task['Deferral Token']]
-       ├─(Create)─► [optional: start SLA timer]
-       └─(Complete)─► Branch on Decision
-            ├─(Complete, value: @results['Branch']['Decision'] == 'Approved')─► Approval Path
-            └─(Complete, value: @results['Branch']['Decision'] != 'Approved')─► Denial Path
+  └─(Complete)─► Create Approval         [defers: true — creates child submission in Draft,
+                                          then pauses on this node until the callback
+                                          completes the deferral. @task['Deferral Token']
+                                          is available to ERB inside this node's params.]
+       ├─(Complete, value: @results['Create Approval']['Decision'] == 'Approved')─► Approval Path
+       └─(Complete, value: @results['Create Approval']['Decision'] != 'Approved')─► Denial Path
 
 Approval Path:
   └─► Update Request Status to Approved
@@ -204,6 +206,8 @@ Denial Path:
   └─► [Optionally close the submission]
   └─► Return
 ```
+
+> The deferred results returned by the callback (via `utilities_create_trigger_v1`'s `deferred_variables` XML payload) land in `@results['Create Approval']` — the same node that deferred. There is no separate "Branch on Decision" node; the branching happens on the connectors leaving the deferring node.
 
 ### Key nodes explained
 
@@ -247,36 +251,27 @@ Body (as an ERB string in the node parameter):
 
 > The approval submission must be created as `coreState: "Draft"` — not Submitted. This keeps it in the approver's queue and prevents the approval's own "Submission Submitted" workflow from firing prematurely.
 
-> **Important timing:** The `Deferral Token` is only available on `@task` at the point when the deferral node itself executes. Pass the token to the approval submission **within** the deferral node's Create connector path, or use a node immediately before the deferral to pre-generate and store the token. The safest approach is to place the "Create Approval Submission" node as the very first node reached via the deferral node's **Create** connector — so it executes immediately when the deferral begins.
+> **Important timing:** `@task['Deferral Token']` is available **inside the parameters of the deferring node itself**. Because the Create Approval node IS the deferring node (`defers: true`), the token can be written into the child submission's values as part of that same node's `parameters.Values [Object]` ERB — see the worked treeJson in Step 5. No separate "create then defer" pair is needed.
 
-The corrected node order:
+#### The Deferring Node
 
-```
-...
-└─(Complete)─► Deferral Node
-     ├─(Create)─► Create Approval Submission   ← fires as soon as deferral begins
-     └─(Complete)─► Branch on Decision         ← fires when deferral completes
-```
-
-#### The Deferral Node
-
-The deferral node carries `defers: true` / `deferrable: true` (see the worked treeJson in Step 5). When it is active, `@task['Deferral Token']` holds the unique token for this specific pause point.
+Setting `defers: true` / `deferrable: true` on the Create Approval node makes the engine pause the run on this node after the handler runs. `@task['Deferral Token']` holds the unique token for this pause point; downstream connectors do not fire until something calls back to complete the deferral.
 
 > The deferral / Create-Trigger wait-for-callback mechanism is documented in `concepts/architectural-patterns`; the handler flags and ERB context are in `concepts/workflow-xml`.
 
 #### Branch on Decision
 
-After the deferral completes, the deferred results from the approval callback are available in `@results`. Use conditional connectors on the post-deferral node:
+After the deferral completes, the deferred results from the approval callback are available in `@results` under the deferring node's name. Place conditional connector values on the connectors leaving the deferring node:
 
 ```ruby
-# Approved path connector value:
-@results['Deferral Node']['Decision'] == 'Approved'
+# Approved path — connector value on the connector from "Create Approval" to the approval-path branch:
+@results['Create Approval']['Decision'] == 'Approved'
 
-# Denied path connector value:
-@results['Deferral Node']['Decision'] == 'Denied'
+# Denied path — connector value on the connector to the denial-path branch:
+@results['Create Approval']['Decision'] == 'Denied'
 ```
 
-Or branch on any field — the approval callback can return the full `@values` hash from the approval submission.
+The result key (`'Create Approval'`) is the **name of the deferring node** as it appears in the tree. If you rename the deferring node, update both connector values to match. Any field the callback returns via `deferred_variables` is accessible the same way — return additional `<result name="...">` elements from the callback to branch on more than just Decision.
 
 #### Update Submission Status
 
@@ -390,11 +385,14 @@ Content-Type: application/json
 {
   "treeJson": {
     "builderVersion": "", "schemaVersion": "1.0", "version": "", "processOwnerEmail": "",
-    "lastId": 4, "name": "Request Approval",
+    "lastId": 5, "name": "Request Approval",
     "connectors": [
       {"from": "start", "to": "si_1", "label": "", "value": "", "type": "Complete"},
       {"from": "si_1", "to": "si_2", "label": "", "value": "", "type": "Complete"},
-      {"from": "si_2", "to": "echo_3", "label": "", "value": "", "type": "Complete"}
+      {"from": "si_2", "to": "si_3", "label": "Approved", "value": "@results['Create Approval']['Decision'] == 'Approved'", "type": "Complete"},
+      {"from": "si_2", "to": "si_4", "label": "Denied",   "value": "@results['Create Approval']['Decision'] == 'Denied'",   "type": "Complete"},
+      {"from": "si_3", "to": "echo_5", "label": "", "value": "", "type": "Complete"},
+      {"from": "si_4", "to": "echo_5", "label": "", "value": "", "type": "Complete"}
     ],
     "nodes": [
       {"configured": true, "defers": false, "deferrable": false, "visible": false,
@@ -424,14 +422,39 @@ Content-Type: application/json
          {"id": "parameters.Values [Object]", "value": "<%= {Approver: @submission['Created By'], 'Original Submission Id': @submission['Id'], 'Deferral Token': @task['Deferral Token']}.to_json %>"}
        ],
        "messages": [], "position": {"x": 400, "y": 10}, "version": 1,
-       "dependents": {"task": [{"type": "Complete", "content": "echo_3"}]}},
+       "dependents": {"task": [
+         {"type": "Complete", "content": "si_3", "value": "@results['Create Approval']['Decision'] == 'Approved'"},
+         {"type": "Complete", "content": "si_4", "value": "@results['Create Approval']['Decision'] == 'Denied'"}
+       ]}},
 
       {"configured": true, "defers": false, "deferrable": false, "visible": true,
-       "name": "Log Result", "id": "echo_3", "definitionId": "utilities_echo_v1",
+       "name": "Mark Approved", "id": "si_3", "definitionId": "system_integration_v1",
+       "parameters": [
+         {"id": "connection", "value": "<your-connection-uuid>"},
+         {"id": "operation", "value": "<your-update-submission-operation-uuid>"},
+         {"id": "parameters.Submission Id*", "value": "<%= @submission['Id'] %>"},
+         {"id": "parameters.Values [Object]", "value": "{\"Status\": \"Approved\"}"}
+       ],
+       "messages": [], "position": {"x": 600, "y": -60}, "version": 1,
+       "dependents": {"task": [{"type": "Complete", "content": "echo_5"}]}},
+
+      {"configured": true, "defers": false, "deferrable": false, "visible": true,
+       "name": "Mark Denied", "id": "si_4", "definitionId": "system_integration_v1",
+       "parameters": [
+         {"id": "connection", "value": "<your-connection-uuid>"},
+         {"id": "operation", "value": "<your-update-submission-operation-uuid>"},
+         {"id": "parameters.Submission Id*", "value": "<%= @submission['Id'] %>"},
+         {"id": "parameters.Values [Object]", "value": "{\"Status\": \"Denied\"}"}
+       ],
+       "messages": [], "position": {"x": 600, "y": 80}, "version": 1,
+       "dependents": {"task": [{"type": "Complete", "content": "echo_5"}]}},
+
+      {"configured": true, "defers": false, "deferrable": false, "visible": true,
+       "name": "Log Result", "id": "echo_5", "definitionId": "utilities_echo_v1",
        "parameters": [
          {"id": "input", "value": "Approval completed: <%= @results['Create Approval'] %>"}
        ],
-       "messages": [], "position": {"x": 600, "y": 10}, "version": 1,
+       "messages": [], "position": {"x": 800, "y": 10}, "version": 1,
        "dependents": ""}
     ]
   }
@@ -439,10 +462,11 @@ Content-Type: application/json
 ```
 
 **Key points:**
-- "Create Approval" node has `"defers": true, "deferrable": true` — this pauses the workflow
-- `@task['Deferral Token']` captures the token for the approval form to use later
-- Uses `system_integration_v1` (not legacy `kinetic_core_api_v1`) — replace UUIDs with your connection/operation IDs
-- "Log Result" only fires after the deferral is completed by the callback workflow
+- The "Create Approval" node has `"defers": true, "deferrable": true` — it both creates the child submission AND becomes the pause point. `@task['Deferral Token']` is available to its own parameters.
+- Two `Complete` connectors leave "Create Approval" with `value` expressions that branch on `@results['Create Approval']['Decision']`. The same node name is used in both `connectors[]` and the node's `dependents` — keep them in sync if you rename.
+- Uses `system_integration_v1` — replace UUIDs with your Connection / Operation IDs.
+- `Mark Approved` and `Mark Denied` both feed `Log Result`, so the tree has a single Return point.
+- The callback workflow (next section) supplies `Decision` via `deferred_variables`; without that, neither branch's connector value is truthy and the run will stall at the deferral.
 
 ### Register the approval callback workflow
 

@@ -7,6 +7,28 @@ description: "Use when diagnosing a failed, stuck, or misbehaving Kinetic workfl
 
 Patterns and techniques for diagnosing issues on the Kinetic Platform, based on real-world debugging of workflow failures and API errors.
 
+## Triage — Start Here
+
+Use the table below to pick the right section. The symptom column lists what you actually observe; the verdict column says which path to read next.
+
+| Symptom | First check | Then read |
+|---|---|---|
+| **Workflow never fires** at all on the event you expected | `GET /webhookJobs?status=Failed&limit=10` — any implicit-webhook-job failures for your event? | `concepts/workflow-creation` (filter syntax, supported event names) |
+| **Run exists but appears stuck** (`run.status: "Started"` doesn't move) | `GET /app/components/task/app/api/v2/runs/{id}/tasks?include=details` — what's the status of each node? | "Workflow Run Diagnostics" below |
+| **Specific node failed** (you see "Failed" in tasks or triggers) | `GET /errors?include=details&status=Active&limit=5` — what's the `originator` and message? | "Common Failure Causes" table below |
+| **`ENGINE Run Error`** on any node | Was it a Return node? Check parameter set matches tree type (WebAPI vs event) | `concepts/workflow-xml` "Return Node Rules" + table below |
+| **Both branches of a connector fire** | Connector `value` expression threw — exception isn't false | "Common Failure Causes" (Connector Error) |
+| **`IndexError: key not found`** in error message | An ERB `[]` on a missing hash key — `@results['X']` where X never ran, or `@values['Field']` where Field doesn't exist | `concepts/workflow-xml` ERB context + use `.fetch(key, '')` or `rescue ''` |
+| **KQL query returns `400`** with "requires index definition" | `GET /forms/{form}?include=indexDefinitions` — is the field indexed AND built? | `concepts/kql-and-indexing` |
+| **Submission `PUT` returns `stale_record`** | The submission was modified since you read it | "Common Failure Causes" table |
+| **Integration call returns `401`** | `GET /connections/{id}` — auth credentials masked as null? | `concepts/integrations` credential-wipe warning |
+| **WebAPI returns `500`** with `timeout=60` | You passed `timeout` > 30 — orphan run created | `platform/known-bugs` Bug 4 |
+| **`GET /kapps` returns 500** for non-admins | A kapp has a failing security-policy Display expression | `platform/known-bugs` Bug 5 |
+| **Smtp success raises `IndexError` downstream** | `Handler Error Message` key omitted on success | `platform/known-bugs` Bug 6 + use `rescue ''` |
+| **`POST /submissions/{id}/submit` returns 404** | That endpoint doesn't exist | `platform/known-bugs` Bug 3 — use `PUT` with `{coreState: "Submitted"}` |
+
+If your symptom isn't in this table, skim the **Workflow Run Diagnostics** and **API Error Patterns** sections below — they catalogue the long tail.
+
 ---
 
 ## Workflow Run Diagnostics

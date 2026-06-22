@@ -340,3 +340,55 @@ The filter is evaluated by the Core API before triggering the Task engine. If th
 The KSL filter creates the run only when the current state matches; the connector blocks the side-effect node when it's a no-op update (Status was already "In Repair"). Empty runs (only `start` Closed) are produced for no-op PUTs but no external side effect fires.
 
 The GET response also includes diagnostic arrays: `{ "migratable": [], "missing": [], "orphaned": [], "workflows": [...] }`
+
+
+---
+
+## Finding Trees for a Kapp/Form (Discovery)
+
+The Task API `/trees` endpoint's `source` parameter filters by `sourceName`, NOT by kapp slug. All kapp/form/space-bound trees have `sourceName: "Kinetic Request CE"`. **Do NOT use `source={kappSlug}`** — it will return zero results.
+
+### Tree binding model
+
+| `platformItemType` | Scope | `sourceGroup` format | How to identify |
+|---------------------|-------|----------------------|-----------------|
+| `Space` | All kapps | Random UUID v4 | `platformItemId` = space UUID |
+| `Kapp` | All forms in a kapp | Random UUID v4 | `platformItemId` = kapp UUID |
+| `Form` | Single form | Random UUID v4 | `platformItemId` = form UUID |
+| `null` | WebAPI | `"WebApis > {kapp-slug}"` | Match kapp slug in `sourceGroup` |
+
+### The UUID mapping problem
+
+The Core REST API v1 does **not** expose internal UUIDs for kapps or forms. The `platformItemId` on trees is a UUID v1 (time-based) that encodes the entity's creation timestamp.
+
+**Solution: match by timestamp.** UUID v1's middle group encodes a 60-bit Gregorian timestamp (100ns ticks since 1582-10-15). Match each tree's `platformItemId` to a kapp/form by extracting the timestamp and finding the entity whose `createdAt` is within ~1 second.
+
+```javascript
+function uuidV1ToMs(uuid) {
+  const p = uuid.split('-');
+  if (p[2]?.[0] !== '1') return 0; // not UUID v1
+  const timeHex = p[2].slice(1) + p[1] + p[0];
+  const ts = BigInt('0x' + timeHex);
+  return Number((ts - 122192928000000000n) / 10000n);
+}
+
+function matchEntityByUUID(platformItemId, entities) {
+  const targetMs = uuidV1ToMs(platformItemId);
+  if (!targetMs) return null;
+  for (const e of entities)
+    if (Math.abs(targetMs - new Date(e.createdAt).getTime()) < 1000) return e;
+  return null;
+}
+```
+
+### Algorithm to find trees for a kapp
+
+1. Fetch all trees: `GET /app/components/task/app/api/v2/trees?source=Kinetic+Request+CE&include=details&limit=500`
+2. Fetch all kapps with `include=details` (for `createdAt`)
+3. Fetch forms for the target kapp with `include=details`
+4. For each tree:
+   - **WebAPI:** `sourceGroup` starts with `"WebApis > {kappSlug}"`
+   - **Kapp-level:** `platformItemType === "Kapp"` and `matchEntityByUUID(platformItemId, kapps).slug === targetKapp`
+   - **Form-level:** `platformItemType === "Form"` and `matchEntityByUUID(platformItemId, forms)` returns a match
+
+> Used by the `/kinetic-health` and `/kinetic-explain-workflow` commands. If you need this in production code, the timestamp match has a 1-second tolerance — collisions are possible if two entities were created in the same second; in practice they're not, but it's worth knowing.

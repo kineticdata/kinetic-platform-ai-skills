@@ -5,6 +5,14 @@ description: "Use when exposing a Kinetic workflow as a custom REST endpoint or 
 
 # WebAPIs and Webhooks
 
+> **"Webhook" is overloaded in the platform.** This skill covers two distinct concepts that share the name:
+>
+> 1. **Customer-managed webhook** (the "external POSTer") — a configured object that calls **out** to an external HTTPS URL when a platform event fires. CRUD'd via `/app/api/v1/webhooks` (space) or `/app/api/v1/kapps/{kapp}/webhooks` (kapp). This is what most documentation means by "webhook." The "Webhooks — External POSTers" section below covers this.
+>
+> 2. **Implicit event-trigger** — the internal mechanism the platform uses to dispatch workflow runs in response to events (e.g., the same "Submission Submitted" event the external-POSTer-webhook observes also dispatches any workflow trees bound to that event). These appear in webhook-job history as `"Implicit Webhook Job"` with `"webhookId": null` — they are platform-internal and you don't CRUD them; you configure their behavior by registering workflows. The "Implicit Webhooks" subsection covers this.
+>
+> When a skill or recipe says "webhook" without qualification, it means #1 (the external POSTer). Implicit webhooks (#2) are an internal implementation detail of the workflow-trigger mechanism; you interact with them only when debugging why a workflow did or didn't fire.
+
 ## WebAPIs — Custom REST Endpoints
 
 A **WebAPI** exposes a workflow as a callable REST endpoint. External systems or the portal frontend can invoke it via HTTP.
@@ -177,9 +185,11 @@ The `system_tree_return_v1` node for WebAPI trees requires these **exact paramet
 
 ---
 
-## Webhooks — Event-Driven Triggers
+## Webhooks — External POSTers (Customer-Managed)
 
-**Webhooks** are the mechanism that triggers workflow trees when platform events occur. They are NOT the same as WebAPIs — webhooks fire automatically on events, while WebAPIs are called explicitly via HTTP.
+A **customer-managed webhook** is a configured object that the platform POSTs OUT to an external HTTPS URL when a matching event fires. They are NOT WebAPIs (which receive incoming calls) and NOT the implicit-event-trigger mechanism (which dispatches workflow runs internally).
+
+**Cleanly: webhooks call OUT; WebAPIs receive IN; implicit triggers route events to workflows internally.**
 
 ### Supported Event Types
 
@@ -255,9 +265,18 @@ Delete response: returns the deleted webhook in `{ "webhook": { ... } }`.
 
 **Gotcha — webhooks are identified by name:** The URL path uses the webhook name (URL-encoded), not an ID.
 
-### Implicit Webhooks
+### Implicit Webhooks — The Internal Event-Trigger Mechanism
 
-The platform also fires **implicit webhook jobs** that are not tied to user-configured webhook definitions. These appear in webhook job history with `"name": "Implicit Webhook Job"` and `"webhookId": null`. Implicit webhooks are internal workflow triggers managed by the platform (e.g., firing user provisioning trees on User Created events).
+The platform also fires **implicit webhook jobs** that are NOT tied to user-configured external-POSTer webhooks. These are the platform's internal mechanism for dispatching workflow runs in response to events — when a workflow tree is bound to "Submission Submitted," the run is dispatched via an implicit webhook job.
+
+You see implicit webhooks in webhook-job history (`/webhookJobs`) with `"name": "Implicit Webhook Job"` and `"webhookId": null`. You don't CRUD them — you don't see them in the Console's Webhooks list — they exist only as observable artifacts in job history.
+
+**When does this matter?** Almost never. Two cases where it does:
+
+- **Debugging a workflow that didn't fire.** Check `/webhookJobs?status=Failed` for implicit jobs associated with the event you expected — a failed implicit job means the platform tried to dispatch the workflow and something broke before the run was created.
+- **Backlog troubleshooting.** Bulk operations (mass submit, bulk PUT) generate many implicit webhook jobs in parallel with any user-configured webhooks. If the Task engine is backlogged, both show in the queue.
+
+For configuring which workflows fire on which events, see `concepts/workflow-creation` — that's where workflow-event binding happens, NOT here. This section exists only so the term "implicit webhook" makes sense when it appears in error logs or webhook-job history.
 
 ### Key Behaviors
 

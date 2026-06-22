@@ -63,7 +63,7 @@ The workflow engine itself failed to execute a node. Common causes:
 
 ### Stuck Run (triggers stay New/WIP forever)
 - Start node may be stuck — manually advance with:
-  `POST /app/api/v2/runs/{runId}/triggers` with `{"nodeId":"...","action":"Root","type":"Automatic","loopIndex":"/"}`
+  `POST /app/components/task/app/api/v2/runs/{runId}/triggers` with `{"nodeId":"...","action":"Root","type":"Automatic","loopIndex":"/"}`
 
 ### Connector Condition Failures
 - Connector `value` is a Ruby expression — check syntax

@@ -9,9 +9,11 @@ user-invocable: true
 
 The user describes an access control requirement in plain language. Generate the correct KSL (Kinetic Security Language) expression and explain where to apply it.
 
+> **KSL is JavaScript.** The Core platform's "KSL" is the colloquial name for the rule language used in security policy definitions; rules are evaluated as **JavaScript expressions** with platform-supplied binding functions (`identity()`, `team()`, `submission()`, `values()`, `kapp()`, `form()`, `space()`, etc.). Use real JavaScript operators — `&&`, `||`, `===`, `!==`, `!` — not `AND` / `OR` / `=`. The Task engine has a **separate** policy system that uses Ruby; do not mix syntaxes. See `concepts/security-policies` for the full language reference.
+
 ## Step 1: Read Reference
 
-Read the **Users, Teams & Security** platform skill for the full ABAC model, KSL functions, policy types, and experiment findings.
+Read the **Security Policies** concept skill (`concepts/security-policies`) for the full ABAC model, KSL functions, policy types, binding-function tables, and the Core-vs-Task language distinction.
 
 ## Step 2: Understand the Requirement
 
@@ -42,17 +44,17 @@ Parse the user's description to determine:
 - `true` = everyone can access
 - Policy `name` is **immutable after creation** — choose carefully
 
-### 9 Common Patterns
+### 9 Common Patterns (JavaScript syntax)
 
 1. **Admins only:** `false`
 2. **All authenticated users:** `identity('authenticated')`
 3. **Specific team:** `team('Support Team')`
-4. **Multiple teams:** `team('Support Team') OR team('IT Team')`
-5. **Owner only:** `identity('username') = submission('createdBy')`
-6. **Owner + team:** `identity('username') = submission('createdBy') OR team('Support Team')`
+4. **Multiple teams:** `team('Support Team') || team('IT Team')`
+5. **Owner only:** `identity('username') === submission('createdBy')`
+6. **Owner + team:** `identity('username') === submission('createdBy') || team('Support Team')`
 7. **Department match:** `identity('attributeValue', 'Department', 'IT')`
-8. **Field-based:** `identity('username') = submission('values[Assigned To]')`
-9. **Anonymous submitters:** `submission('anonymous') AND submission('sessionToken') != ""`
+8. **Field-based:** `identity('username') === submission('values[Assigned To]')`
+9. **Anonymous submitters:** `submission('anonymous') && submission('sessionToken') !== ''`
 
 ## Step 4: Determine Policy Type and Placement
 
@@ -76,7 +78,7 @@ Requirement: "Only the submitter and Support Team can view their tickets"
 
 Policy Type: Submission Access (on the tickets form)
 KSL Expression:
-  identity('username') = submission('createdBy') OR team('Support Team')
+  identity('username') === submission('createdBy') || team('Support Team')
 
 Apply at: Kapp → Default Submission Access
   (or Form-level if only for one specific form)
@@ -97,7 +99,7 @@ PUT /app/api/v1/kapps/{kapp}
     "name": "Submitter and Support Team Access",
     "type": "Submission Access",
     "message": "You do not have permission to view this submission",
-    "rule": "identity('username') = submission('createdBy') OR team('Support Team')"
+    "rule": "identity('username') === submission('createdBy') || team('Support Team')"
   }]
 }
 ```
