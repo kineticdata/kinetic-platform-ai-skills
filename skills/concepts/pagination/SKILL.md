@@ -1,108 +1,56 @@
 ---
 name: pagination
-description: Core API pageToken pagination, 1000-record cap, keyset pagination for large datasets, Task API offset pagination, server-side/client-side pagination patterns, golden rule (max 25 client-side), and deletion pagination gotchas.
+description: The single pattern for paging Core API submissions — limit=25 keyset cursor on createdAt. Golden rule, nextPageToken-as-boolean, Task API offset pagination, deletion paging, counting, and why the 1000-record cap is a non-issue if you follow the rule.
 ---
 
 # Pagination
 
-## Server-Side Pagination Strategy
+## There Is Only One Pattern
 
-For apps displaying paginated lists, **always use server-side KQL queries instead of loading all records**:
+For every Core API submission query — client-side, server-side, dashboards, exports, deletion, counting — use the same loop:
 
-1. **Initial load**: Fetch page 1 with `limit=25` (no `q` parameter) — fast, no blocking
-2. **Filters**: Build KQL with equality operators and re-fetch page 1:
-   - `q=values[Status] = "Active"` — no `orderBy` needed
-   - `q=values[Status] = "Active" AND values[Category] = "Hardware"` — combine with `AND`
-   - `q=values[Status] IN ("Active", "Maintenance")` — multiple values with `IN`
-3. **Search**: Use `=*` (starts-with) with `orderBy`:
-   - `q=values[Asset Name] =* "laptop"&orderBy=values[Asset Name]`
-   - Can combine with equality filters: `q=values[Status] = "Active" AND values[Asset Name] =* "laptop"&orderBy=values[Asset Name]`
-4. **Pagination**: Use `pageToken` from response to fetch next page
-5. **Aggregates/dashboards**: Lazy-load the full dataset only when the user navigates to a tab that needs it
+1. `limit=25` (always — see Golden Rule below)
+2. `include=details,values` so `createdAt` is present on each record
+3. Treat `nextPageToken` as a **boolean only** — its presence means more records exist; its value is unreliable and must never be passed back
+4. Cursor forward with KQL: `createdAt < "<lastCreatedAt-from-prior-page>"`
+5. Stop when a page returns fewer than 25 records
 
-## Core API Pagination (Critical)
+This pattern is the **only** correct way to page the Core API. It works for any size dataset — 25 records, 25,000, or 250,000 — without special handling.
 
-The Core API submission endpoints have a **hard cap of 1000 total results per query**, regardless of how you paginate within that query. Understanding this is essential for retrieving large datasets.
-
-### `pageToken` Is Unreliable For Client-Side Pagination
-
-**`pageToken` does not work reliably for client-side page-by-page navigation.** Passing it back often returns the same data, empty results, or skips records unpredictably.
-
-**For client-side pagination:** Use `nextPageToken` only as a boolean signal (more records exist?). Paginate with keyset cursor (`createdAt`) instead.
-
-**For server-side aggregation (`collectByQuery`):** `pageToken` works adequately within small windows (limit=25, a few pages) because you're collecting all results, not navigating back and forth. Duplication or skips don't matter when you're just accumulating.
-
-### How To Actually Paginate (Keyset / createdAt Cursor)
-
-The correct client-side pagination pattern:
-
-1. Fetch page 1: `?include=details,values&limit=25` (no cursor)
-2. Check if `nextPageToken` exists → if yes, there are more pages (show Next button)
-3. Store the `createdAt` of the **last record** on the current page
-4. For the next page: re-query with `createdAt < "lastTimestamp"` added to KQL
-5. For previous pages: store each page's first record's `createdAt` in a stack
-
-**You MUST use `include=details`** (not just `values`) so that `createdAt` is available on each record.
+### The Canonical Loop
 
 ```js
-// Correct pagination pattern
-let path = `/kapps/${KAPP}/forms/${form}/submissions?include=details,values&limit=25`;
-const lastCreatedAt = pageKeys[currentPage];
-if (lastCreatedAt) {
-  const kql = `createdAt < "${lastCreatedAt}"`;
-  path += '&q=' + encodeURIComponent(kql);
+async function walkSubmissions(formSlug, baseKql, onPage) {
+  let lastCreatedAt = null;
+  while (true) {
+    let q = baseKql || "";
+    if (lastCreatedAt) q = (q ? `(${q}) AND ` : "") + `createdAt < "${lastCreatedAt}"`;
+    let path = `/kapps/${KAPP}/forms/${formSlug}/submissions?include=details,values&limit=25`;
+    if (q) path += `&q=${encodeURIComponent(q)}`;
+    const r = await api(path);
+    const subs = r.submissions || [];
+    await onPage(subs);
+    if (subs.length < 25) break;
+    lastCreatedAt = subs[subs.length - 1].createdAt;
+  }
 }
-const res = await api(path);
-const subs = res.submissions || [];
-const hasNext = !!res.nextPageToken;
-if (hasNext && subs.length) {
-  pageKeys[currentPage + 1] = subs[subs.length - 1].createdAt;
-}
 ```
 
-**Why this works:** The Core API returns submissions sorted by `createdAt` DESC by default. Each page's last record has the oldest timestamp. Querying `createdAt < lastTimestamp` gives the next window of older records.
+**Why it works.** Core API submissions are returned sorted by `createdAt` DESC. The last record on each page is the oldest one fetched so far. `createdAt < lastCreatedAt` is a fresh, self-contained query that returns the next-older window. No state on the server, no token chain, no cursor opacity.
 
-### The 1000-Record Cap
+### Variations Are All the Same Loop
 
-Even with `pageToken` pagination, the API will **never return more than 1000 total records per query**. For example:
-- `limit=500` → Page 1: 500 results + token → Page 2: 500 results + null token → **Done at 1000**
-- `limit=1000` → Page 1: 1000 results + null token → **Done at 1000**
+| Task | What changes |
+|------|--------------|
+| Display a paginated UI (Prev/Next) | Keep a stack of each page's first `createdAt` to step backward |
+| Filter / search | Add filter clauses to `baseKql`; the cursor `AND`s on top |
+| Count records | Run the loop, increment a counter (see "Counting" below) |
+| Server-side aggregation | Same loop, server-side, return computed JSON to the browser |
+| Bulk delete | Walk forward, collect IDs, delete in parallel batches; repeat passes until clean |
 
-If a form has more than 1000 submissions, the API silently stops at 1000 without any indication that more records exist.
+### Combining KQL Filters with the Cursor
 
-### Keyset Pagination (Getting Past 1000)
-
-To retrieve all records from a form with >1000 submissions, use **keyset pagination** by shifting the query window with KQL:
-
-1. **Fetch the first window** (no KQL filter): get up to 1000 records using `pageToken` paging
-2. **Note the `createdAt` of the last record** (results are sorted by `createdAt` DESC, so the last record has the oldest timestamp)
-3. **Re-query with** `q=createdAt < "lastTimestamp"`: this gives a fresh 1000-record window starting from before that timestamp
-4. **Repeat** until a batch returns fewer than 1000 new records
-
-```
-Window 1:  ?include=details,values&limit=500          → 500 records
-           ?...&limit=500&pageToken=<token>            → 500 records (1000 total)
-           Last record createdAt = "2026-02-12T04:03:31.194Z"
-
-Window 2:  ?...&limit=500&q=createdAt < "2026-02-12T04:03:31.194Z"  → 500 records
-           ?...&limit=500&pageToken=<token>&q=...                    → 500 records (1000 total)
-           Last record createdAt = "2026-02-12T04:03:21.964Z"
-
-Window 3:  ?...&limit=500&q=createdAt < "2026-02-12T04:03:21.964Z"  → 214 records
-           nextPageToken = null, batch < 1000 → DONE
-```
-
-### Important Notes
-
-- **Use `include=details,values`** (not just `values`) so that `createdAt` is available for keyset pagination
-- **Use strict `<`** (not `<=`) to avoid re-fetching boundary records; millisecond-precision timestamps are generally unique enough for non-overlapping windows
-- **Deduplicate by `id`** as a safety measure in case records share the exact same `createdAt` timestamp (common with bulk-created data)
-- **Use `limit=500`** (not 1000) for the per-page size so `pageToken` works within each window — requesting `limit=1000` returns the full cap in one shot with no token
-- The Task API (`/app/components/task/app/api/v2/`) uses standard `limit`/`offset` pagination and does **not** have this 1000-record cap behavior
-
-### Combining KQL Filters with Keyset Pagination
-
-When paginating a filtered query (e.g., all "Open" tickets), combine the KQL filter with the keyset cursor using `AND`:
+When paginating a filtered query (e.g., all "Open" tickets), combine the filter with the cursor using `AND`:
 
 ```
 # Page 1 — filter only, no cursor
@@ -115,11 +63,93 @@ When paginating a filtered query (e.g., all "Open" tickets), combine the KQL fil
 **Requirements:**
 - The form must have a **compound index** covering both the filter field and `createdAt` (e.g., `[values[Status], createdAt]`), OR separate indexes for each
 - `orderBy=createdAt` is required because `createdAt <` is a range operator
-- The KQL `AND` combines the filter with the cursor — both must be satisfied
+- Both clauses must be satisfied — the filter AND the cursor
 
-## Task API v2 — Query Parameters & Filtering
+### Important Notes
 
-The Task API runs endpoint (`GET /runs`) supports these server-side filter parameters:
+- **Use `include=details,values`** (not just `values`) so `createdAt` is on every record. Empty `include=` drops `createdAt` and breaks the cursor silently.
+- **Use strict `<`** (not `<=`) to avoid re-fetching boundary records.
+- **Deduplicate by `id`** as a safety measure — records bulk-created in the same millisecond can share a `createdAt`, and strict `<` will skip duplicates of that timestamp.
+- **Don't pass `pageToken` back.** Ever. Use `nextPageToken` as a boolean only.
+
+---
+
+## Counting Records
+
+To count records, run the canonical loop with a counter:
+
+```js
+async function countSubmissions(formSlug, kql) {
+  let total = 0, lastCreatedAt = null;
+  while (true) {
+    let q = kql || "";
+    if (lastCreatedAt) q = (q ? `(${q}) AND ` : "") + `createdAt < "${lastCreatedAt}"`;
+    let path = `/kapps/${KAPP}/forms/${formSlug}/submissions?include=details&limit=25`;
+    if (q) path += `&q=${encodeURIComponent(q)}`;
+    const r = await apiGet(path);
+    const subs = r.submissions || [];
+    total += subs.length;
+    if (subs.length < 25) break;
+    lastCreatedAt = subs[subs.length - 1].createdAt;
+  }
+  return total;
+}
+```
+
+**Don't use `?count=true`.** It caps at 1000 — matching sets ≤ 1000 return the true total, sets > 1000 return `1000` forever. `countPageToken` has been `null` in every observed response. The keyset loop is the only reliable count.
+
+**This is expensive.** 100,000 records is 4,000 sequential calls. For dashboards, run this server-side and cache the result (5+ minute TTL is fine for most KPIs). Never count from the browser.
+
+---
+
+## Why the 1000-Record Cap Is a Non-Issue
+
+The Core API caps any single query at **1000 total records**, regardless of `limit`. This is widely documented and frequently misunderstood.
+
+**It only matters if you break the rules.** With `limit=25` and a `createdAt` cursor, you are never asking for more than 25 records in a single query, and each query is its own fresh window defined by the cursor. The 1000 cap is per-query, not per-walk. You can walk through 1,000,000 records in 40,000 fresh queries and never approach the cap.
+
+People hit the cap because they widen `limit` (to 500, 1000) and then try to chase records *within* a window using `pageToken`. That path is broken in three ways at once:
+1. `pageToken` value is unreliable (returns same/empty/skipped data)
+2. Window-internal paging hits the 1000 cap and silently stops
+3. Bigger `limit` violates the Golden Rule
+
+The fix is not "work around the cap." The fix is: don't approach it. Use `limit=25` keyset.
+
+### Verified: pageToken fixed in v7.0.0 (build 853d029, 2026-06-26)
+
+The historic "pageToken is unreliable past 1000" bug was **re-tested and confirmed fixed** on the
+v7.0.0 build. Following `nextPageToken` back as `pageToken` now walks an 8,118-record form
+end-to-end — every record exactly once, crossing the 1000 boundary, terminating cleanly — at
+`limit` = 25, 100, 500, **and 1000** (the exact config where the old bug stalled), including with a
+KQL `q=` filter. Test: `skills/concepts/pagination/scripts/pagetoken-test.mjs` (ground-truth keyset vs. token-cursor diff).
+
+This is a **version- and space-specific** result. Older builds may still have the broken token,
+so the keyset cursor below remains the portable default. And the Golden Rule (`limit=25`) still
+stands for its *other* reason — server load under concurrency — independent of the token bug.
+Bottom line: keyset is still the recommended pattern; but on v7.0.0+ you can no longer assume
+pageToken is broken — verify with the test script for the target space before relying on either.
+
+---
+
+## Golden Rule: limit=25, No Exceptions
+
+**Never use `limit > 25` for Core API submission queries.** Not for export. Not for bulk operations. Not for server-side aggregation. Not "just this once because it's faster."
+
+This rule exists because:
+- `pageToken` value is unreliable, so larger pages don't compose — you can't reliably page within them
+- The 1000-record cap structurally forbids large-window strategies
+- Larger result sets degrade server performance under concurrent load
+- `limit=25` has been validated as the safe operating point under real load
+
+**For client-side ops** (Prev/Next UI, user-initiated exports): `limit=25`, ~1 second delay between pages, show progress, provide a Cancel button. Adaptive backoff if responses get slow (double delay if >2s, max 16s).
+
+**For server-side ops** (dashboards, aggregations, scheduled jobs): same loop, no delay needed, but cache the result so you don't re-walk on every page load.
+
+---
+
+## Task API v2 — Different Beast
+
+The Task API runs endpoint (`GET /runs`) uses standard `limit`/`offset` pagination and **does not have the 1000-record cap or `pageToken` problems**. Different rules apply:
 
 | Parameter | Description | Example |
 |-----------|-------------|---------|
@@ -133,82 +163,71 @@ The Task API runs endpoint (`GET /runs`) supports these server-side filter param
 
 ### Task API `include=details` (Critical)
 
-**The Task API `include=details` parameter is essential.** Without it, run objects are missing key fields:
-
-- **Without `include=details`**: Only returns `status`, `sourceId`, `tree` (partial), `source` (partial)
-- **With `include=details`**: Also returns `id`, `createdAt`, `createdBy`, `updatedAt`, `updatedBy`
-
-The `id` field is **completely absent** (not null) without `include=details`. This means you cannot identify, sort, or drill into individual runs without it. **Always use `include=details` when fetching runs.**
+Without `include=details`, run objects are missing `id`, `createdAt`, `createdBy`, `updatedAt`, `updatedBy` — the `id` field is **completely absent**, not null. Always use `include=details` when fetching runs.
 
 ### Task API `count` Field
 
-Every list response from the Task API includes a `count` field with the **total matching record count**, regardless of `limit`. This is useful for:
-- Showing "Showing 1–25 of 2,689" without loading all data
-- Getting record counts without fetching records (use `limit=1` — see below)
+Every list response from the Task API includes a `count` field with the total matching record count, regardless of `limit`. Useful for:
+- "Showing 1–25 of 2,689" headers
+- Count-only queries — `limit=1` returns one record plus the true total
+- **`limit=0` does NOT work** — it returns ALL matching records. Use `limit=1` for count-only.
 
-### Lightweight Count Queries
-
-To get just the count of matching records without transferring data, use `limit=1`:
-
-```
-GET /runs?limit=1&start=2026-02-12T00:00:00Z
-→ { "count": 1984, "runs": [{ ... }] }  // count=1984 but only 1 run returned
-```
-
-**`limit=0` does NOT work as expected** — it returns ALL matching records instead of zero. Always use `limit=1` for count-only queries.
-
-### Task API vs Core API Pagination
+### Task API vs Core API
 
 | Feature | Core API (`/app/api/v1/`) | Task API (`/app/components/task/app/api/v2/`) |
 |---------|--------------------------|----------------------------------------------|
-| Pagination style | `pageToken` (cursor-based) | `offset` (numeric) |
-| Hard record cap | 1000 per query window | No cap (offset works fully) |
-| Getting past cap | Keyset pagination with KQL `createdAt` filters | Standard offset pagination |
+| Pagination | `limit=25` + `createdAt` keyset cursor | `limit` + `offset` |
+| 1000-record cap | Yes (per-query, irrelevant with keyset) | No |
 | Count field | Not provided | `count` in every list response |
-| `include=details` | Returns system fields on submissions | Returns `id`, timestamps on runs |
+| `include=details` | Adds `createdAt` to submissions (required for keyset) | Adds `id` and timestamps to runs (required for anything useful) |
+
+---
 
 ## Server-Side Aggregation Pattern
 
-When dashboards or reports need metrics computed across multiple forms (counts, averages, cross-entity joins), don't load everything into the browser. Instead, create server-side endpoints that page through the Kinetic API internally:
+When dashboards or reports need metrics computed across multiple forms, don't load everything into the browser. Build a server endpoint that runs the canonical keyset loop internally and returns pre-computed JSON.
 
 ```js
-async function collectByQuery(formSlug, kql, auth, maxPages = 8) {
+async function collectByQuery(formSlug, kql, auth) {
   const all = [];
-  let pageToken = null;
-  for (let i = 0; i < maxPages; i++) {
-    let url = `/kapps/${KAPP}/forms/${formSlug}/submissions?include=values&limit=25`;
-    if (kql) url += `&q=${encodeURIComponent(kql)}`;
-    if (pageToken) url += `&pageToken=${encodeURIComponent(pageToken)}`;
+  let lastCreatedAt = null;
+  while (true) {
+    let q = kql || "";
+    if (lastCreatedAt) q = (q ? `(${q}) AND ` : "") + `createdAt < "${lastCreatedAt}"`;
+    let url = `/kapps/${KAPP}/forms/${formSlug}/submissions?include=details,values&limit=25`;
+    if (q) url += `&q=${encodeURIComponent(q)}`;
     const r = await kineticRequest("GET", url, null, auth);
     const subs = r.data?.submissions || [];
     all.push(...subs);
-    pageToken = r.data?.nextPageToken;
-    if (!pageToken || subs.length < 25) break;
+    if (subs.length < 25) break;
+    lastCreatedAt = subs[subs.length - 1].createdAt;
   }
   return all;
 }
 ```
 
 Use cases:
-- **Dashboard KPIs:** collect open incidents + alerts + vulns, compute SLA breaches / severity counts / MTTC server-side
-- **Report metrics:** MTTA, MTTC, MTTR from incident timestamps; vuln aging buckets from First Seen dates
-- **Computed filters:** SLA-at-risk (check multiple boolean + date fields), overdue vulns (Due Date < now) — fields that lack indexes and can't be KQL-queried
+- **Dashboard KPIs:** open incidents + alerts + vulns → compute SLA breaches, severity counts, MTTC server-side
+- **Report metrics:** MTTA, MTTC, MTTR from incident timestamps; vuln aging buckets
+- **Computed filters:** SLA-at-risk (multiple boolean + date fields), overdue vulns — combinations that lack indexes and can't be KQL-queried
 
-The server returns pre-computed JSON; the frontend makes a single fetch per dashboard load.
+**Cache the result.** A 10k-record walk is 400 sequential calls. Cache the computed JSON for 5+ minutes; the browser makes a single fetch per dashboard load.
+
+**Scope the query if you can.** A `createdAt >= startDate AND createdAt < endDate` filter (or any other indexed predicate) cuts the walk down. Pre-filtering on indexed fields is always better than walking the whole form.
+
+---
 
 ## Client-Side Pagination Pattern
 
-For apps displaying paginated lists, use createdAt-based keyset pagination:
+For UI lists with Prev/Next, use the canonical loop with a page-key stack:
 
 ```js
-// State per tab
 let data = [], page = 1, pageKeys = { 1: null }, hasNext = false;
 
 async function loadPage() {
   const lastCreatedAt = pageKeys[page];
   let kql = '';
   if (lastCreatedAt) kql = `createdAt < "${lastCreatedAt}"`;
-  // Combine with any active filters
   if (filterKql && kql) kql = `(${filterKql}) AND ${kql}`;
   else if (filterKql) kql = filterKql;
 
@@ -228,69 +247,37 @@ function resetPage() { page = 1; pageKeys = { 1: null }; hasNext = false; loadPa
 
 **Key requirements:**
 - `include=details,values` (NOT just `values`) — `createdAt` is in `details`
-- `nextPageToken` is ONLY used to check if more records exist (boolean)
-- Never pass `pageToken` back to the API — it's broken
-- Store `createdAt` of last record as the cursor for the next page
-
-## Golden Rule: Max 25 Per Client-Side Fetch
-
-**Never load all records into the browser.** Never use `collectAll()` or loop through pages client-side. Always:
-
-1. Fetch with `limit=25` and `pageToken`
-2. Show one page at a time with Prev/Next buttons
-3. Let the user paginate forward/backward
-
-Server-side `collectByQuery()` for aggregation (dashboards, KPIs) is fine — the browser makes a single fetch to your server endpoint, and the server handles the pagination internally.
-
-This rule has no exceptions — not even for export or bulk operations. Use `limit=25` with `pageToken`, add delays between pages, and implement backoff on errors.
+- `nextPageToken` is ONLY a boolean — never pass it back
+- The cursor for page N+1 is the `createdAt` of the last record on page N; the cursor for page N-1 is `pageKeys[N-1]` from the stack
 
 ---
 
-## `collectByQuery` maxPages Performance Trap
+## Deletion Pagination
 
-Setting `maxPages=40` in server-side aggregation means up to 40 sequential API calls (~500ms each = **20 seconds**). For dashboard endpoints where you know the query scope:
+**Do not re-fetch page 1 after each deletion batch.** With cursor-based paging, that means re-walking the form from the newest record every time — slow, and it can re-encounter records that haven't been deleted yet.
 
-**Better approach: KQL range queries with larger limits**
-
-```js
-// BAD: 40 sequential API calls
-const all = await collectByQuery('incidents', 'values[Status]="Open"', auth, 40);
-
-// GOOD: 1 API call with date-scoped range query
-const kql = `values[Status]="Open" AND values[Created] >= "${startDate}" AND values[Created] < "${endDate}"`;
-const r = await kineticRequest('GET',
-  `/kapps/${kapp}/forms/incidents/submissions?include=values&limit=200&q=${encodeURIComponent(kql)}&orderBy=values[Created]`,
-  null, auth);
-```
-
-`limit=200` is valid (hard cap is 1000). Reserve `collectByQuery` with high `maxPages` for truly unbounded aggregation (rollups, backfill).
-
----
-
-## Deletion Pagination Gotcha
-
-When bulk-deleting records, **do not re-fetch page 1 after each deletion batch**. The API returns records in `createdAt` descending order (newest first). If target records are on later pages, re-fetching page 1 keeps returning the same non-target records.
-
-**Correct approach:** Paginate forward using `pageToken` through all pages, collecting IDs to delete. Then delete in batches. Do multiple full passes until a clean pass finds nothing.
+**Correct approach:** walk forward with the canonical loop, collect IDs that match the deletion predicate, then delete in parallel batches. Repeat full passes until a clean pass finds nothing.
 
 ```js
-// Paginate forward, collect matching IDs
-let pageToken = null;
-const toDelete = [];
-do {
-  let url = `/kapps/${kapp}/forms/${form}/submissions?include=values&limit=25`;
-  if (pageToken) url += `&pageToken=${pageToken}`;
-  const r = await fetch(url);
-  const data = await r.json();
-  for (const s of data.submissions) {
-    if (shouldDelete(s)) toDelete.push(s.id);
+async function bulkDelete(formSlug, predicate) {
+  while (true) {
+    const toDelete = [];
+    let lastCreatedAt = null;
+    while (true) {
+      let q = lastCreatedAt ? `createdAt < "${lastCreatedAt}"` : "";
+      let url = `/kapps/${KAPP}/forms/${formSlug}/submissions?include=details,values&limit=25`;
+      if (q) url += `&q=${encodeURIComponent(q)}`;
+      const r = await api(url);
+      const subs = r.submissions || [];
+      for (const s of subs) if (predicate(s)) toDelete.push(s.id);
+      if (subs.length < 25) break;
+      lastCreatedAt = subs[subs.length - 1].createdAt;
+    }
+    if (toDelete.length === 0) break;
+    for (let i = 0; i < toDelete.length; i += 10) {
+      await Promise.all(toDelete.slice(i, i + 10).map(id => deleteSubmission(id)));
+    }
   }
-  pageToken = data.nextPageToken;
-} while (pageToken);
-
-// Delete in parallel batches of 10
-for (let i = 0; i < toDelete.length; i += 10) {
-  await Promise.all(toDelete.slice(i, i + 10).map(id => deleteSubmission(id)));
 }
 ```
 
@@ -298,7 +285,9 @@ for (let i = 0; i < toDelete.length; i += 10) {
 
 ## Pagination Gotchas
 
-- **`pageToken` IS BROKEN** — only use `nextPageToken` as a boolean to know if more records exist. Never pass it back to fetch the next page. Use `createdAt` keyset pagination instead.
-- **Core API has a hard 1000-record cap per query** — use keyset pagination with KQL `createdAt` filters to get past it
-- **Task API `limit=0` returns ALL records** — use `limit=1` for lightweight count queries
-- The Task API has different pagination (limit/offset) vs Core API (limit/pageToken+keyset)
+- **`pageToken` value was historically unreliable** — treat `nextPageToken` as a boolean and use `createdAt` keyset by default. **Exception:** verified fixed on v7.0.0 (build 853d029) — token-cursor walks 8k+ records cleanly there (see "Verified" note above). Confirm per-space with `skills/concepts/pagination/scripts/pagetoken-test.mjs` before relying on the token on any given build.
+- **The 1000-record cap is per-query** — irrelevant with `limit=25` keyset. The cap only bites if you widen `limit` and try to page within a window.
+- **`?count=true` caps at 1000** — gives the true total only when the matching set is ≤ 1000. Use the keyset count loop for anything larger.
+- **Empty `include=`** silently drops `createdAt` from submissions — always use `include=details` (or `include=details,values`) when keyset paging.
+- **Task API `limit=0`** returns ALL records. Use `limit=1` for count-only queries.
+- **Task API uses `limit`/`offset`** — different API, different rules. No 1000 cap.

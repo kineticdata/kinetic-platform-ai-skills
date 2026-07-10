@@ -178,6 +178,13 @@ Content-Type: application/json
 **IMPORTANT:** The PUT replaces ALL index definitions. Always include the existing system indexes (`closedBy`, `createdBy`, `handle`, `submittedBy`, `updatedBy`) alongside your new ones, or they will be removed.
 
 **Auto-created per-field indexes:** When fields are added to a form (via builder UI or POST/PUT to the form), the platform automatically creates single-field `values[FieldName]` indexes for them. These auto-created indexes are convenient — but an explicit `indexDefinitions` PUT replaces them along with everything else. If you rely on auto-created indexes, make sure to fetch the current `indexDefinitions` first and include them in any subsequent PUT, or build a fresh definition list that explicitly contains every index you need.
+**GOTCHA — strip `status` before PUT.** The `GET ...?include=indexDefinitions` response includes a server-managed `status` field (`"New"` / `"Built"`) on each entry. If you read the current definitions, append a new one, and PUT the array back **as-is**, the request fails with **`400 Bad Request`** because `status` is read-only on write. Map every entry back to the writable shape — `{ name, parts, unique }` — before PUTting:
+
+```js
+const writable = currentDefs.map(d => ({ name: d.name || d.parts.join(','), parts: d.parts, unique: !!d.unique }));
+```
+
+`name` is optional on new entries (the server auto-generates it from `parts.join(',')`, which is also the name you pass to the Build Index job), but `status` must NOT be present.
 
 ### Compound (Multi-Part) Indexes
 

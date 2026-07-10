@@ -55,10 +55,35 @@ The workflow backing a WebAPI accesses the HTTP request via context variables:
 
 | Variable | Description |
 |----------|-------------|
-| `@request['body']` | Request body (JSON string) |
-| `@request['method']` | HTTP method (GET, POST, etc.) |
-| `@request['parameters']` | Query parameters |
-| `@request['headers']` | Request headers |
+| `@request['Body']` | Request body (string). **Capitalized key — `@request['body']` raises IndexError.** |
+| `@request['Method']` | HTTP method (GET, POST, etc.) |
+| `@request['Parameters']` | Query parameters map. **Engine-variable** — see below; on some engine builds (e.g. ai-labs.kinopsdev.io 2026-05) this key is absent and only `@request['Query']` (raw query string) is present. |
+| `@request['Query']` | Raw query string (everything after `?`). Reliable across engine builds — parse it yourself for portability. |
+| `@request['Headers']` | Request headers map. **Known issue: access with a string key (`@request['Headers']['X-Foo']`) raises IndexError in some engine builds; `@request['Headers']` alone to inspect the whole map is safer.** |
+
+**Portable query-parameter pattern** — use `@request['Query']` and parse manually so the workflow works on any engine:
+```erb
+<%=
+  require 'uri'
+  params = {}
+  q = @request['Query'].to_s
+  URI.decode_www_form(q).each { |k, v| params[k.to_s] = v.to_s } unless q.empty?
+  cls = params['class'] || 'servers'
+  id  = params['id'] || ''
+%>
+```
+This was discovered while debugging a CMDB WebAPI that returned 404s: the workflow's `@request['Parameters']['ciNumber']` was silently returning `nil` because the `Parameters` key didn't exist on the engine. A `?count=true` debug WebAPI returning `@request.inspect` showed `{"Body" => nil, "Query" => "ciNumber=SRV-0001&class=servers"}` — no `Parameters` field at all. Don't assume `Parameters` exists; parse `Query` instead.
+
+**Critical: key names are Capitalized**, not lowercase. Confirmed on Kinetic Task Engine 6.1.7 via runtime dump (`@request.inspect` → `{"Body"=>"...", "Parameters"=>{...}, ...}`). Earlier versions of this skill documented lowercase keys — that was wrong. Accessing `@request['body']` raises `IndexError: string not matched` and the run fails with `Node Parameter Error` surfaced as `run_results_error` on the WebAPI response.
+
+**Recommended access pattern** — defensive, engine-version-tolerant:
+```erb
+<%=
+raw = (@request['Body'] || @request['body']).to_s
+# Avoid directly indexing @request['Headers']['Some-Name'] — may IndexError.
+# Instead, capture the whole map first (safer) or read from @request['Parameters'] for query data.
+%>
+```
 
 The workflow returns a response using the `system_tree_return_v1` handler with result parameters for status code, headers, and body.
 

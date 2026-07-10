@@ -178,12 +178,12 @@ The `<dependents>` section defines execution flow — which tasks run next:
 ```
 
 ### Fields
-- **label** — Human-readable description of the branch
+- **label** — Human-readable description of the branch. **Always set a meaningful label on every connector** (see best practice below), especially conditional ones.
 - **type** — `Complete`, `Create`, or `Update`:
   - **Complete**: fires after the node finishes executing (default for sequential flow)
   - **Create**: fires immediately when a deferrable node enters deferral (e.g., start SLA timer when email is sent)
   - **Update**: fires each time a deferred node receives an update action (e.g., each reply to an email)
-- **value** — Ruby ERB expression that must evaluate truthy; empty = unconditional
+- **value** — **Raw Ruby expression (NOT ERB-wrapped)** that must evaluate to a boolean. Empty = unconditional. **Never wrap with `<%= %>`** — node `parameters[].value` is ERB and produces a string for the handler, but a connector `value` answers the engine's question *"should I traverse this edge?"* which needs a real `true`/`false`. ERB always produces a string, and any non-empty string is truthy in Ruby — so an ERB-wrapped connector value silently always evaluates `true`, destroying the branch logic and producing `IllegalConnectorError` at runtime. Bare Ruby: `@results['X']['Handler Error Message'].to_s.empty?` ✓ . ERB: `<%= ... %>` ✗ .
 - **Text content** — The `id` of the next task to execute
 
 ### Building Execution Order
@@ -191,6 +191,15 @@ The `<dependents>` section defines execution flow — which tasks run next:
 2. Follow `<dependents>` to find next tasks
 3. Recursively follow each branch
 4. Tasks with empty `<dependents>` are terminal nodes
+
+### Best Practice — Always Label Connectors
+
+**Give every connector a short, meaningful `label`.** A connector's `value` (its condition) is **invisible on the workflow-builder canvas** — a conditional edge renders as a plain arrow, identical to an unconditional one. Without a label, a reader has to click into each connector to discover whether (and why) a branch is gated. The label is the only on-diagram cue to the control flow.
+
+- **Conditional connectors:** label them with the *question the condition answers*, e.g. `"Enabled?"`, `"Approved?"`, `"Has errors?"`, `"Is kinops user?"`. This makes the decision point legible at a glance and flags where the flow can diverge or a chain can terminate.
+- **Sequential connectors:** label them with the transition/step they represent, e.g. `"on wake, re-check"`, `"then fire target"`, `"then log run"`.
+
+A connector that decides "keep going vs. stop" (e.g. the enabled re-check that lets a self-scheduling chain die) is the single most important thing to label — the diagram gives no other hint it exists. Labels are free at authoring time and save real debugging time later.
 
 ### Conditional Branch Patterns
 ```ruby
@@ -389,6 +398,8 @@ Loops iterate over data using paired **Loop Head** and **Loop Tail** nodes.
 
 **Critical:** Loop iterations execute **in parallel**, not sequentially. There is no `for` loop or `do while` concept. For sequential processing, use recursive routines instead.
 
+**Cyclic connectors do NOT loop.** A run is a DAG — pointing a node's Complete connector *back* to an already-executed node does **not** re-run it (verified: `Start → Echo → Wait(5s) → Echo` runs Echo exactly once; the Wait completes but the back-edge never re-fires it). There is no "while" loop. To repeat work on a schedule/interval, use a **self-spawning chain**: the routine does one unit of work, then its last step starts a *new* run of itself (via a handler that POSTs `/runs?...&name=<self>`), optionally after a `system_wait`. Each run is short-lived; the chain lives in the engine and survives app restarts. A gate (e.g. read a flag, condition the spawn connector on it) lets the chain self-terminate. This is how a cron-style scheduler is built without any external driver.
+
 **Critical: Loop connector pattern.** The loop_head MUST have **two outgoing Complete connectors**:
 1. To the loop **body** (the nodes that execute per iteration)
 2. Directly to the **loop_tail** (so the engine knows where the loop ends)
@@ -538,6 +549,22 @@ The connections, operations, and their UUIDs are implementation-specific — you
 
 See the Integrations concept skill (`concepts/integrations`) for Connection/Operation setup.
 
+### API Handler — `kinetic_core_api_connection_v1` (connection-based core API)
+
+Makes authenticated REST calls to Kinetic Core using a pre-configured connection (`api_username`, `api_password`, `api_location` properties). Common on engines that ship it categorized; paths are **server-root-relative** and must start with `/app/api/v1/` or `/app/components/task/`.
+
+| Parameter ID | Required | Notes |
+|-------------|----------|-------|
+| `method` | yes | `GET,POST,PUT,PATCH,DELETE` |
+| `path` | yes | e.g. `/app/api/v1/kapps/{kapp}/forms/{form}/submissions` |
+| `body` | "no" | **Must still be PRESENT** (use `""` when unused) |
+| `extra_headers` | "no" | **Must still be PRESENT** (use `""` when unused) |
+| `error_handling` | yes | `Error Message,Raise Error` |
+
+**CRITICAL — include `body` AND `extra_headers` on EVERY node, even empty.** Although marked not-required, the handler's message template references `@parameters['extra_headers']` (and `body`); omitting either raises `UnknownVariableError` ("@parameters does not contain the \"extra_headers\" variable") at runtime — the node stays `New` and the run stalls. **Results:** `Response Body`, `Response Code`, `Handler Error Message`.
+
+**CRITICAL — persist form-workflow trees via Task API `treeJson`, NOT Core-API `treeXml`.** On at least some engines, `PUT /app/api/v1/kapps/{kapp}/forms/{form}/workflows/{id}` with `{treeXml}` returns 200 but stores **zero nodes** (treeJson comes back empty), so runs fail with `Could not find node "start"`. Instead `PUT /app/components/task/app/api/v2/trees/{url-encoded-title}` with `{treeJson, versionId}` (GET the tree first for `versionId`). Still run `validate-workflow.mjs` on the treeXml for the rule gate, but push the `treeJson`. After PUT, GET `?include=treeJson` and confirm `nodes`/`connectors` are non-empty.
+
 ### API Handler — `kinetic_core_api_v1` (Legacy — Avoid)
 
 Makes REST API calls to Kinetic Core. **Do NOT use for new workflows.** Use `system_integration_v1` with Connections/Operations instead. This handler is being retired.
@@ -603,6 +630,7 @@ Sends emails via SMTP. Configured with `server`, `port`, `tls`, `username`, `pas
 **Results:** `Handler Error Message`, `Message Id`
 
 **Watch out for non-ASCII characters in subject and body.** Email subjects and message bodies are likely places for users to embed pretty Unicode — em-dashes (`—`), en-dashes (`–`), smart quotes (`"` `"` `'` `'`), ellipsis (`…`). These cause `Encoding::CompatibilityError` at runtime. See the ASCII-safe ERB note in the integration-handler section above.
+**Gotcha:** If the handler's `server` property is not configured (null), execution raises an `UnknownVariableError` — a **Handler Error** in the error queue — even with `error_handling: Error Message`. The error-message branch never runs; the node stays at status `New` and the run stalls. Check `GET /handlers/smtp_email_send_v1?include=properties` for a non-null `server` before wiring this handler into a tree.
 
 **Tip:** Use `include=parameters,results` on the handlers API to discover parameters for any handler: `GET /handlers/{definitionId}?include=parameters,results`
 

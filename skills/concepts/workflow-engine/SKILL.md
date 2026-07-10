@@ -50,7 +50,9 @@ A **node** is a unit of work within a workflow. Each node is created from a **ha
 
 ### Connectors
 
-A **connector** links two nodes together. Each connector has a **type**, an optional **label** (human-readable description), and an optional **condition** (`value`) — a Ruby expression that must evaluate truthy for the path to execute (empty = unconditional).
+A **connector** links two nodes together. Each connector has a **type**, a **label** (human-readable description), and an optional **condition** (`value`) — a Ruby expression that must evaluate truthy for the path to execute (empty = unconditional).
+
+**Always give every connector a short, meaningful label.** The condition is invisible on the builder canvas — a gated edge looks identical to an unconditional one — so the label is the only on-diagram cue to the control flow. Label conditional connectors with the question the condition answers (`"Enabled?"`, `"Approved?"`), and sequential ones with the step they represent (`"then fire target"`). See `concepts/workflow-xml` § "Best Practice — Always Label Connectors".
 
 **Three connector types:**
 
