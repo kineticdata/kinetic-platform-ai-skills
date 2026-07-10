@@ -138,6 +138,54 @@ Workarounds:
 Observed in practice (multiple build tests across May 2026):
 - The double-escape variant — `@values[\\\"Field Name\\\"]` in Python source becoming literal `\"` in stored ERB. Switching to `@values['Field Name']` fixed it.
 - The single-quoted-value variant — `{'Summary' => 'High-risk: #{@values['Name']} ...'}` produced a severe Ruby SyntaxError at runtime. The error surfaced as `java.lang.RuntimeException` on `BranchHeadTrigger` (engine couldn't even start the run, zero tasks created) rather than a specific `Node Parameter Error`, because the ERB parse error was severe enough to crash the engine before any node executed. Switching the value to double quotes — `{'Summary' => "High-risk: #{@values['Name']} ..."}` — resolved cleanly.
+### GET Response Shape Differs from POST/PUT
+
+`POST` and `PUT /trees/{title}` return the tree **wrapped**: `{"tree": {...}}`. But `GET /trees/{title}` returns the tree object **flat** — `versionId`, `treeJson`, `name`, `status`, `title` are all top-level keys on the response body, NOT under a `tree` key. Read them defensively:
+
+```js
+const obj = resp.data.tree || resp.data;   // POST/PUT wrap, GET is flat
+const versionId = obj.versionId;
+const nodes = obj.treeJson?.nodes;
+```
+
+`versionId` may come back as a number (`0`) or a string (`"0"`) depending on the call — always coerce with `String(versionId)` before putting it back (PUT requires it as a string; see Tips & Gotchas in `concepts/workflow-xml` for the optimistic-locking rule).
+
+### Running a Tree or Routine by Name
+
+Fire any tree or Global Routine directly by source/name — the engine creates a run and returns its id:
+
+```
+POST /app/components/task/app/api/v2/runs?sourceName={sn}&sourceGroup={sg}&name={name}
+Content-Type: application/json
+
+{"inputs": {"Input Name": "value"}, "message": ""}
+```
+
+- Trees: `sourceName`/`sourceGroup` match the tree's binding (e.g. `Kinetic Request CE` / `WebApis > my-kapp`).
+- Global Routines: both are `-`.
+- Response: `{"messageType":"success","message":"Initiated run #25028.","runId":"25028"}` — the run id is **`runId`** (a string), not `run.id`.
+
+### Run `status` Stays "Started" — Detect Completion via `outputs`/`tasks`, NOT `status`
+
+When you run a tree via `POST /runs`, the run's `status` field **stays `"Started"` permanently** even after the workflow has fully completed — the engine only flips it to `Completed` for certain invocation paths (notably real WebAPI HTTP calls), not for `/runs`-initiated executions. Polling `status` to detect completion will hang until your timeout.
+
+Instead poll for one of these completion signals:
+- **Routines:** `GET /runs/{id}?include=outputs` until `outputs` is non-empty. Declared routine outputs (e.g. `Echoed`) populate only when the run finishes.
+- **Any tree:** `GET /runs/{id}?include=tasks` until every task `status` is `Closed`.
+
+```js
+// Poll a routine run to completion (verified on engine 6.1.7)
+let outputs = null;
+const t0 = Date.now();
+while (Date.now() - t0 < 8000) {
+  const r = await taskGet(`/runs/${runId}?include=outputs`);
+  const o = r.data.run || r.data;
+  if (o.outputs && Object.keys(o.outputs).length) { outputs = o.outputs; break; }
+  await sleep(25);
+}
+```
+
+In practice a trivial echo routine completes within a single round-trip — the first poll after `POST /runs` returns already populated. Per-run wall time is dominated by network RTT, not engine work.
 
 ### Handlers API
 

@@ -673,7 +673,12 @@ Retrieve the signing key: `GET /app/api/v1/space?include=details` → `space.oau
 
 ### Response Format
 
-NDJSON (one JSON object per line). The last line is metadata with `nextPageToken`.
+NDJSON (one JSON object per line): N log-entry lines followed by **one trailing summary line**. The summary line is the only one with a top-level `metadata` object; real log entries have `app.*` / `k8s.*` fields and no `metadata` key — distinguish them by `obj.metadata !== undefined`.
+
+The next-page token is **not a field** — it is embedded in the summary line's `message` string:
+`"...request the next page ... by appending \`pageToken=<ISO>.<uuid>\` to your query..."`. Parse it with a regex (`/pageToken=([^\s\`'"]+)/`).
+
+Pagination is **page-fill based**: LogHub only offers a `pageToken` when the page is full (results truncated to `limit`). A partial page (fewer than `limit` entries) has a summary line with no token, and an empty window returns a single summary line — `{"message":"There were no log entries that matched your query.","metadata":{}}` — and zero entries. Time filtering is honored: a future `start`/`end` window returns the empty-summary form.
 
 ### Log Entry Fields
 

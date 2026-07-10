@@ -80,6 +80,7 @@ These skills are the shared knowledge base for **any AI assistant or developer**
 | Error / Situation | Read |
 |-------------------|------|
 | 400 on KQL query ("requires index definition") | KQL & Indexing |
+| 400 on form PUT with `indexDefinitions` | KQL & Indexing (strip read-only `status` from each entry) |
 | 400 on form creation ("Invalid Form") | Form Engine (field property table) |
 | 400 on submission ("field is required") | API Basics (coreState transitions) |
 | Workflow never fires | Workflow Engine (filter syntax, event names) |

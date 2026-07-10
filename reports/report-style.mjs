@@ -336,7 +336,7 @@ export function createReport(title, outputPath, opts = {}) {
         doc.switchToPage(i);
         doc.save();
         doc.fontSize(9).fillColor('#bbbbbb').font('Helvetica')
-          .text(`Page ${i}`, LM, PH - 45, { width: W, align: 'center', lineBreak: false });
+          .text(`Page ${i}`, LM, PH - 45, { width: W, align: 'center', lineBreak: false, height: 12 });
         doc.restore();
       }
 
