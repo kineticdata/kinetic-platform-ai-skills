@@ -115,7 +115,21 @@ Each `<task>` element represents a workflow step:
 - **definition_id** — Handler or routine to execute (see Common Handler Definition IDs below)
 - **id** — Internal node ID (used in `<dependents>` references)
 - **name** — Human-readable display name
-- **x, y** — Visual position in the workflow builder
+- **x, y** — Visual position in the workflow builder (see "Node Layout — Set Coordinates Sensibly")
+
+### Node Layout — Set Coordinates Sensibly
+
+`x` and `y` don't affect execution, but the tree is a **visual diagram** the user reads, edits, and debugs in the builder. When creating or generating nodes, **do NOT leave every node at `0,0` or stack them on top of each other** — overlapping nodes are unreadable and force the user to manually untangle the layout. Lay them out to mirror the execution flow.
+
+Practical conventions (the builder canvas is top-down, origin top-left, units are pixels):
+
+- **Flow top-to-bottom.** Increment `y` by a consistent step (~80–120px) for each sequential node. The `start` node sits at the top (small `x`/`y`, e.g. `x="0" y="0"` or near it) and flow descends.
+- **Keep a straight spine.** Nodes on the main path share roughly the same `x` so the happy path reads as a vertical line.
+- **Branch horizontally.** When a node has multiple outgoing connectors (conditional paths, error handling), offset each branch on `x` (~150–250px apart) so they don't overlap, while still advancing `y`. Put error/failure branches off to one side consistently.
+- **Reconverge back toward the spine.** When branches merge (e.g. through a `system_junction_v1`), bring the merge node back toward the main `x`.
+- **Give loops room.** Place the loop body below/right of `system_loop_head_v1` and the tail below the body so the head→body→tail structure is visible.
+
+The goal: someone opening the tree should be able to follow it without dragging nodes apart first. Treat coordinates as part of doing the job correctly, not an afterthought.
 
 ### Parameter Structure
 ```xml
@@ -934,7 +948,7 @@ GET /runs/{runId}?include=details,triggers,triggers.details,tasks,tasks.details,
 - **`&amp;&amp;` and `&quot;`:** XML-encoded `&&` and `"` in condition expressions
 - **Empty `<dependents>`:** Means the task is a terminal/leaf node (workflow ends here)
 - **`defers: true`:** Task pauses the workflow until an external event resumes it (approvals, subroutine completion)
-- **x/y coordinates:** Visual positions in the builder UI; useful for layout but not execution order
+- **x/y coordinates:** Visual positions in the builder UI; don't affect execution order, but DO lay nodes out sensibly (top-to-bottom flow, branches offset horizontally) instead of stacking them — see "Node Layout — Set Coordinates Sensibly"
 - **`lastID`:** Counter for generating unique task IDs; not meaningful for parsing
 - **Global Routine sourceName/sourceGroup:** Always `-` (dash) for both fields
 - **`treeJson` is more reliable than XML for round-trips** — use `include=treeJson` on GET and `treeJson` in PUT body. The `/export` endpoint may return incorrect XML on some servers.

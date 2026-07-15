@@ -48,6 +48,15 @@ Content-Type: application/json
 
 **Slug rules:** lowercase, dashes/underscores allowed, must be unique within the space, **immutable** after creation. Choose carefully — every URL, security policy reference, and workflow `sourceGroup` mentions the slug.
 
+**Derive the slug from the name unless explicitly told otherwise.** When creating a kapp, default the slug to a slugified version of the `name`: lowercase it, and replace spaces (and other separators) with single dashes. Only deviate when the user explicitly specifies a different slug.
+
+| Name | Default slug |
+|---|---|
+| `K-Kinetic Test` | `k-kinetic-test` |
+| `K Kinetic Test` | `k-kinetic-test` |
+| `Service Catalog` | `service-catalog` |
+| `HR Forms` | `hr-forms` |
+
 ---
 
 ## Update a Kapp — Merge Behavior
@@ -312,6 +321,7 @@ Forms, workflows, and individual security policy definitions are created against
 ## Gotchas
 
 - **Slug is immutable.** Plan for it. Migrating a kapp to a new slug means cloning into a new kapp, copying data, then deleting the old one.
+- **Default the slug from the name.** Slugify the `name` (lowercase, separators → dashes) unless the user explicitly gives a different slug. `K-Kinetic Test` → `k-kinetic-test`.
 - **PUT merges top-level / replaces within arrays.** Always GET-then-PUT for `formTypes`, `indexDefinitions`, `categories`, `securityPolicies`.
 - **formTypes must be registered before `?q=type=...` works.** Even though `type` is stored on every form.
 - **Kapp indexes cannot reference `values[<field>]`.** Those are form-level concerns.

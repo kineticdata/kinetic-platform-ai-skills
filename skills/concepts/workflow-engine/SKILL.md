@@ -532,6 +532,50 @@ The Kinetic Task **routine XML export is known to produce stale placeholder cont
 
 **Quick check:** `ls -la task/routines/*.xml` — if all sizes are identical, the export is stale.
 
+### `export.rb` can silently miss form-attached workflows created via the Core API
+
+`export.rb` (kinetic_sdk 5.0.31) writes each form's `Submission Submitted` /
+other event workflows as the raw treeJson object to
+`core/space/kapps/<kapp>/forms/<form>/workflows/<event>/<slug-name>.json`.
+But a full-space export was observed (June 2026) to **skip workflows on forms
+that had been created or had their workflow added via the Core API earlier in
+the same working session** — the form's `<slug>.json` exported fine, but no
+`workflows/` directory was written for it, even though the workflow was live
+and functioning on the server. Other forms' workflows exported normally in the
+same run, so it's not a global failure — it silently drops specific ones.
+
+**Why it bites:** the local export then looks complete (forms present) but is
+missing workflow definitions. A later `import.rb` to another environment would
+ship the forms WITHOUT their workflows — a broken promotion that passes a
+casual eyeball.
+
+**After any API-driven workflow work, verify the export captured it** rather
+than trusting the run finished cleanly:
+
+```bash
+# every form you touched should have a workflow file if it has a live workflow
+find core/space/kapps -path "*<form>*workflows*" -name "*.json"
+# or grep for a node name unique to the workflow you expect
+grep -rl "<UniqueNodeName>" core/space/kapps/.../workflows/
+```
+
+**Backfill the gap directly** — the export file IS the workflow's treeJson
+written verbatim, so GET it and write it to the expected path:
+`GET /app/api/v1/kapps/<kapp>/forms/<form>/workflows/<id>?include=treeJson`
+→ write `.treeJson` (pretty-printed) to
+`core/space/kapps/<kapp>/forms/<form>/workflows/<event>/<slugified-workflow-name>.json`.
+Filename convention = lowercase, non-alphanumerics→`-` (e.g. "GLE SAAR
+Submitted" → `gle-saar-submitted.json`). See
+`scripts/capture-missing-workflows-to-export.js` in the GLE SAAR project for a
+working backfill.
+
+Broader process note: prefer **local-first** (edit the export tree, then
+`import.rb` to the server) over mutating a live space via the Core API. When
+you do drive changes through the API for speed/testing, run `export.rb`
+afterward to pull the server state back into the local tree — and then run the
+verification above, because the export may not have captured newly-created
+workflows.
+
 ---
 
 ## Sources
