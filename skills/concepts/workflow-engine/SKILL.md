@@ -564,10 +564,10 @@ written verbatim, so GET it and write it to the expected path:
 `GET /app/api/v1/kapps/<kapp>/forms/<form>/workflows/<id>?include=treeJson`
 → write `.treeJson` (pretty-printed) to
 `core/space/kapps/<kapp>/forms/<form>/workflows/<event>/<slugified-workflow-name>.json`.
-Filename convention = lowercase, non-alphanumerics→`-` (e.g. "GLE SAAR
-Submitted" → `gle-saar-submitted.json`). See
-`scripts/capture-missing-workflows-to-export.js` in the GLE SAAR project for a
-working backfill.
+Filename convention = lowercase, non-alphanumerics→`-` (e.g. "Request
+Submitted" → `request-submitted.json`). A small backfill script that GETs each
+touched form's workflows with `include=treeJson` and writes any missing files
+to the expected paths closes the gap in one pass.
 
 Broader process note: prefer **local-first** (edit the export tree, then
 `import.rb` to the server) over mutating a live space via the Core API. When

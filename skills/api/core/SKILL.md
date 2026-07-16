@@ -1,6 +1,6 @@
 ---
 name: core
-description: "Use when you need the authoritative endpoint shape for a Kinetic Core API v1 resource — URL, HTTP method, path parameters, query parameters, request-body presence, and success status — for forms, kapps, spaces, submissions, users, teams, attributes, categories, webapis, webhooks, or security policy definitions. This index points to the auto-generated per-resource reference files. For behavior, error shapes, worked examples, and gotchas, read the `concepts/api-basics` or `concepts/using-the-api` skills instead."
+description: "Use when you need the authoritative endpoint shape for a Kinetic Core API v1 resource — URL, HTTP method, path parameters, query parameters, request-body presence, and success status — for forms, kapps, spaces, submissions, users, teams, attributes, categories, webapis, webhooks, or security policy definitions. This index points to the auto-generated per-resource reference files. For behavior, error shapes, worked examples, and gotchas, read the `concepts/api-basics` or `api/using-the-api` skills instead."
 ---
 
 # Core API v1 — Endpoint Reference Index
