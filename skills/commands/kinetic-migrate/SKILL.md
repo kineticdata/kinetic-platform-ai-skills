@@ -111,4 +111,4 @@ Not migrated (manual steps needed):
 - **Workflows must be recreated manually** — they reference platform-specific IDs (sourceGroup UUIDs).
 - **Security policy names are immutable** — choose carefully during creation.
 - **`createdBy`/`updatedBy` will reflect the migration user** — not the original submitter.
-- **Closed submissions cannot be edited after creation** — create as Submitted first, then close.
+- **Closed submissions shouldn't be edited after creation** (technically possible, but avoid it — see `concepts/api-basics` → "Closed Submissions Are Mutable") — create as Submitted first, then close.
