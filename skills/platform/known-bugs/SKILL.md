@@ -23,6 +23,8 @@ Confirmed bugs discovered through hands-on testing. Each includes the symptom, i
 
 **Workaround:** Use `GET /trees/{title}?include=treeJson` instead of the export endpoint. `treeJson` always returns the current definition.
 
+**Variant — stale handler NAME for freshly-uploaded handlers** (`last_verified: 2026-06-04` · engine 6.1.7): the stored `treeJson` references the correct handler, but `/trees/{title}/export` renders that node as a *different* handler — one that may not even exist on the engine (`GET /handlers/{stale}` → not found). Re-uploading the handler with `?force=true`, and even DELETE + fresh upload, does NOT fix the export rendering. Cause: the engine's in-memory definition cache maps the handler to a stale record (likely a reused internal row from a previously-deleted handler); export serializes through that cache while the stored tree content itself is correct. Verify with a live run — `POST /runs?sourceName=-&sourceGroup=-&name={routine}` then `GET /runs/{id}?include=tasks,tasks.details`; the task's `definitionId` shows which handler actually executed. An engine restart is the only known fix for the cosmetic export label, and there is NO REST endpoint for engine restart on 6.1.7 (`PUT /engine` → Unknown API call, on both v1 and v2 paths). Practical consequence: for trees referencing a just-uploaded handler, a wrong-looking export is not proof of a wrong tree — check `include=treeJson` and a live run before tearing apart a correct install.
+
 ---
 
 ## Bug 2: `run.tree` Is an Object, Not a String

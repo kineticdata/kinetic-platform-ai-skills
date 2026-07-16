@@ -52,15 +52,16 @@ The signing key is space-admin-readable only. Treat it as a secret — anyone wi
 
 ## Response Format
 
-NDJSON — one JSON object per line. The **last line** is metadata with `nextPageToken`:
+NDJSON — one JSON object per line: N log-entry lines followed by **one trailing summary line**. The summary line is the only one with a top-level `metadata` object; real log entries have `app.*` / `k8s.*` fields and no `metadata` key — distinguish them by `obj.metadata !== undefined`. Parse line-by-line; the final summary line is not a log entry.
 
-```
-{"timestamp":"2026-06-13T12:00:00.000Z","level":"INFO","message":"...",...}
-{"timestamp":"2026-06-13T12:00:01.000Z","level":"ERROR","message":"...",...}
-{"nextPageToken":"abc123","hasMore":true}
-```
+**Next-page token — two observed shapes (UNVERIFIED which is current; reconcile against a live space):**
 
-Parse line-by-line; the final metadata line is not a log entry.
+- Observed 2026-06/07: the token is **not a field** — it is embedded in the summary line's `message` string (`"...request the next page ... by appending \`pageToken=<ISO>.<uuid>\` to your query..."`). Parse it with a regex (`/pageToken=([^\s\`'"]+)/`).
+- Earlier documentation of this endpoint showed the last line as a metadata object with a real token field: `{"nextPageToken":"abc123","hasMore":true}`.
+
+A robust client should try the `nextPageToken` field first and fall back to regex-parsing the `message` string.
+
+Pagination is **page-fill based**: LogHub only offers a `pageToken` when the page is full (results truncated to `limit`). A partial page (fewer than `limit` entries) has a summary line with no token, and an empty window returns a single summary line — `{"message":"There were no log entries that matched your query.","metadata":{}}` — and zero entries. Time filtering is honored: a future `start`/`end` window returns the empty-summary form.
 
 ## Log Entry Fields
 

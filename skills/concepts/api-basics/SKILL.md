@@ -426,6 +426,24 @@ Updates are **partial** — only included fields change; omitted fields are unto
 
 **Note:** `PUT /submissions/{id}/values` does **NOT** exist (returns 404). Always use the main submission PUT endpoint with a `values` wrapper.
 
+### Single-Submission Operations Are Kapp-Agnostic
+
+Single-submission GET/PUT/PATCH/DELETE use the **flat** path `/submissions/{id}` — **NOT** scoped under `/kapps/.../forms/...`. The form-scoped path is **list/create only** and has no `/{id}` variant.
+
+Tested April 2026 on a real server with a valid submission ID:
+
+| Path | Result |
+|------|--------|
+| `GET /app/api/v1/submissions/{id}` | **200** ✅ correct |
+| `GET /app/api/v1/kapps/{kapp}/submissions/{id}` | **404** ❌ does not exist |
+| `GET /app/api/v1/kapps/{kapp}/forms/{form}/submissions/{id}` | **404** ❌ does not exist |
+
+Note the asymmetry: `GET /kapps/{kapp}/submissions` (list, no id) **does** work and returns 200. Only the `/{id}` variant under a kapp/form prefix returns 404.
+
+**Rule of thumb:**
+- List or create a submission → `/kapps/{kapp}/forms/{form}/submissions`
+- Operate on one specific submission by ID → `/submissions/{id}` (no prefix)
+
 ### Core State Transitions
 
 The `coreState` follows a **one-way state machine**: `Draft` → `Submitted` → `Closed`
@@ -494,6 +512,7 @@ When creating many submissions programmatically:
 - **`/me` response is flat** — properties are at top level (`me.username`), NOT nested under `me.user`
 - **Seed data values may differ from plan labels** — always verify actual field values (e.g., "Prod" vs "Production") before hardcoding dropdown options or CSS class names
 - **`POST /submissions/{id}/submit` does NOT exist** — returns 404. To submit a Draft, use `PUT /submissions/{id}` with `{ "coreState": "Submitted" }`
+- **`GET/PUT/DELETE /kapps/{kapp}/submissions/{id}` and `/kapps/{kapp}/forms/{form}/submissions/{id}` do NOT exist** — both return 404. Single-submission operations are kapp-agnostic at `/submissions/{id}`. Form-scoped path is list/create only.
 - **Team slugs are auto-generated hashes** — the `slug` field you provide in team creation is IGNORED. The API generates its own hash slug. Always read the slug from the create response.
 - **Dropdown fields need `choicesRunIf: null` AND `choicesResourceName: null`** — and do NOT support the `rows` property. Each renderType has its own required property set.
 - **Button elements need `renderAttributes: {}`** — omitting this on submit buttons causes a 400 error

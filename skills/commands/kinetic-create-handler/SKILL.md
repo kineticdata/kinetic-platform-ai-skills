@@ -187,6 +187,8 @@ If your handler needs system-wide config (most do), `info.xml` declares the info
 
 `sensitive="true"` masks the value in the admin Console and on GET (consistent with the credential-masking pattern in `concepts/integrations`).
 
+> **UNVERIFIED — two secret-marking attributes are documented and need reconciling against a live engine.** A separate field observation (2026-07-10) reports that secret info values must be declared with `type="encrypted"` in `process/info.xml` (`<info name="api_password" required="true" type="encrypted" .../>`) — without it the value is stored and displayed in plaintext in the admin tools, and once encrypted, GET responses never echo the value back (masked/absent is expected, not a failed write). It is not yet confirmed whether `sensitive="true"` and `type="encrypted"` are two names for the same mechanism, apply to different schema variants, or differ (mask-only vs encrypt-at-rest). Until verified, set **both** on secret info values and confirm in the Console that the value is masked.
+
 ## Step 7: Generate `test/simple_input.rb` and `test/simple_output.xml`
 
 The Test Harness reads `simple_input.rb` to compose the synthetic XML input for `init.rb`:

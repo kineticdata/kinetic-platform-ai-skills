@@ -50,7 +50,9 @@ A **node** is a unit of work within a workflow. Each node is created from a **ha
 
 ### Connectors
 
-A **connector** links two nodes together. Each connector has a **type**, an optional **label** (human-readable description), and an optional **condition** (`value`) — a Ruby expression that must evaluate truthy for the path to execute (empty = unconditional).
+A **connector** links two nodes together. Each connector has a **type**, a **label** (human-readable description), and an optional **condition** (`value`) — a Ruby expression that must evaluate truthy for the path to execute (empty = unconditional).
+
+**Always give every connector a short, meaningful label.** The condition is invisible on the builder canvas — a gated edge looks identical to an unconditional one — so the label is the only on-diagram cue to the control flow. Label conditional connectors with the question the condition answers (`"Enabled?"`, `"Approved?"`), and sequential ones with the step they represent (`"then fire target"`). See `concepts/workflow-xml` § "Best Practice — Always Label Connectors".
 
 **Three connector types:** Complete, Create, and Update.
 
@@ -675,6 +677,14 @@ GET /triggers?runId={id}&status=Failed&count=true
 For UI display, classify runs by checking their triggers rather than trusting `run.status`. Independently confirmed across multiple build tests (May 2026): in all cases parent runs reported `status: "Started"` while every task inside had `status: "Closed"` and the actual work had completed successfully. **Poll on task statuses or trigger queries — never on `run.status` — for completion detection.**
 
 Note the vocabulary distinction: the trigger `status=Failed` and task `status: "Closed"` above are *trigger/task* statuses, not run statuses. The run object's own `status` enum (`"Started"`/`"Complete"`/`"Error"`) is the unreliable field — this is the single authoritative statement; the Run Object key observations above cross-reference back to it.
+
+**Measuring execution time (the run never "closes"):** because `run.status` is a ghost status, `run.updatedAt` is also useless for timing — it freezes ~30ms after `run.createdAt` and is NOT touched as tasks execute. Any benchmark counting `status="Complete"` runs is measuring run *creation*, not execution, and the `/runs?count=true&q=status="..."` filter is **silently ignored** (it returns the total run count). The tasks are the source of truth:
+
+```
+GET /app/components/task/app/api/v2/runs/{id}?include=details,tasks,tasks.details
+```
+
+Each task carries `createdAt`, `updatedAt`, `status`, `nodeName`, `loopIndex`, `branchId`, and a per-task `duration` (ms). **Execution time of a tree = `max(task.updatedAt) − run.createdAt`.** Caveat on `duration`: it measures only the handler body, NOT parameter ERB rendering — a `utilities_echo_v1` whose `input` is `<%= sleep(5) %>` reports `duration≈20ms` yet its `updatedAt` lands ~5s later, because the sleep happens during ERB rendering on the worker thread before the handler "runs." To measure real wall time (or make a node deliberately hold a worker), rely on `updatedAt` deltas, not `duration`.
 
 ### Tree Type Classification via `sourceGroup`
 

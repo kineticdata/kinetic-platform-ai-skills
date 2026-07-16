@@ -164,12 +164,12 @@ The `<dependents>` section defines execution flow — which tasks run next:
 ```
 
 ### Fields
-- **label** — Human-readable description of the branch
+- **label** — Human-readable description of the branch. **Always set a meaningful label on every connector** (see best practice below), especially conditional ones.
 - **type** — `Complete`, `Create`, or `Update`:
   - **Complete**: fires after the node finishes executing (default for sequential flow)
   - **Create**: fires immediately when a deferrable node enters deferral (e.g., start SLA timer when email is sent)
   - **Update**: fires each time a deferred node receives an update action (e.g., each reply to an email)
-- **value** — Ruby ERB expression that must evaluate truthy; empty = unconditional
+- **value** — **Raw Ruby expression (NOT ERB-wrapped)** that must evaluate to a boolean. Empty = unconditional. **Never wrap with `<%= %>`** — node `parameters[].value` is ERB and produces a string for the handler, but a connector `value` answers the engine's question *"should I traverse this edge?"* which needs a real `true`/`false`. ERB always produces a string, and any non-empty string is truthy in Ruby — so an ERB-wrapped connector value silently always evaluates `true`, destroying the branch logic and producing `IllegalConnectorError` at runtime. Bare Ruby: `@results['X']['Handler Error Message'].to_s.empty?` ✓ . ERB: `<%= ... %>` ✗ .
 - **Text content** — The `id` of the next task to execute
 
 ### Building Execution Order
@@ -177,6 +177,15 @@ The `<dependents>` section defines execution flow — which tasks run next:
 2. Follow `<dependents>` to find next tasks
 3. Recursively follow each branch
 4. Tasks with empty `<dependents>` are terminal nodes
+
+### Best Practice — Always Label Connectors
+
+**Give every connector a short, meaningful `label`.** A connector's `value` (its condition) is **invisible on the workflow-builder canvas** — a conditional edge renders as a plain arrow, identical to an unconditional one. Without a label, a reader has to click into each connector to discover whether (and why) a branch is gated. The label is the only on-diagram cue to the control flow.
+
+- **Conditional connectors:** label them with the *question the condition answers*, e.g. `"Enabled?"`, `"Approved?"`, `"Has errors?"`, `"Is kinops user?"`. This makes the decision point legible at a glance and flags where the flow can diverge or a chain can terminate.
+- **Sequential connectors:** label them with the transition/step they represent, e.g. `"on wake, re-check"`, `"then fire target"`, `"then log run"`.
+
+A connector that decides "keep going vs. stop" (e.g. the enabled re-check that lets a self-scheduling chain die) is the single most important thing to label — the diagram gives no other hint it exists. Labels are free at authoring time and save real debugging time later.
 
 ### Conditional Branch Patterns
 ```ruby
@@ -407,6 +416,8 @@ Loops iterate over data using paired **Loop Head** and **Loop Tail** nodes.
 
 **Critical:** Loop iterations execute **in parallel**, not sequentially. There is no `for` loop or `do while` concept. For sequential processing, use recursive routines instead.
 
+**Cyclic connectors do NOT loop.** A run is a DAG — pointing a node's Complete connector *back* to an already-executed node does **not** re-run it (verified: `Start → Echo → Wait(5s) → Echo` runs Echo exactly once; the Wait completes but the back-edge never re-fires it). There is no "while" loop. To repeat work on a schedule/interval, use a **self-spawning chain**: the routine does one unit of work, then its last step starts a *new* run of itself (via a handler that POSTs `/runs?...&name=<self>`), optionally after a `system_wait`. Each run is short-lived; the chain lives in the engine and survives app restarts. A gate (e.g. read a flag, condition the spawn connector on it) lets the chain self-terminate. This is how a cron-style scheduler is built without any external driver.
+
 **Critical: Loop connector pattern.** The loop_head MUST have **two outgoing Complete connectors**:
 1. To the loop **body** (the nodes that execute per iteration)
 2. Directly to the **loop_tail** (so the engine knows where the loop ends)
@@ -546,6 +557,8 @@ ERB expressions work in parameter values — use them to inject workflow context
 
 **ERB parameter values must be ASCII-safe.** Non-ASCII characters in parameter ERB — em-dash (`—`), en-dash (`–`), smart quotes (`"` `"` `'` `'`), ellipsis (`…`), accented letters from external API responses — cause `Encoding::UndefinedConversionError` at evaluation time. The Task engine's ERB context appears to default to US-ASCII for parameter values. Sanitize before substitution: `gsub(/[—–]/, '-')`, `gsub(/[""]/, '"')`, or transliterate via `String#unicode_normalize` + ASCII-only filter. Hits often when interpolating user-typed strings or external API content (e.g., country names, vendor descriptions) into a node parameter.
 
+**A second observed manifestation is fully silent (2026-05-27):** a non-ASCII literal (em-dash) inside a node parameter *body* (e.g. a `kinetic_core_api_connection_v1` POST body) produced no error at all — the engine accepted the PUT and created the task, but never dispatched it. The task sat at `status: "New"` forever with `token: null`, `results: {}`, no error, no log; the validator passed; an identical tree without the character ran fine. Re-PUTting the same content did NOT fix it — only changing the character did. So when a structurally-valid node is stuck at `New` with a null token, check its parameter values for non-ASCII characters before anything else. If you must emit non-ASCII into a created submission, build it from `@values`/`@results` at runtime (UTF-8 data the engine already holds) rather than embedding the literal in the tree; comments and node *names* are unaffected.
+
 **Results:** Depend on the operation's output mapping. Common outputs: `Id`, `_Error`, `_Status Code`.
 
 **Approach:**
@@ -563,6 +576,22 @@ The connections, operations, and their UUIDs are implementation-specific — you
 - Changing an API endpoint updates all workflows using that operation
 
 See the Integrations concept skill (`concepts/integrations`) for Connection/Operation setup.
+
+### API Handler — `kinetic_core_api_connection_v1` (connection-based core API)
+
+Makes authenticated REST calls to Kinetic Core using a pre-configured connection (`api_username`, `api_password`, `api_location` properties). Common on engines that ship it categorized; paths are **server-root-relative** and must start with `/app/api/v1/` or `/app/components/task/`.
+
+| Parameter ID | Required | Notes |
+|-------------|----------|-------|
+| `method` | yes | `GET,POST,PUT,PATCH,DELETE` |
+| `path` | yes | e.g. `/app/api/v1/kapps/{kapp}/forms/{form}/submissions` |
+| `body` | "no" | **Must still be PRESENT** (use `""` when unused) |
+| `extra_headers` | "no" | **Must still be PRESENT** (use `""` when unused) |
+| `error_handling` | yes | `Error Message,Raise Error` |
+
+**CRITICAL — include `body` AND `extra_headers` on EVERY node, even empty.** Although marked not-required, the handler's message template references `@parameters['extra_headers']` (and `body`); omitting either raises `UnknownVariableError` ("@parameters does not contain the \"extra_headers\" variable") at runtime — the node stays `New` and the run stalls. **Results:** `Response Body`, `Response Code`, `Handler Error Message`.
+
+**CRITICAL — persist form-workflow trees via Task API `treeJson`, NOT Core-API `treeXml`.** On at least some engines, `PUT /app/api/v1/kapps/{kapp}/forms/{form}/workflows/{id}` with `{treeXml}` returns 200 but stores **zero nodes** (treeJson comes back empty), so runs fail with `Could not find node "start"`. Instead `PUT /app/components/task/app/api/v2/trees/{url-encoded-title}` with `{treeJson, versionId}` (GET the tree first for `versionId`). Still run `validate-workflow.mjs` on the treeXml for the rule gate, but push the `treeJson`. After PUT, GET `?include=treeJson` and confirm `nodes`/`connectors` are non-empty.
 
 ### API Handler — `kinetic_core_api_v1` (Legacy — Prefer `system_integration_v1`)
 
@@ -635,6 +664,7 @@ Sends emails via SMTP. Configured with `server`, `port`, `tls`, `username`, `pas
 **Results:** `Handler Error Message`, `Message Id`
 
 **Watch out for non-ASCII characters in subject and body.** Email subjects and message bodies are likely places for users to embed pretty Unicode — em-dashes (`—`), en-dashes (`–`), smart quotes (`"` `"` `'` `'`), ellipsis (`…`). These cause `Encoding::CompatibilityError` at runtime. See the ASCII-safe ERB note in the integration-handler section above.
+**Gotcha:** If the handler's `server` property is not configured (null), execution raises an `UnknownVariableError` — a **Handler Error** in the error queue — even with `error_handling: Error Message`. The error-message branch never runs; the node stays at status `New` and the run stalls. Check `GET /handlers/smtp_email_send_v1?include=properties` for a non-null `server` before wiring this handler into a tree.
 
 **Tip:** Use `include=parameters,results` on the handlers API to discover parameters for any handler: `GET /handlers/{definitionId}?include=parameters,results`
 
@@ -647,6 +677,13 @@ Observed cases (verified May 2026):
 - **`smtp_email_send_v1` and `smtp_email_send_v2`** — `bcc` and `htmlbody` parameters (both `required: false` in handler def). When omitted from the node, the handler raises `UnknownVariableError`; declaring both with `value: ""` resolves it. This is an ERB-evaluation failure that fires before the handler's `error_handling: "Error Message"` catch can engage, so even with the catch enabled, missing optional ERB parameters halt the run. Verified May 2026 — v1 and v2 behave identically on this case.
 
 Until a handler is verified to tolerate omitted optional parameters, **declare every parameter listed in the handler definition on the node**, supplying empty value for ones that don't apply. Fetch the handler definition (`GET /handlers/{definitionId}?include=parameters`) to enumerate the full parameter list; the canonical source-of-truth for parameter-shape conventions is any existing tree on the platform that uses the handler.
+
+This bites hardest with **handler-version drift**: the handler *installed on the engine* (e.g. the Integration Catalog build of `kinetic_core_api_connection_v1`) can declare more parameters (`extra_headers`, `enable_debug_logging`, …) than the older copy your tree was authored against — the same `definition_id` does not guarantee the same parameter set. Author nodes against the **engine's** handler, not a local/older copy. To see exactly what the installed handler declares:
+
+```bash
+curl -u user:pass "<server>/app/components/task/app/api/v2/handlers/<def>/zip" -o h.zip
+unzip -p h.zip '*/node.xml' | grep 'parameter id='   # ← the full required set
+```
 
 ### Routine Calls (subroutines)
 Routine definition IDs follow the pattern: `routine_kinetic_{entity}_{action}_v1`

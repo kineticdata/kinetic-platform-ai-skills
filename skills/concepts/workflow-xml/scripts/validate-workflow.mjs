@@ -184,12 +184,26 @@ for (const defId of needCheck) {
   }
 }
 
-// kinetic_core_api_connection_v1 path prefix
+// kinetic_core_api_connection_v1 path prefix.
+// The path is server-root-relative, so it must resolve to one starting with
+// '/app/api/v1/' or '/app/components/task/'. Two valid shapes:
+//   1. a plain literal:            /app/api/v1/submissions/...
+//   2. a whole-value ERB expression that builds the path, e.g.
+//      <%= '/app/api/v1/submissions/' + @inputs['robotId'].to_s + '...' %>
+//      (the proven catalog pattern; resolves server-root-relative at run time).
+// For ERB paths we can't evaluate the expression, so we require the prefix to appear as a
+// quoted string literal inside it.
 for (const n of Object.values(nodesById)) {
   if (n.defId === "kinetic_core_api_connection_v1") {
-    const path = n.params.path || "";
-    if (!path.startsWith("/app/api/v1/") && !path.startsWith("/app/components/task/")) {
-      violate(`Handler '${n.id}' path='${path}' must start with '/app/api/v1/' or '/app/components/task/' (handler is server-root-relative).`, "PITFALLS.md § 3");
+    // Decode XML entities first — the parser leaves the raw text encoded (e.g. '&lt;%= ... %&gt;').
+    const path = (n.params.path || "")
+      .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'").replace(/&#39;/g, "'").replace(/&amp;/g, "&");
+    const literalOk = path.startsWith("/app/api/v1/") || path.startsWith("/app/components/task/");
+    const erbLiteralOk = path.includes("<%") &&
+      (/['"`]\/app\/api\/v1\//.test(path) || /['"`]\/app\/components\/task\//.test(path));
+    if (!literalOk && !erbLiteralOk) {
+      violate(`Handler '${n.id}' path='${path}' must resolve to a path starting with '/app/api/v1/' or '/app/components/task/' (handler is server-root-relative). For an ERB path, build it as one whole-value <%= %> expression with the prefix as a string literal.`, "PITFALLS.md § 3");
     }
   }
 }
