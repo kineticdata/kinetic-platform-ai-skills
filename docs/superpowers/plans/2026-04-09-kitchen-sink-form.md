@@ -8,7 +8,14 @@
 
 **Tech Stack:** Kinetic Platform REST API (Core v1 + Task v2 proxy), HTTP Basic Auth, JSON payloads.
 
-**Credentials:** `james.davies@kineticdata.com` / `Jcdhawa!!14` on `https://demo.kinops.io`
+**Credentials:** export `KINETIC_USER` and `KINETIC_PASSWORD` for your own space before
+running any command below. Never commit credentials to this repository.
+
+> **Security note (2026-08-31):** this line and the `curl` commands below previously
+> contained a real username and plaintext password for a live space. They have been
+> redacted, but the credential was publicly readable in this repository's history and
+> **must be treated as compromised and rotated.** Redacting the current file does not
+> undo prior exposure.
 
 **Spec:** `docs/superpowers/specs/2026-04-09-kitchen-sink-form-design.md`
 
@@ -21,7 +28,7 @@
 - [ ] **Step 1: Add formTypes to ai-testing kapp**
 
 ```bash
-curl -s -u "james.davies@kineticdata.com:Jcdhawa!!14" -X PUT \
+curl -s -u "$KINETIC_USER:$KINETIC_PASSWORD" -X PUT \
   "https://demo.kinops.io/app/api/v1/kapps/ai-testing" \
   -H "Content-Type: application/json" \
   -d '{"formTypes": [{"name": "Service"}, {"name": "Test"}, {"name": "Approval"}]}'
@@ -32,7 +39,7 @@ Expected: 200 with kapp JSON containing `formTypes` array.
 - [ ] **Step 2: Add kapp-level system indexes**
 
 ```bash
-curl -s -u "james.davies@kineticdata.com:Jcdhawa!!14" -X PUT \
+curl -s -u "$KINETIC_USER:$KINETIC_PASSWORD" -X PUT \
   "https://demo.kinops.io/app/api/v1/kapps/ai-testing" \
   -H "Content-Type: application/json" \
   -d '{
@@ -52,7 +59,7 @@ Expected: 200 with kapp JSON. Indexes appear in response.
 - [ ] **Step 3: Verify**
 
 ```bash
-curl -s -u "james.davies@kineticdata.com:Jcdhawa!!14" \
+curl -s -u "$KINETIC_USER:$KINETIC_PASSWORD" \
   "https://demo.kinops.io/app/api/v1/kapps/ai-testing?include=indexDefinitions"
 ```
 
@@ -797,7 +804,7 @@ cat > /tmp/kitchen-sink-form.json << 'FORMJSON'
 }
 FORMJSON
 
-curl -s -u "james.davies@kineticdata.com:Jcdhawa!!14" -X POST \
+curl -s -u "$KINETIC_USER:$KINETIC_PASSWORD" -X POST \
   "https://demo.kinops.io/app/api/v1/kapps/ai-testing/forms" \
   -H "Content-Type: application/json" \
   -d @/tmp/kitchen-sink-form.json | python3 -m json.tool | head -20
@@ -808,7 +815,7 @@ Expected: 200 with `{"form": {"slug": "kitchen-sink", "name": "Kitchen Sink", ..
 - [ ] **Step 2: Verify form round-trip**
 
 ```bash
-curl -s -u "james.davies@kineticdata.com:Jcdhawa!!14" \
+curl -s -u "$KINETIC_USER:$KINETIC_PASSWORD" \
   "https://demo.kinops.io/app/api/v1/kapps/ai-testing/forms/kitchen-sink?include=pages,indexDefinitions,integrations,bridgedResources,securityPolicies,attributes" \
   | python3 -c "
 import sys, json
@@ -841,7 +848,7 @@ Save the verified form JSON to the skills repo at `tests/fixtures/kitchen-sink-f
 - [ ] **Step 1: POST the Approval form**
 
 ```bash
-curl -s -u "james.davies@kineticdata.com:Jcdhawa!!14" -X POST \
+curl -s -u "$KINETIC_USER:$KINETIC_PASSWORD" -X POST \
   "https://demo.kinops.io/app/api/v1/kapps/ai-testing/forms" \
   -H "Content-Type: application/json" \
   -d '{
@@ -921,7 +928,7 @@ Expected: 200 with the approval form created.
 - [ ] **Step 2: Verify**
 
 ```bash
-curl -s -u "james.davies@kineticdata.com:Jcdhawa!!14" \
+curl -s -u "$KINETIC_USER:$KINETIC_PASSWORD" \
   "https://demo.kinops.io/app/api/v1/kapps/ai-testing/forms/approval?include=pages"
 ```
 
@@ -936,7 +943,7 @@ Confirm: 5 fields (Approver, Decision, Comments, Original Submission Id, Deferra
 - [ ] **Step 1: Create workflow metadata**
 
 ```bash
-curl -s -u "james.davies@kineticdata.com:Jcdhawa!!14" -X POST \
+curl -s -u "$KINETIC_USER:$KINETIC_PASSWORD" -X POST \
   "https://demo.kinops.io/app/api/v1/kapps/ai-testing/forms/kitchen-sink/workflows" \
   -H "Content-Type: application/json" \
   -d '{"name": "Kitchen Sink On Submit", "event": "Submission Submitted", "type": "Tree", "status": "Active"}'
@@ -948,7 +955,7 @@ Save the returned `id` — needed for the next step.
 
 ```bash
 WORKFLOW_ID="<id from step 1>"
-curl -s -u "james.davies@kineticdata.com:Jcdhawa!!14" -X PUT \
+curl -s -u "$KINETIC_USER:$KINETIC_PASSWORD" -X PUT \
   "https://demo.kinops.io/app/api/v1/workflows/${WORKFLOW_ID}" \
   -H "Content-Type: application/json" \
   -d '{
@@ -1027,7 +1034,7 @@ Expected: 200 with `versionId` incremented.
 - [ ] **Step 3: Verify workflow exists**
 
 ```bash
-curl -s -u "james.davies@kineticdata.com:Jcdhawa!!14" \
+curl -s -u "$KINETIC_USER:$KINETIC_PASSWORD" \
   "https://demo.kinops.io/app/api/v1/kapps/ai-testing/forms/kitchen-sink/workflows"
 ```
 
@@ -1042,7 +1049,7 @@ Confirm: "Kitchen Sink On Submit" workflow appears with event "Submission Submit
 - [ ] **Step 1: Create workflow metadata**
 
 ```bash
-curl -s -u "james.davies@kineticdata.com:Jcdhawa!!14" -X POST \
+curl -s -u "$KINETIC_USER:$KINETIC_PASSWORD" -X POST \
   "https://demo.kinops.io/app/api/v1/kapps/ai-testing/forms/kitchen-sink/workflows" \
   -H "Content-Type: application/json" \
   -d '{"name": "Kitchen Sink Approval", "event": "Submission Submitted", "type": "Tree", "status": "Active"}'
@@ -1054,7 +1061,7 @@ Save the returned `id`.
 
 ```bash
 WORKFLOW_ID="<id from step 1>"
-curl -s -u "james.davies@kineticdata.com:Jcdhawa!!14" -X PUT \
+curl -s -u "$KINETIC_USER:$KINETIC_PASSWORD" -X PUT \
   "https://demo.kinops.io/app/api/v1/workflows/${WORKFLOW_ID}" \
   -H "Content-Type: application/json" \
   -d '{
@@ -1127,7 +1134,7 @@ Expected: 200 with versionId incremented. The "Create Approval" node has `defers
 - [ ] **Step 1: Create workflow metadata on approval form**
 
 ```bash
-curl -s -u "james.davies@kineticdata.com:Jcdhawa!!14" -X POST \
+curl -s -u "$KINETIC_USER:$KINETIC_PASSWORD" -X POST \
   "https://demo.kinops.io/app/api/v1/kapps/ai-testing/forms/approval/workflows" \
   -H "Content-Type: application/json" \
   -d '{"name": "Complete Approval", "event": "Submission Submitted", "type": "Tree", "status": "Active"}'
@@ -1139,7 +1146,7 @@ Save the returned `id`.
 
 ```bash
 WORKFLOW_ID="<id from step 1>"
-curl -s -u "james.davies@kineticdata.com:Jcdhawa!!14" -X PUT \
+curl -s -u "$KINETIC_USER:$KINETIC_PASSWORD" -X PUT \
   "https://demo.kinops.io/app/api/v1/workflows/${WORKFLOW_ID}" \
   -H "Content-Type: application/json" \
   -d '{
@@ -1187,7 +1194,7 @@ Expected: 200. This workflow fires when an approval submission is submitted, rea
 - [ ] **Step 1: Add values[FieldName] indexes to kapp**
 
 ```bash
-curl -s -u "james.davies@kineticdata.com:Jcdhawa!!14" -X PUT \
+curl -s -u "$KINETIC_USER:$KINETIC_PASSWORD" -X PUT \
   "https://demo.kinops.io/app/api/v1/kapps/ai-testing" \
   -H "Content-Type: application/json" \
   -d '{
@@ -1211,7 +1218,7 @@ curl -s -u "james.davies@kineticdata.com:Jcdhawa!!14" -X PUT \
 - [ ] **Step 2: Verify indexes**
 
 ```bash
-curl -s -u "james.davies@kineticdata.com:Jcdhawa!!14" \
+curl -s -u "$KINETIC_USER:$KINETIC_PASSWORD" \
   "https://demo.kinops.io/app/api/v1/kapps/ai-testing?include=indexDefinitions" \
   | python3 -c "
 import sys, json
@@ -1232,7 +1239,7 @@ Confirm all 8 indexes exist and check their `status` (should be "New" initially,
 - [ ] **Step 1: Create a Draft submission (to test Draft bypass)**
 
 ```bash
-curl -s -u "james.davies@kineticdata.com:Jcdhawa!!14" -X POST \
+curl -s -u "$KINETIC_USER:$KINETIC_PASSWORD" -X POST \
   "https://demo.kinops.io/app/api/v1/kapps/ai-testing/forms/kitchen-sink/submissions" \
   -H "Content-Type: application/json" \
   -d '{
@@ -1257,7 +1264,7 @@ Expected: 200 with `coreState: "Draft"`. No workflows fire (Draft bypasses trigg
 
 ```bash
 SUBMISSION_ID="<id from step 1>"
-curl -s -u "james.davies@kineticdata.com:Jcdhawa!!14" -X PUT \
+curl -s -u "$KINETIC_USER:$KINETIC_PASSWORD" -X PUT \
   "https://demo.kinops.io/app/api/v1/submissions/${SUBMISSION_ID}?include=values" \
   -H "Content-Type: application/json" \
   -d '{"coreState": "Submitted"}'
@@ -1270,7 +1277,7 @@ Expected: 200 with `coreState: "Submitted"`. This should trigger both workflows.
 - [ ] **Step 3: Check workflow runs**
 
 ```bash
-curl -s -u "james.davies@kineticdata.com:Jcdhawa!!14" \
+curl -s -u "$KINETIC_USER:$KINETIC_PASSWORD" \
   "https://demo.kinops.io/app/components/task/app/api/v2/runs?source=Kinetic+Request+CE&sourceId=${SUBMISSION_ID}&include=details" \
   | python3 -c "
 import sys, json
@@ -1287,7 +1294,7 @@ Expected: Two runs — "Kitchen Sink On Submit" and "Kitchen Sink Approval".
 ```bash
 # Get the Kitchen Sink On Submit run ID
 RUN_ID="<from step 3>"
-curl -s -u "james.davies@kineticdata.com:Jcdhawa!!14" \
+curl -s -u "$KINETIC_USER:$KINETIC_PASSWORD" \
   "https://demo.kinops.io/app/components/task/app/api/v2/runs/${RUN_ID}?include=tasks,tasks.details,exceptions" \
   | python3 -c "
 import sys, json
@@ -1309,7 +1316,7 @@ Check the Kitchen Sink Approval run — it should have the "Create Approval" nod
 ```bash
 # Get the Kitchen Sink Approval run ID
 RUN_ID="<from step 3>"
-curl -s -u "james.davies@kineticdata.com:Jcdhawa!!14" \
+curl -s -u "$KINETIC_USER:$KINETIC_PASSWORD" \
   "https://demo.kinops.io/app/components/task/app/api/v2/runs/${RUN_ID}?include=tasks,tasks.details" \
   | python3 -c "
 import sys, json
@@ -1325,12 +1332,12 @@ Expected: "Set Status Pending" = Closed, "Create Approval" = Deferred (with a to
 
 ```bash
 # Form-level search
-curl -s -u "james.davies@kineticdata.com:Jcdhawa!!14" \
+curl -s -u "$KINETIC_USER:$KINETIC_PASSWORD" \
   "https://demo.kinops.io/app/api/v1/kapps/ai-testing/forms/kitchen-sink/submissions?q=values%5BText%20Required%5D%3D%22Kitchen%20Sink%20Test%22&include=values" \
   | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'Found: {len(d.get(\"submissions\",[]))} submissions')"
 
 # Kapp-level cross-form search
-curl -s -u "james.davies@kineticdata.com:Jcdhawa!!14" \
+curl -s -u "$KINETIC_USER:$KINETIC_PASSWORD" \
   "https://demo.kinops.io/app/api/v1/kapps/ai-testing/submissions?q=coreState%3D%22Submitted%22&include=values&limit=10" \
   | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'Found: {len(d.get(\"submissions\",[]))} cross-form submissions')"
 ```
@@ -1348,7 +1355,7 @@ Document all findings in the relevant SKILL.md files. Commit.
 - [ ] **Step 1: Export and save Kitchen Sink form JSON**
 
 ```bash
-curl -s -u "james.davies@kineticdata.com:Jcdhawa!!14" \
+curl -s -u "$KINETIC_USER:$KINETIC_PASSWORD" \
   "https://demo.kinops.io/app/api/v1/kapps/ai-testing/forms/kitchen-sink?include=pages,indexDefinitions,integrations,bridgedResources,securityPolicies,attributes" \
   > tests/fixtures/kitchen-sink-form.json
 ```
@@ -1357,7 +1364,7 @@ curl -s -u "james.davies@kineticdata.com:Jcdhawa!!14" \
 
 ```bash
 # Get workflow IDs and export each
-curl -s -u "james.davies@kineticdata.com:Jcdhawa!!14" \
+curl -s -u "$KINETIC_USER:$KINETIC_PASSWORD" \
   "https://demo.kinops.io/app/api/v1/kapps/ai-testing/forms/kitchen-sink/workflows" \
   | python3 -c "import sys,json; [print(w['id'], w['name']) for w in json.load(sys.stdin).get('workflows',[])]"
 
