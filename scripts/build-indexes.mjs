@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Build CLAUDE.md / AGENTS.md / GEMINI.md / README.md skill tables and
-// .cursor/rules/*.mdc imports from the canonical skills.yaml manifest.
+// Build CLAUDE.md / AGENTS.md / GEMINI.md / README.md / .github/copilot-instructions.md
+// skill tables and .cursor/rules/*.mdc imports from the canonical skills.yaml manifest.
 //
 // Usage:
 //   node scripts/build-indexes.mjs            # write generated sections in place
@@ -189,6 +189,7 @@ const targets = [
   { path: 'AGENTS.md',     style: 'claude' },
   { path: 'GEMINI.md',     style: 'claude' },
   { path: 'README.md',     style: 'readme' },
+  { path: '.github/copilot-instructions.md', style: 'claude' },
 ];
 
 const BEGIN = '<!-- BEGIN GENERATED:skills -->';

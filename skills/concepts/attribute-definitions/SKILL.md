@@ -159,8 +159,9 @@ Attribute values on a resource come back as `attributesMap` — a `{name: [value
 
 ```js
 // Always returns arrays — access with [0]
-space.attributesMap["Lifecycle Kapp Slug"]  // → ["platform-one"]
-space.attributesMap["Lifecycle Kapp Slug"]?.[0]  // → "platform-one"
+// "my-kapp" below is a placeholder — substitute your own kapp slug.
+space.attributesMap["Lifecycle Kapp Slug"]  // → ["my-kapp"]
+space.attributesMap["Lifecycle Kapp Slug"]?.[0]  // → "my-kapp"
 
 // Use getAttributeValue helper for safety (front-end/state skill)
 getAttributeValue(form, 'Icon', 'forms')  // → icon name or 'forms'

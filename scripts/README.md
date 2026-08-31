@@ -2,7 +2,7 @@
 
 ## `build-indexes.mjs` — Generate index files from `skills.yaml`
 
-`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `README.md`, and `.cursor/rules/*.mdc` are partially generated from the canonical manifest at `../skills.yaml`. The generator replaces content between marker comments:
+`CLAUDE.md`, `AGENTS.md`, `GEMINI.md`, `README.md`, `.github/copilot-instructions.md`, and `.cursor/rules/*.mdc` are partially generated from the canonical manifest at `../skills.yaml`. The generator replaces content between marker comments:
 
 - For `*.md` index tables: between `<!-- BEGIN GENERATED:skills -->` and `<!-- END GENERATED:skills -->`.
 - For Cursor rule files: between `<!-- BEGIN GENERATED:imports -->` and `<!-- END GENERATED:imports -->`.

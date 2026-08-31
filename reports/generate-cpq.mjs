@@ -1,3 +1,6 @@
+// Example/reference generator for the `kinetic-report` skill. Server hostnames below
+// (e.g. `yourcompany.kinops.io`) are placeholders — substitute your own space's URL,
+// they are not a real environment.
 import { createReport } from './report-style.mjs';
 import fs from 'node:fs';
 
@@ -13,7 +16,7 @@ const { doc, style, colors } = createReport('Ironline CPQ — System Documentati
 style.cover({
   title: 'Ironline CPQ\nSystem Documentation',
   subtitle: 'Configure · Price · Quote on Kinetic',
-  lines: ['June 18, 2026', 'Author: John Sundberg', 'Server: ai-labs.kinopsdev.io  ·  Kapp: cpq', `${d.counts.quotes} quotes · ${d.counts.orders} orders · ${d.counts.invoices} invoices`]
+  lines: ['June 18, 2026', 'Author: John Sundberg', 'Server: yourcompany.kinops.io  ·  Kapp: cpq', `${d.counts.quotes} quotes · ${d.counts.orders} orders · ${d.counts.invoices} invoices`]
 });
 
 // ── Executive summary ───────────────────────────────────────────────
@@ -104,13 +107,13 @@ style.body('Trigger: a quote is updated to Status = Won with no order yet (quote
 
 style.subheading('4.4  Order Invoice Generation');
 style.body('Trigger: an order is marked Shipped or Delivered (orders / Submission Updated). The tree raises an invoice for the order total with Net-30 terms and a due date, then records the invoiced amount on the order — starting the receivables clock.');
-style.callout('All four trees were validated against the rule gate (node-id convention, lastID, installed handlers, server-root-relative paths) and verified end-to-end with live runs on ai-labs.', colors.green);
+style.callout('All four trees were validated against the rule gate (node-id convention, lastID, installed handlers, server-root-relative paths) and verified end-to-end with live runs on yourcompany.kinops.io.', colors.green);
 
 // ── Install & usage ─────────────────────────────────────────────────
 style.sectionBreak();
 style.heading('5 · Install & Usage');
 style.subheading('Provision the app');
-style.codeBlock('node apps/cpq/gen-seed.mjs                 # regenerate deterministic seed\nnode apps/cpq/install.mjs https://ai-labs.kinopsdev.io john <pass> --seed');
+style.codeBlock('node apps/cpq/gen-seed.mjs                 # regenerate deterministic seed\nnode apps/cpq/install.mjs https://yourcompany.kinops.io john <pass> --seed');
 style.body('install.mjs creates the kapp, the ten forms, all search indexes (and waits for the builds), then loads the seed data. The app is auto-discovered by the base launcher on port 3011 and served at /cpq/.');
 style.subheading('Deploy the workflow trees');
 style.codeBlock('node apps/cpq/workflows/gen-trees.mjs       # emit treeXml + treeJson\nnode apps/cpq/workflows/put-trees.mjs        # validate + persist via Task API');
@@ -122,7 +125,7 @@ style.bullet('Create a quote that breaks a threshold and watch the approval appe
 style.bullet('All tables are fully editable (row-click edit + Add New); edits fire the workflow trees.');
 
 style.gap(0.5);
-style.callout('Built and verified June 18, 2026 on ai-labs.kinopsdev.io. Dashboards render live data; all four automation trees confirmed firing on real submissions.', colors.blue);
+style.callout('Built and verified June 18, 2026 on yourcompany.kinops.io. Dashboards render live data; all four automation trees confirmed firing on real submissions.', colors.blue);
 
 await style.finalize();
 console.log('PDF written to', OUT);

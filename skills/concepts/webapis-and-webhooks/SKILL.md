@@ -65,7 +65,7 @@ The workflow backing a WebAPI accesses the HTTP request via context variables:
 |----------|-------------|
 | `@request['Body']` | Request body (string). **Capitalized key — `@request['body']` raises IndexError.** |
 | `@request['Method']` | HTTP method (GET, POST, etc.) |
-| `@request['Parameters']` | Query parameters map. **Engine-variable** — see below; on some engine builds (e.g. ai-labs.kinopsdev.io 2026-05) this key is absent and only `@request['Query']` (raw query string) is present. |
+| `@request['Parameters']` | Query parameters map. **Engine-variable** — see below; on some engine builds (observed 2026-05) this key is absent and only `@request['Query']` (raw query string) is present. |
 | `@request['Query']` | Raw query string (everything after `?`). Reliable across engine builds — parse it yourself for portability. |
 | `@request['Headers']` | Request headers map. **Known issue: access with a string key (`@request['Headers']['X-Foo']`) raises IndexError in some engine builds; `@request['Headers']` alone to inspect the whole map is safer.** |
 

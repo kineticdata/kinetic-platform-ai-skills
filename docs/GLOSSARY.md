@@ -4,6 +4,23 @@ This file is the single source of truth for terminology used across the skills l
 
 ---
 
+## Example values
+
+This is a **public** repository. Example hostnames and space/kapp slugs in skills, docs, and
+scripts must be placeholders, never real environments. Convention:
+
+- **Hostnames** — `<space-slug>.kinops.io`, or `yourcompany.kinops.io` where a concrete-looking
+  value reads better than a bracketed placeholder.
+- **Kapp/space slugs** — a neutral generic such as `your-space`, `services`, or `my-kapp`,
+  chosen to match whatever the surrounding example is illustrating.
+
+Mark the placeholder as an example in nearby text (e.g. "Replace `<space-slug>.kinops.io` with
+your own space's URL") — substitution alone isn't enough; a reader must be able to tell it's a
+placeholder and not a real, copyable value. Never use a real engagement, customer, or internal
+dev-environment name as an example.
+
+---
+
 ## Workflow vocabulary
 
 **Tree** — The Task API's term for a workflow definition. Every workflow IS a tree at the Task layer. Endpoints: `GET /app/components/task/app/api/v2/trees`.

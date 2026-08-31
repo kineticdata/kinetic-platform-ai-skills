@@ -92,9 +92,10 @@ export const appActions = regRedux(
       else {
         state.space = space;
         // Resolve kapp slug from a space attribute with a fallback default.
-        // The attribute name and fallback are project-specific. Common patterns:
+        // The attribute name and fallback are project-specific. Common patterns
+        // (the fallback slugs below are placeholders — use your own kapp slugs):
         //   getAttributeValue(space, 'Service Portal Kapp Slug', 'service-portal')
-        //   getAttributeValue(space, 'Lifecycle Kapp Slug', 'platform-one')
+        //   getAttributeValue(space, 'Lifecycle Kapp Slug', 'my-kapp')
         state.kappSlug = getAttributeValue(space, 'Service Portal Kapp Slug', 'service-portal');
       }
     },
@@ -195,9 +196,9 @@ export const getAttributeValue = (record, attributeName, defaultValue) =>
   || defaultValue;
 ```
 
-**Usage:**
+**Usage:** (`'my-kapp'` below is a placeholder kapp slug — substitute your own)
 ```js
-getAttributeValue(space, 'Lifecycle Kapp Slug')          // → 'platform-one' or undefined
+getAttributeValue(space, 'Lifecycle Kapp Slug')          // → 'my-kapp' or undefined
 getAttributeValue(form, 'Icon', 'forms')                 // → icon name, fallback 'forms'
 getAttributeValue(kapp, 'Theme')                         // → JSON string or undefined
 ```
