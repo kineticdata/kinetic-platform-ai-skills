@@ -186,12 +186,14 @@ return (
     <div className="flex-c-st flex-auto overflow-auto">
       <header id="app-header" className="flex-none" />
       <main id="app-main" className="flex-auto ...">
-        {serverError || error ? (
-          <Error error={serverError || error} header={true} />
-        ) : !initialized || !space ? (
+        {!initialized ? (
           <Loading />
+        ) : serverError || error ? (
+          <Error error={serverError || error} header={true} />
         ) : !loggedIn ? (
           <PublicRoutes loginProps={loginProps} />
+        ) : !space ? (
+          <Loading />
         ) : kapp && profile ? (
           <>
             <PrivateRoutes />
@@ -211,10 +213,14 @@ return (
 ```
 
 **State machine:**
-1. `!initialized || !space` -> show Loading
-2. `!loggedIn` -> PublicRoutes (login, reset-password)
-3. `kapp && profile` loaded -> PrivateRoutes
-4. `timedOut` (session expired while logged in) -> overlay dialog with Login
+1. `!initialized` -> show Loading (waiting for auth to initialize)
+2. `serverError || error` -> Error
+3. `!loggedIn` -> PublicRoutes (login, reset-password) — **does not wait on the space fetch**
+4. `!space` -> Loading (logged in, still waiting on the space record)
+5. `kapp && profile` loaded -> PrivateRoutes
+6. `timedOut` (session expired while logged in) -> overlay dialog with Login
+
+Note the order matters: a logged-out user reaches the login screen without waiting for the space record to load.
 
 For context fetching (space, profile, kapp), kappSlug resolution, and the larger routing structure, see the [Portal Patterns skill](../portal-patterns/SKILL.md). The minimum boilerplate to reach a running portal is below.
 

@@ -327,7 +327,7 @@ Or pass the entire values hash as JSON:
 <%= @values.to_json %>
 ```
 
-The waiting workflow accesses the returned values via `@results['Deferral Node']`.
+The waiting workflow accesses the returned values via `@results['Create Approval']` — the same node name used throughout Step 5's worked treeJson (the node is the deferral point, so its own name keys the results).
 
 ### Close Approval Submission node
 
@@ -570,8 +570,8 @@ Look for the task with `status: "Deferred"`. The `token` field contains the defe
 
 ```json
 {
-  "nodeId": "system_wait_v1_3",
-  "nodeName": "Deferral Step",
+  "nodeId": "si_2",
+  "nodeName": "Create Approval",
   "status": "Deferred",
   "token": "abc123-unique-deferral-token",
   "deferredResults": {}
