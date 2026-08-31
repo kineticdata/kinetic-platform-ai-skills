@@ -84,6 +84,7 @@ These skills are the shared knowledge base for **any AI assistant or developer**
 |-------|------|--------------------------|
 | Authentication | `skills/api/authentication/SKILL.md` | "Authenticate API calls — Basic Auth |
 | Using the API | `skills/api/using-the-api/SKILL.md` | "Understand API conventions — space-level endpoints |
+| Platform MCP Server | `skills/api/using-the-api/PLATFORM-MCP.md` | "Use when an MCP server ships with the platform — which tools to prefer |
 | Core API Reference | `skills/api/core/SKILL.md` | "Look up Core API v1 endpoint URLs |
 | Integrator API Reference | `skills/api/integrator/SKILL.md` | "Look up Integrator REST endpoint shapes for connections + operations (OAuth-only |
 | Task API Reference | `skills/api/task/SKILL.md` | "Look up Task API v2 endpoint shapes for trees |

@@ -400,3 +400,7 @@ execute({ method: "POST", path: "/kapps/services/forms", body: { slug: "my-form"
 execute({ method: "GET",  path: "/components/task/app/api/v2/runs" })   // Task API
 execute({ method: "GET",  path: "/integrator/api/connections" })       // Integrator API
 ```
+
+For the MCP server that ships with the platform — its tool list, the `get_context`
+environment check, and why most of its tools should stay disabled — see
+[PLATFORM-MCP.md](PLATFORM-MCP.md).
