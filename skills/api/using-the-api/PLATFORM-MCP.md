@@ -42,29 +42,41 @@ Tool names below are **bare**. The fully-qualified name your client shows is pre
 
 ## The tool-surface problem
 
-This server generates two tool names for nearly every REST operation in the platform's OpenAPI spec — `core_<operationId>` and a `snake_case` alias. In its current released form that registers **558 tools by default**, far past the roughly-30-tool point where model tool-selection quality degrades, and past Cursor's roughly-40-tool ceiling. Connecting it with defaults will visibly hurt tool selection and may hit hard limits in some clients.
+This server covers 277 REST operations in the platform's OpenAPI spec. Registered the old way — every operation as its own tool, under both a `core_<operationId>` name and a `snake_case` alias — that's **558 tools**, far past the roughly-30-tool point where model tool-selection quality degrades, and past Cursor's roughly-40-tool ceiling.
 
-A reorganization is in progress to cut this down: **newer versions** add a `KINETIC_MCP_MODE` environment variable with three settings — `slim` (roughly a dozen general-purpose tools), `contexts` (a scoped allowlist you choose via `KINETIC_MCP_CONTEXTS`), and `full` (everything). **This work is not finished or released as of this writing — do not assume your build has it, and do not assume `slim` is the default you'll get.**
+**In builds that support `KINETIC_MCP_MODE`**, a `KINETIC_MCP_MODE` environment variable selects one of four surfaces over those same 277 operations — no capability is dropped in any of them, only how the tools are organized:
 
-What to do, in order of preference:
+| `KINETIC_MCP_MODE` | Tools | Shape |
+|---|---|---|
+| `consolidated` (**default**) | ~26 | One tool per resource family (`forms`, `submissions`, `kapps`, `users`, `space`, …), dispatched by `object`/`action` parameters. |
+| `contexts` | ~280 | One tool per operation, `snake_case` names only (no `core_*` duplicates). |
+| `slim` | ~10 | A generic discovery-and-execute pair (`get_api_spec` + `execute_api`) plus a few session/connection tools. |
+| `full` | ~558 | The legacy surface — every operation under both `core_*` and `snake_case` names. |
 
-1. **If your build supports `KINETIC_MCP_MODE`**, set it to `slim`, or to `contexts` with `KINETIC_MCP_CONTEXTS` naming only the contexts you need (`space`, `kapp`, `form`, `submission`, `user`, `team`, and others — check what your server reports as valid).
-2. **If it doesn't**, disable tools you don't need from your MCP client's own tool picker — most MCP-capable clients let you toggle individual tools off per server.
-3. **If your client has no per-tool toggle**, prefer Claude Code over clients that eagerly load every tool's full schema up front — Claude Code defers loading a tool's definition until it's actually invoked, which mitigates (though doesn't eliminate) the selection-quality problem.
+Select a mode by setting `KINETIC_MCP_MODE` (e.g. `KINETIC_MCP_MODE=slim`); `contexts` mode also accepts `KINETIC_MCP_CONTEXTS` to scope it to a comma-separated list of resource families instead of all of them. Treat the counts above as approximate — check your server's actual `tools/list` response (or its stderr startup line, `kinetic-platform-mcp: mode=…, N tools`) for the real names and count.
 
-## Prefer generic operations over piling on named tools
+**If your build predates `KINETIC_MCP_MODE`, or you haven't confirmed it supports the variable, assume you have the old unconditional 558-tool surface with no mode switch.** In that case:
 
-The underlying principle still holds: a small, generic set of tools beats enabling dozens of narrow named ones, because it reaches every endpoint without growing the loaded tool count. On this server today there is **no generic "get a spec slice, then execute against it" pair** — every operation is its own named tool. Examples that exist right now: `list_forms`, `retrieve_form`, `list_kapps`, `retrieve_kapp`, `list_form_submissions`, `retrieve_submission`, `create_submission`, `update_submission`, `delete_submission`. If a future `slim`/`contexts`/`full`-mode build on your install exposes a generic discovery-and-execute pair, prefer it over enabling the equivalent named CRUD tools — but check your client's actual tool list for its real name rather than assuming it matches any specific name in this document.
+1. Disable tools you don't need from your MCP client's own tool picker — most MCP-capable clients let you toggle individual tools off per server.
+2. If your client has no per-tool toggle, prefer Claude Code over clients that eagerly load every tool's full schema up front — Claude Code defers loading a tool's definition until it's actually invoked, which mitigates (though doesn't eliminate) the selection-quality problem.
+
+Do not assume a fresh clone of the public repo has `KINETIC_MCP_MODE` support just because this document describes it — confirm it against your own server's startup output or `tools/list` before relying on it.
+
+## Prefer the consolidated/generic shape over piling on named tools
+
+The underlying principle still holds: a small, generic set of tools beats enabling dozens of narrow named ones, because it reaches every endpoint without growing the loaded tool count. If your build has `consolidated` (the default) or `slim`, prefer those over enabling individual per-operation tools one at a time.
+
+Per-operation names like `create_form`, `retrieve_submission`, or `list_kapps` — the `contexts`/`full`-mode names — appear throughout this skills library because they read clearly in prose. On a `consolidated`-mode server, reach the same operation through its resource-family tool instead: `list_forms` → `forms` tool with `action: list`; `create_submission` → `submissions` tool with `action: create`; `retrieve_kapp` → `kapps` tool with `action: get`. Check your client's actual tool list before assuming either form is what you have.
 
 This server covers the Core and Integrator APIs. It does not currently generate tools for the Task API (trees, runs, handlers) — reach the Task API over raw HTTP instead (see `api/task`).
 
 ## Confirm the environment before mutating anything
 
-**There is no `get_context` tool on this server.** Before any create, update, or delete, confirm which space you're pointed at using one of the real equivalents:
+**There is no `get_context` tool on this server, in any mode.** Before any create, update, or delete, confirm which space you're pointed at using one of the real equivalents:
 
 - The `KINETIC_SERVER_URL` configured for the session — check your client's MCP config or environment. This alone tells you the space.
-- `retrieve_space` — calls `GET /space` and returns the space's slug and name (and, with `include=details`, its kapps and attributes).
-- `retrieve_me` — calls `GET /me` and returns the authenticated principal.
+- On a `consolidated`-mode server: the `space` tool with `action: get` (equivalent to `GET /space`).
+- On a `contexts`/`full`-mode server: `retrieve_space` (`GET /space`, returns slug/name and, with `include=details`, its kapps and attributes) or `retrieve_me` (`GET /me`, the authenticated principal).
 
 A partner may have several environments connected. A mutating call against the wrong space is the most damaging plausible mistake — confirm the space before trusting ambient configuration, using whichever of the tools above your enabled tool set actually includes.
 
