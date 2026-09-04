@@ -1,6 +1,6 @@
 ---
 name: architectural-patterns
-description: "Use when designing or implementing a common Kinetic business-process pattern — approval workflows, the deferral/Create-Trigger wait-for-callback mechanism, multi-stage fulfillment, SLA tracking, external system sync, work routing/assignment, or bulk operations across submissions."
+description: "Use when designing or implementing a common Kinetic business-process pattern — approval workflows, the deferral/Create-Trigger wait-for-callback mechanism, multi-stage fulfillment, SLA tracking, external system sync, work routing/assignment, bulk operations across submissions, scheduled/recurring jobs, or performing a privileged action on behalf of a lower-privilege user."
 ---
 
 # Architectural Patterns
@@ -353,6 +353,255 @@ Don't try to keep the two sides in tight real-time sync. The webhook from the So
 
 ---
 
+## Scheduled Jobs Pattern
+
+Kinetic does not have built-in CRON-style job scheduling. This pattern implements recurring jobs using the workflow engine's Wait handler and recursive routines, making the engine itself the "always-on" scheduler. No user session or UI polling is required — once a job is activated, the workflow chain is self-sustaining.
+
+### Overview
+
+Two datastore forms work together:
+- **Job configuration form** — stores schedule settings, target routine, and operational state
+- **Execution log form** — one submission per run, providing audit trail and output chaining
+
+A recursive routine handles the core loop: execute the job's target routine, record the result, calculate the next wait duration, sleep, wake, check guards, and repeat. The chain runs indefinitely until a guard condition stops it.
+
+### Job Configuration Form
+
+Slug: `scheduled-jobs` (or project-appropriate name). Type: Datastore.
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| Job Name | Text | Human-readable identifier |
+| Description | Text (multi-line) | What the job does |
+| Status | Text | `Active`, `Inactive`, `Paused`, `Restarting`, `Error` |
+| Schedule Type | Text | `Interval` or `Time of Day` |
+| Interval Minutes | Number | For Interval type — minutes between runs (minimum 1) |
+| Schedule Time | Text | For Time of Day — target time in HH:MM (24h) |
+| Schedule Days | Text | For Time of Day — JSON array of day names. Empty = every day |
+| Timezone | Text | IANA timezone for Time of Day calculations. Defaults to space default |
+| Job Target | Text | Identifier for the work to execute on each tick — typically a WebAPI slug, routine name, or operation ID depending on the execution strategy (see below) |
+| Job Target Parameters | Text (multi-line) | JSON object of parameters passed to the target on each call |
+| Max Runs | Number | Stop after N executions. Null = unlimited |
+| Expires At | Date/Time | Stop after this timestamp. Null = never |
+| Current Deferral Token | Text | Token of the currently waiting deferral (for restart mechanism) |
+| Last Run ID | Text | Submission ID of the most recent run (for quick error lookup in UI) |
+
+**Status lifecycle:**
+- `Active` — chain is running (or will start on creation)
+- `Inactive` — chain is stopped, won't restart automatically
+- `Paused` — chain stops on next wake, can be reactivated
+- `Restarting` — transient state during restart (prevents race conditions)
+- `Error` — chain stopped due to execution failure, requires attention
+
+### Execution Log Form
+
+Slug: `scheduled-job-runs` (or project-appropriate name). Type: Datastore.
+
+| Field | Type | Purpose |
+|-------|------|---------|
+| Job ID | Text | Submission ID of the parent job config |
+| Run Number | Number | Sequential run number for this job |
+| Status | Text | `Running`, `Success`, `Error`, `Skipped` |
+| Started At | Date/Time | When execution began |
+| Completed At | Date/Time | When execution finished |
+| Duration Ms | Number | Execution duration in milliseconds |
+| Routine Output | Text (multi-line) | JSON — whatever the routine returned |
+| Error Details | Text (multi-line) | Error info if Status is Error |
+| Next Run At | Date/Time | Calculated next execution time |
+
+**Write pattern (Cassandra-aware):** Each run submission is written exactly twice — once on creation (`Status = 'Running'`) and once on completion (final status + output). This avoids tombstone accumulation from repeated updates to the same row. The job config submission is updated once per tick (deferral token + last run ID) plus on state changes (error, restart). Run count is derived from the most recent run's Run Number rather than maintained on the job row to minimize writes.
+
+**Output chaining:** The workflow reads the previous run's `Routine Output` and merges it with the job's static parameters when calling the target. This enables stateful jobs — e.g., a sync job stores a cursor, a cleanup job stores the last processed timestamp.
+
+### Execution Strategies
+
+The scheduler is agnostic about *what* it executes on each tick. Three strategies:
+
+| Strategy | Job Target stores | How it executes | Best for |
+|----------|------------------|-----------------|----------|
+| **WebAPI** (recommended) | WebAPI slug | HTTP POST to `/kapps/{kapp}/webApis/{slug}` | Low-code: admins create WebAPIs in the Console with workflow trees behind them. 30-second sync timeout but workflow continues async. |
+| **Routine** | Routine title | Call the routine as a subroutine within the workflow | When the job logic must complete before the scheduler records the result. Requires the routine to exist in the Task engine. |
+| **Operation** | Connection + Operation ID | `POST /app/integrator/api/execute` | When the job calls an external REST API or SQL query via the Integrator. |
+
+**WebAPI strategy details:** Create a kapp-level WebAPI for each job type. Each WebAPI has a workflow tree behind it that does the actual work (send emails, clean up data, sync external systems). The scheduler calls the WebAPI via HTTP POST using `kinetic_core_api_v1` in the Execute Schedule Tick routine. The WebAPI response (or HTTP status) tells the scheduler if the job started successfully. Use a "List Schedulable WebAPIs" Operation on the Kinetic Platform connection to populate the admin UI dropdown.
+
+**UI pattern:** Use an Integrator Operation (e.g., `GET /kapps/{kapp}/webApis`) to fetch the list of available targets and show them in a dropdown, rather than making users type identifiers manually. Include a link to the Console/Integrator for creating new targets.
+
+### Workflow Architecture
+
+Three components:
+
+#### 1. Scheduler Start (Tree)
+
+Bound to the job config form, event: Submission Submitted. Entry point that kicks off the recursive loop.
+
+**Trigger note:** The form must go through the Draft → Submitted transition (e.g., via CoreForm or the submit action API) to fire the "Submission Submitted" event. Creating a submission directly with `coreState: 'Submitted'` in the POST body fires "Submission Created" instead — see Workflow Events and coreState in the Workflow Engine skill.
+
+```
+1. Validate config
+   - Required fields present based on Schedule Type
+   - Interval Minutes >= 1 (if Interval type)
+   - Routine Name is not empty
+   → If invalid: set job Status = 'Error', STOP
+
+2. Call "Execute Schedule Tick" routine
+   - Inputs: Job ID, Run Number = 1, Previous Output = null
+```
+
+#### 2. Execute Schedule Tick (Routine — recursive core)
+
+Inputs: `Job ID`, `Run Number`, `Previous Output`
+
+```
+1. Re-read job submission (fresh state — never trust stale data)
+
+2. Pre-execution guards (any fail → STOP)
+   a. Status != 'Active' → STOP
+   b. Max Runs != null AND last run's Run Number >= Max Runs → set job Status = 'Inactive', STOP
+   c. Expires At != null AND now > Expires At → set job Status = 'Inactive', STOP
+   d. Query execution log for Status = 'Running' on this Job ID
+      → If found → STOP (concurrent execution lock — another chain is active)
+
+3. Create run record (WRITE 1 of 2)
+   - Job ID, Run Number, Status = 'Running', Started At = now
+
+4. Execute the target routine
+   - Read Routine Name and Routine Inputs from job submission
+   - Merge static Routine Inputs + Previous Output (previous output keys override static)
+   - Call the routine by name with merged inputs
+
+5. Update run record (WRITE 2 of 2)
+   - Success: Status = 'Success', Completed At, Duration Ms, Routine Output
+   - Error: Status = 'Error', Completed At, Duration Ms, Error Details
+
+6. If error → update job Status = 'Error', STOP
+   (Broken chain requires admin attention — do not auto-retry)
+
+7. Calculate wait duration
+   - Interval: Interval Minutes × 60 seconds
+   - Time of Day: seconds until next occurrence of Schedule Time
+     on a valid Schedule Day in the configured Timezone
+   - Enforce minimum floor of 60 seconds regardless of calculation
+
+8. Write Next Run At on the run record
+
+9. Wait (system Wait handler with calculated duration)
+   - On the **Create connector** from the Wait node (fires immediately when
+     Wait enters deferral): store `@task['Deferral Token']` and Last Run ID
+     on the job submission. The deferral token does not exist until the Wait
+     node starts — it must be captured via the Create connector, not before.
+
+10. After wake (Complete connector from Wait) — re-read job submission
+    - Status != 'Active' → STOP
+    - Call self: Job ID, Run Number + 1, previous Routine Output
+```
+
+**Why re-read twice (steps 1 and 10):** Step 1 catches changes made while the previous tick was executing. Step 10 catches changes made during the Wait period. Both are necessary because the chain must respect admin actions at every opportunity.
+
+#### 3. Restart Job (WebAPI)
+
+A kapp-level WebAPI endpoint for restarting a stalled or errored job chain. Defined on the kapp that owns the scheduled-jobs form.
+
+- **Method:** POST
+- **Security:** Admin only
+- **Input:** `jobId`
+
+```
+1. Read job submission
+2. Query execution log for Status = 'Running' on this job
+   - If found and recent (Started At within 2× interval or 30 min minimum)
+     → Refuse restart, return error ("job is still running")
+   - If found but stale → update that run to Status = 'Error'
+3. Set job Status = 'Restarting' (transient — prevents race condition)
+4. If Current Deferral Token exists → complete it
+   (old chain wakes, sees Status != 'Active', stops gracefully)
+5. Set job Status = 'Active', clear Current Deferral Token
+6. Derive next Run Number from most recent run's Run Number + 1
+7. Call "Execute Schedule Tick" routine
+8. Return success response via `system_tree_return_v1` on a **Create connector**
+   from the routine call — do not wait for the routine to complete
+   (WebAPIs have a 30-second synchronous timeout; the routine runs indefinitely)
+```
+
+**The `Restarting` status prevents a race condition:** Without it, completing the old deferral token wakes the old chain, which re-reads the job, sees `Active`, and continues — now you have two chains. The `Restarting` intermediate state ensures the old chain sees a non-Active status and stops.
+
+### Guard Summary
+
+| Guard | Where Checked | Failure Action |
+|-------|---------------|----------------|
+| Status != Active | Before execution + after wake | Stop chain |
+| Max Runs reached | Before execution | Set Status = Inactive, stop |
+| Expires At passed | Before execution | Set Status = Inactive, stop |
+| Concurrent run lock | Before execution | Stop (another chain is active). Note: this is a best-effort TOCTOU check — the `Restarting` status is the primary race-condition guard for the restart path |
+| Minimum interval floor | Wait calculation | Clamp to 60 seconds |
+| Stale run detection | Restart WebAPI | Mark stale run as Error, proceed |
+
+### Time-of-Day Scheduling
+
+For `Schedule Type = 'Time of Day'`, the Wait duration is calculated dynamically:
+
+```ruby
+# Pseudocode for next occurrence calculation
+now = current time in job's Timezone
+target_today = today at Schedule Time in job's Timezone
+
+if Schedule Days is empty (every day):
+  if target_today > now:
+    next_run = target_today
+  else:
+    next_run = target_today + 1 day
+else:
+  # Find next valid day
+  candidate = target_today
+  if candidate <= now:
+    candidate += 1 day
+  while candidate.day_name not in Schedule Days:
+    candidate += 1 day
+  next_run = candidate
+
+wait_seconds = (next_run - now).to_seconds
+wait_seconds = [wait_seconds, 60].max  # enforce floor
+```
+
+**DST transitions:** When clocks spring forward, the target time may not exist (e.g., 2:30 AM is skipped). Use the next valid time. When clocks fall back, the target time is ambiguous (e.g., 1:30 AM occurs twice). Use the first occurrence. Implementations should document their DST policy.
+
+### Index Requirements
+
+**Job config form:**
+- `Status` — filtering active/inactive jobs
+
+**Execution log form:**
+- `[Job ID, Status]` — concurrent run lock check + run history filtering
+- `[Job ID, Run Number]` — fetching most recent run per job
+
+### Security
+
+Both forms should be restricted to admin-level access for display and modification. The workflow engine runs as system agent and can always read/write regardless of security policies.
+
+The Restart WebAPI should enforce admin-only access via security policy.
+
+### Admin UI Requirements
+
+**Job list view:** Table of all jobs showing name, status (color-coded badge), schedule description, routine name, last run status/time, next run time, and run count. Actions: activate, pause, deactivate, restart (with confirmation), view history.
+
+**Job create/edit:** Form with config fields. Conditional fields based on Schedule Type. Routine Name as dropdown or freetext. Routine Inputs as JSON editor.
+
+**Run history view:** Per-job table of execution records sorted most recent first. Columns: run number, status badge, started at, duration, truncated output (expandable), error details. Paginated using server-side `pageToken` pagination (run history can grow large).
+
+**Editing active jobs:** Changing config on an Active job (e.g., interval, routine name) takes effect on the next re-read — after the current Wait completes. There may be a delay of up to the old interval duration before the new config is picked up. Admins should be informed of this in the UI.
+
+### Failure Modes and Recovery
+
+| Failure | Symptom | Recovery |
+|---------|---------|----------|
+| Routine throws error | Job Status = Error, chain stops | Fix routine, use Restart WebAPI |
+| Workflow engine restart | Wait node may not resume | Restart WebAPI re-enters the loop |
+| Job misconfigured | Validation fails on start | Fix config, resubmit or restart |
+| Runaway loop | Should not happen — minimum 60s floor + guards | Deactivate job via UI, chain stops on next wake |
+| Two chains running | Lock check prevents execution | One chain stops at guard, other continues |
+
+---
+
 ## Bulk Operations
 
 ### Mass Submit (Validated, Triggers Workflows)
@@ -395,3 +644,67 @@ If your design needs real post-closure immutability, choose one of:
 - **Workflow filters (limited).** For workflows that update submissions, gate the update behind a `coreState != 'Closed'` filter or connector expression. This only protects against workflow-driven writes — direct API calls still bypass it — but is useful when workflow mutations are the only realistic write path.
 
 Technically, `routine_kinetic_submission_update_v1` and `kinetic_core_api_v1` both mutate Closed submissions without any platform resistance — but treat that as an escape hatch for deliberate post-closure corrections, not a design pattern. **The convention is that Closed submissions should not be updated**; Draft and Submitted submissions are fine to update. The takeaway stands: the implicit "Closed = locked" assumption is incorrect, so if closure must mean immutable, enforce it explicitly with one of the options above.
+
+---
+
+## Privileged Action via Utility Form
+
+When a lower-privilege user needs to trigger an operation on a resource they cannot access directly (due to security policies), use a utility form as a trigger and a workflow (running as system agent) to perform the privileged operation.
+
+### When to Use
+
+- A user needs to create, update, or delete a record on a form they don't have submission access to
+- A user action should trigger a side effect (email, external system call, record creation) that requires elevated permissions
+- You want an audit trail of the request separate from the target record
+
+### How It Works
+
+```
+User submits utility form (minimal fields: IDs + context)
+  → Workflow fires as system agent (elevated permissions)
+  → Workflow performs guard checks (duplicate detection, validation)
+  → Workflow creates/updates the target record
+  → Workflow sends notifications, triggers side effects
+  → Workflow closes the utility form submission
+```
+
+### Setup
+
+1. **Create a utility form** with only the fields needed to identify the action:
+   - IDs of the target record(s) — e.g., Project ID, Volunteer ID
+   - Context for notifications — e.g., display names, optional notes
+   - Do NOT duplicate target record fields — the workflow reads those from the source
+
+2. **Set form security** to allow the requesting user to submit (e.g., "Authenticated Users" or a role-based policy), while the target form's security remains restricted
+
+3. **Build the workflow** (bound to Submission Submitted):
+   - Guard logic first — query the target form for existing records before creating duplicates
+   - Perform the privileged operation (create/update submissions on the restricted form)
+   - Send notifications (email, in-app) with context from both the request and target records
+   - Close the utility form submission
+
+### Guard Pattern for Idempotency
+
+Before creating the target record, query for an existing record with the same key fields:
+
+- **If found in an active state** → no-op (workflow completes without error, client gets success)
+- **If found in a removed/cancelled state** → reactivate (update status) instead of creating a duplicate
+- **If not found** → create the new record
+
+This makes the operation idempotent — submitting the same request twice is harmless.
+
+### Key Benefits vs. Relaxing Security Policies
+
+| Approach | Trade-off |
+|----------|-----------|
+| **Utility form + workflow** | More setup, but preserves least-privilege, adds audit trail, enables server-side validation and notifications |
+| **Relax security policies** | Simpler, but gives users direct write access to the target form — no audit trail, no server-side guards, harder to add side effects |
+
+### Portal Integration
+
+The portal creates the utility form submission via `createSubmission()` from `@kineticdata/react`. The workflow handles everything else — the portal does not need to know about the target form's security or the workflow's logic. The portal should:
+
+1. Check for existing records client-side (for UX — show status instead of button)
+2. Submit the utility form on user action
+3. Show success/error feedback
+4. Optionally poll or refetch to reflect the workflow's result
