@@ -373,6 +373,8 @@ Results are accessed by **task name**, then **result key**:
 
 **Note:** `system_return_v1` is NOT a valid handler — it causes `Missing Handler Error` at runtime.
 
+**Terminal nodes without return values:** If you just need a workflow path to end (no return data needed), do NOT use `system_tree_return_v1` — it is a system-level node with strict parameter requirements. Instead, either make the last real node terminal (set `dependents` to empty `""`) or use `utilities_noop_v1` (No Operation) as a labeled terminal. `utilities_noop_v1` accepts no parameters and is the correct choice for dead-end/no-op branches.
+
 ### Joins vs Junctions
 
 Both reconverge parallel branches, but with different logic:
