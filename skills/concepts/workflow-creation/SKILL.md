@@ -91,6 +91,10 @@ POST /app/components/task/app/api/v2/trees
 
 **Gotcha:** POST creates the tree metadata AND saves the `treeXml` in the same call.
 
+**Routine inputs/outputs must be top-level.** For a Global Routine, put the public interface in top-level `inputs` (`[{name, required, description, defaultValue}]`) and `outputs` (`[{name, description}]`) on the POST body. Copies inside `treeJson.taskDefinition.inputs`/`outputs` are ignored on create, even on the correct `/app/components/task/...` path, and the routine ends up with no inputs or outputs. To fix an existing routine, `PUT /trees/{title}` with `versionId` plus top-level `inputs`/`outputs`. Then GET `?include=inputs,outputs` to confirm. (Verified 2026-10, Task 7.0.0-rc4.)
+
+**Label every node parameter.** Every parameter in `treeJson.nodes[].parameters` needs the Console's full shape: `label`, `required`, `description`, `menu`, `dependsOnId`, `dependsOnValue`, `id` and `value`. With only `{id, value}` the tree runs, but the builder shows unlabeled inputs, which matters most on a routine's Return node, where each parameter sets an output. See `concepts/workflow-xml` → "Label Every Parameter (Required)" for the labels per node type.
+
 ### PUT to Update
 
 ```

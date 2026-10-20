@@ -45,6 +45,7 @@ Memory-cited checks performed:
   4. kinetic_core_api path prefix     — PITFALLS.md § 3
   5. lastID = max numeric suffix      — PITFALLS.md § 2
   6. Dependent targets exist          — PITFALLS.md § 2
+  7. Node parameters labeled          — PITFALLS.md § 8
 `);
   process.exit(0);
 }
@@ -113,6 +114,18 @@ for (const t of tasks) {
   const pRe = /<parameter[^>]*id="([^"]+)"[^>]*>([^<]*)<\/parameter>/g;
   let pm;
   while ((pm = pRe.exec(t.body)) !== null) params[pm[1]] = pm[2];
+
+  // Every node parameter needs a label and a boolean required flag. Unlabeled
+  // parameters run fine but show as anonymous inputs in the workflow builder.
+  const paramBlock = /<parameters>([\s\S]*?)<\/parameters>/.exec(t.body);
+  const tagRe = /<parameter\s+([^>]*)>/g;
+  let tm;
+  while (paramBlock && (tm = tagRe.exec(paramBlock[1])) !== null) {
+    const pid = attrOf(tm[1], "id");
+    if (!attrOf(tm[1], "label").trim()) violate(`Node '${id}' parameter '${pid}' has no label`, "PITFALLS.md § 8");
+    const required = attrOf(tm[1], "required");
+    if (required !== "true" && required !== "false") violate(`Node '${id}' parameter '${pid}' has required="${required}" (must be true or false)`, "PITFALLS.md § 8");
+  }
 
   if (allIds.has(id)) violate(`Duplicate node id: ${id}`, "PITFALLS.md § 2");
   allIds.add(id);

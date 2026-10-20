@@ -403,10 +403,10 @@ Content-Type: application/json
       {"configured": true, "defers": false, "deferrable": false, "visible": true,
        "name": "Set Status Pending", "id": "si_1", "definitionId": "system_integration_v1",
        "parameters": [
-         {"id": "connection", "value": "<your-connection-uuid>"},
-         {"id": "operation", "value": "<your-update-submission-operation-uuid>"},
-         {"id": "parameters.Submission Id*", "value": "<%= @submission['Id'] %>"},
-         {"id": "parameters.Values [Object]", "value": "{\"Status\": \"Pending Approval\"}"}
+         {"dependsOnId": "", "dependsOnValue": "", "description": "Connection ID", "id": "connection", "label": "Connection ID", "menu": "", "value": "<your-connection-uuid>", "required": true},
+         {"dependsOnId": "", "dependsOnValue": "", "description": "Operation ID", "id": "operation", "label": "Operation ID", "menu": "", "value": "<your-update-submission-operation-uuid>", "required": true},
+         {"dependsOnId": "", "dependsOnValue": "", "description": "", "id": "parameters.Submission Id*", "label": "Submission Id*", "menu": "", "value": "<%= @submission['Id'] %>", "required": false},
+         {"dependsOnId": "", "dependsOnValue": "", "description": "", "id": "parameters.Values [Object]", "label": "Values [Object]", "menu": "", "value": "{\"Status\": \"Pending Approval\"}", "required": false}
        ],
        "messages": [], "position": {"x": 200, "y": 10}, "version": 1,
        "dependents": {"task": [{"type": "Complete", "content": "si_2"}]}},
@@ -414,12 +414,12 @@ Content-Type: application/json
       {"configured": true, "defers": true, "deferrable": true, "visible": true,
        "name": "Create Approval", "id": "si_2", "definitionId": "system_integration_v1",
        "parameters": [
-         {"id": "connection", "value": "<your-connection-uuid>"},
-         {"id": "operation", "value": "<your-create-submission-operation-uuid>"},
-         {"id": "parameters.Kapp*", "value": "<your-kapp-slug>"},
-         {"id": "parameters.Form*", "value": "approval"},
-         {"id": "parameters.Core State", "value": "Draft"},
-         {"id": "parameters.Values [Object]", "value": "<%= {Approver: @submission['Created By'], 'Original Submission Id': @submission['Id'], 'Deferral Token': @task['Deferral Token']}.to_json %>"}
+         {"dependsOnId": "", "dependsOnValue": "", "description": "Connection ID", "id": "connection", "label": "Connection ID", "menu": "", "value": "<your-connection-uuid>", "required": true},
+         {"dependsOnId": "", "dependsOnValue": "", "description": "Operation ID", "id": "operation", "label": "Operation ID", "menu": "", "value": "<your-create-submission-operation-uuid>", "required": true},
+         {"dependsOnId": "", "dependsOnValue": "", "description": "", "id": "parameters.Kapp*", "label": "Kapp*", "menu": "", "value": "<your-kapp-slug>", "required": false},
+         {"dependsOnId": "", "dependsOnValue": "", "description": "", "id": "parameters.Form*", "label": "Form*", "menu": "", "value": "approval", "required": false},
+         {"dependsOnId": "", "dependsOnValue": "", "description": "", "id": "parameters.Core State", "label": "Core State", "menu": "", "value": "Draft", "required": false},
+         {"dependsOnId": "", "dependsOnValue": "", "description": "", "id": "parameters.Values [Object]", "label": "Values [Object]", "menu": "", "value": "<%= {Approver: @submission['Created By'], 'Original Submission Id': @submission['Id'], 'Deferral Token': @task['Deferral Token']}.to_json %>", "required": false}
        ],
        "messages": [], "position": {"x": 400, "y": 10}, "version": 1,
        "dependents": {"task": [
@@ -430,10 +430,10 @@ Content-Type: application/json
       {"configured": true, "defers": false, "deferrable": false, "visible": true,
        "name": "Mark Approved", "id": "si_3", "definitionId": "system_integration_v1",
        "parameters": [
-         {"id": "connection", "value": "<your-connection-uuid>"},
-         {"id": "operation", "value": "<your-update-submission-operation-uuid>"},
-         {"id": "parameters.Submission Id*", "value": "<%= @submission['Id'] %>"},
-         {"id": "parameters.Values [Object]", "value": "{\"Status\": \"Approved\"}"}
+         {"dependsOnId": "", "dependsOnValue": "", "description": "Connection ID", "id": "connection", "label": "Connection ID", "menu": "", "value": "<your-connection-uuid>", "required": true},
+         {"dependsOnId": "", "dependsOnValue": "", "description": "Operation ID", "id": "operation", "label": "Operation ID", "menu": "", "value": "<your-update-submission-operation-uuid>", "required": true},
+         {"dependsOnId": "", "dependsOnValue": "", "description": "", "id": "parameters.Submission Id*", "label": "Submission Id*", "menu": "", "value": "<%= @submission['Id'] %>", "required": false},
+         {"dependsOnId": "", "dependsOnValue": "", "description": "", "id": "parameters.Values [Object]", "label": "Values [Object]", "menu": "", "value": "{\"Status\": \"Approved\"}", "required": false}
        ],
        "messages": [], "position": {"x": 600, "y": -60}, "version": 1,
        "dependents": {"task": [{"type": "Complete", "content": "echo_5"}]}},
@@ -441,10 +441,10 @@ Content-Type: application/json
       {"configured": true, "defers": false, "deferrable": false, "visible": true,
        "name": "Mark Denied", "id": "si_4", "definitionId": "system_integration_v1",
        "parameters": [
-         {"id": "connection", "value": "<your-connection-uuid>"},
-         {"id": "operation", "value": "<your-update-submission-operation-uuid>"},
-         {"id": "parameters.Submission Id*", "value": "<%= @submission['Id'] %>"},
-         {"id": "parameters.Values [Object]", "value": "{\"Status\": \"Denied\"}"}
+         {"dependsOnId": "", "dependsOnValue": "", "description": "Connection ID", "id": "connection", "label": "Connection ID", "menu": "", "value": "<your-connection-uuid>", "required": true},
+         {"dependsOnId": "", "dependsOnValue": "", "description": "Operation ID", "id": "operation", "label": "Operation ID", "menu": "", "value": "<your-update-submission-operation-uuid>", "required": true},
+         {"dependsOnId": "", "dependsOnValue": "", "description": "", "id": "parameters.Submission Id*", "label": "Submission Id*", "menu": "", "value": "<%= @submission['Id'] %>", "required": false},
+         {"dependsOnId": "", "dependsOnValue": "", "description": "", "id": "parameters.Values [Object]", "label": "Values [Object]", "menu": "", "value": "{\"Status\": \"Denied\"}", "required": false}
        ],
        "messages": [], "position": {"x": 600, "y": 80}, "version": 1,
        "dependents": {"task": [{"type": "Complete", "content": "echo_5"}]}},
@@ -452,7 +452,7 @@ Content-Type: application/json
       {"configured": true, "defers": false, "deferrable": false, "visible": true,
        "name": "Log Result", "id": "echo_5", "definitionId": "utilities_echo_v1",
        "parameters": [
-         {"id": "input", "value": "Approval completed: <%= @results['Create Approval'] %>"}
+         {"dependsOnId": "", "dependsOnValue": "", "description": "", "id": "input", "label": "Input", "menu": "", "value": "Approval completed: <%= @results['Create Approval'] %>", "required": true}
        ],
        "messages": [], "position": {"x": 800, "y": 10}, "version": 1,
        "dependents": ""}
@@ -504,10 +504,10 @@ Then upload the callback treeJson:
       {"configured": true, "defers": false, "deferrable": false, "visible": true,
        "name": "Complete Deferral", "id": "trigger_1", "definitionId": "utilities_create_trigger_v1",
        "parameters": [
-         {"id": "action_type", "value": "Complete"},
-         {"id": "deferral_token", "value": "<%= @values['Deferral Token'] %>"},
-         {"id": "deferred_variables", "value": "<results><result name=\"Decision\"><%= @values['Decision'] %></result></results>"},
-         {"id": "message", "value": "Approval: <%= @values['Decision'] %>"}
+         {"dependsOnId": "", "dependsOnValue": "", "description": "", "id": "action_type", "label": "Action Type", "menu": "Update,Complete", "value": "Complete", "required": true},
+         {"dependsOnId": "", "dependsOnValue": "", "description": "", "id": "deferral_token", "label": "Deferral Token", "menu": "", "value": "<%= @values['Deferral Token'] %>", "required": true},
+         {"dependsOnId": "", "dependsOnValue": "", "description": "", "id": "deferred_variables", "label": "Deferred Results", "menu": "", "value": "<results><result name=\"Decision\"><%= @values['Decision'] %></result></results>", "required": false},
+         {"dependsOnId": "", "dependsOnValue": "", "description": "", "id": "message", "label": "Message", "menu": "", "value": "Approval: <%= @values['Decision'] %>", "required": false}
        ],
        "messages": [], "position": {"x": 200, "y": 10}, "version": 1,
        "dependents": {"task": [{"type": "Complete", "content": "si_2"}]}},
@@ -515,10 +515,10 @@ Then upload the callback treeJson:
       {"configured": true, "defers": false, "deferrable": false, "visible": true,
        "name": "Close Approval", "id": "si_2", "definitionId": "system_integration_v1",
        "parameters": [
-         {"id": "connection", "value": "<your-connection-uuid>"},
-         {"id": "operation", "value": "<your-update-submission-operation-uuid>"},
-         {"id": "parameters.Submission Id*", "value": "<%= @submission['Id'] %>"},
-         {"id": "parameters.Core State", "value": "Closed"}
+         {"dependsOnId": "", "dependsOnValue": "", "description": "Connection ID", "id": "connection", "label": "Connection ID", "menu": "", "value": "<your-connection-uuid>", "required": true},
+         {"dependsOnId": "", "dependsOnValue": "", "description": "Operation ID", "id": "operation", "label": "Operation ID", "menu": "", "value": "<your-update-submission-operation-uuid>", "required": true},
+         {"dependsOnId": "", "dependsOnValue": "", "description": "", "id": "parameters.Submission Id*", "label": "Submission Id*", "menu": "", "value": "<%= @submission['Id'] %>", "required": false},
+         {"dependsOnId": "", "dependsOnValue": "", "description": "", "id": "parameters.Core State", "label": "Core State", "menu": "", "value": "Closed", "required": false}
        ],
        "messages": [], "position": {"x": 400, "y": 10}, "version": 1,
        "dependents": ""}

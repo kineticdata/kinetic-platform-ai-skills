@@ -144,6 +144,34 @@ The goal: someone opening the tree should be able to follow it without dragging 
 </parameter>
 ```
 
+### Label Every Parameter (Required)
+
+**Every parameter on every node must carry a non-empty `label`, plus `required`, `description`, `menu`, `dependsOnId` and `dependsOnValue`, exactly as the Console sets them.** The engine accepts a parameter with only `id` and `value`, and the tree runs. But the workflow builder then shows an unlabeled input box for each one, so a reader can't tell which value feeds which handler input or routine output. The export shows `label="" required="null" tooltip=""`.
+
+This bites hardest on `system_tree_return_v1`. A routine's Return node is where values map to outputs, and with no labels it's a column of anonymous ERB expressions. (Verified 2026-10 on Task 7.0.0-rc4.)
+
+Full treeJson parameter shape, as stored for a Console-built node:
+
+```json
+{"dependsOnId": "", "dependsOnValue": "", "description": "Connection ID", "id": "connection",
+ "label": "Connection ID", "menu": "", "value": "<connection-uuid>", "required": true}
+```
+
+Labels the Console uses, observed on Console-built trees:
+
+| Node | Parameter `id` | `label` | `required` | `description` |
+|------|----------------|---------|------------|---------------|
+| `utilities_echo_v1` | `input` | `Input` | `true` | `""` |
+| `system_integration_v1` | `connection` | `Connection ID` | `true` | `Connection ID` |
+| `system_integration_v1` | `operation` | `Operation ID` | `true` | `Operation ID` |
+| `system_integration_v1` | `parameters.<Input>` | `<Input>` (the operation input name) | `false` | `""` |
+| Routine call (`routine_*`) | `<Input Name>` | `<Input Name>` | the routine input's `required` | the routine input's description |
+| `system_tree_return_v1` in a routine | `<Output Name>` | `<Output Name>` | `false` | `""`, or the output's description |
+| `system_tree_return_v1` in a WebAPI | `content`, `content_type`, `headers_json`, `response_code` | `Content`, `Content Type`, `Headers (JSON)`, `Response Code` | `false` | `""` |
+| Handlers (`smtp_email_send_v1`, `system_join_v1`, ...) | per handler | the handler's parameter **name** | per handler | per handler |
+
+For handlers, take labels, menus and descriptions from `GET /handlers/{definitionId}?include=parameters`: each parameter's `name` is the label, and `menu` and `description` come with it. The clearest source of truth is a working Console-built tree that uses the same handler. Copy its parameter objects and change only `value`. Generators should refuse to emit a parameter with a blank label. `scripts/validate-workflow.mjs` checks this on tree XML.
+
 ---
 
 ## Flow Control via `<dependents>`
@@ -356,16 +384,18 @@ Results are accessed by **task name**, then **result key**:
 
 **WebAPI trees** — Return node MUST use ALL FOUR parameter IDs:
 
-| Parameter | Required | Description |
-|-----------|----------|-------------|
-| `content` | yes | Response body (supports ERB: `<%= ... %>`) |
-| `content_type` | yes | MIME type, e.g. `application/json` |
-| `response_code` | yes | HTTP status code, e.g. `200` |
-| `headers_json` | **yes** | Extra response headers as JSON (use `{}` if none) |
+| Parameter | Label | Must be present | Description |
+|-----------|-------|-----------------|-------------|
+| `content` | `Content` | yes | Response body (supports ERB: `<%= ... %>`) |
+| `content_type` | `Content Type` | yes | MIME type, e.g. `application/json` |
+| `headers_json` | `Headers (JSON)` | **yes** | Extra response headers as JSON (use `{}` if none) |
+| `response_code` | `Response Code` | yes | HTTP status code, e.g. `200` |
 
-**CRITICAL: `headers_json` is REQUIRED even if empty.** Omitting it causes `RuntimeError` from `system_tree_return_v1` at runtime — the run fails with `run_results_error` and a `Handler Error` in the error queue. Always include `{"id": "headers_json", "value": "{}"}` in the parameters. This has caused repeated debugging sessions.
+The Console stores these in the order shown, each with `required: false`. The engine still fails if any of the four is absent.
 
-**Routine trees** — Return node uses custom output parameter IDs matching the routine's declared outputs.
+**CRITICAL: `headers_json` is REQUIRED even if empty.** Omitting it causes `RuntimeError` from `system_tree_return_v1` at runtime — the run fails with `run_results_error` and a `Handler Error` in the error queue. Always include a `headers_json` parameter (label `Headers (JSON)`, value `{}` if there are no extra headers). This has caused repeated debugging sessions.
+
+**Routine trees:** the Return node uses one parameter per declared output. Each parameter's `id` and `label` are the output name, so the builder shows which expression sets which output.
 
 **Event-triggered form trees — DO NOT use `system_tree_return_v1`!** Regular form-triggered workflows (e.g., "Submission Submitted") do NOT need a Return node. The workflow completes naturally when all nodes finish. Adding `system_tree_return_v1` to a form workflow causes `ENGINE Run Error` because it expects `headers_json` (WebAPI context) or routine output parameters. Just let the tree end after the last node.
 
@@ -451,7 +481,7 @@ loop_head ──→ compute ──[needs patch]──→ patch ──┐
 - Inside the loop: `<%= @results['Loop Head Node Name']['Value'] %>` returns the current iteration's value
 - Outside the loop: results become a Ruby hash indexed by iteration: `<%= @results['Echo Node'][0]["output"] %>` for first iteration's output
 
-**Verified working example** — looping over checkbox field values:
+**Verified working example**: looping over checkbox field values. The example is abbreviated to the parameter `id` and `value` so the structure stands out. Real nodes need the full parameter metadata (see "Label Every Parameter").
 ```json
 {
   "nodes": [
@@ -544,11 +574,11 @@ Example — an "Update Submission" operation with path `/submissions/{{Submissio
 ```json
 {
   "parameters": [
-    {"id": "connection", "value": "<connection-uuid>"},
-    {"id": "operation", "value": "<operation-uuid>"},
-    {"id": "parameters.Submission Id", "value": "<%= @submission['Id'] %>"},
-    {"id": "parameters.Values [Object]", "value": "{\"Status\": \"Pending Approval\"}"},
-    {"id": "parameters.Core State", "value": "Closed"}
+    {"dependsOnId": "", "dependsOnValue": "", "description": "Connection ID", "id": "connection", "label": "Connection ID", "menu": "", "value": "<connection-uuid>", "required": true},
+    {"dependsOnId": "", "dependsOnValue": "", "description": "Operation ID", "id": "operation", "label": "Operation ID", "menu": "", "value": "<operation-uuid>", "required": true},
+    {"dependsOnId": "", "dependsOnValue": "", "description": "", "id": "parameters.Submission Id", "label": "Submission Id", "menu": "", "value": "<%= @submission['Id'] %>", "required": false},
+    {"dependsOnId": "", "dependsOnValue": "", "description": "", "id": "parameters.Values [Object]", "label": "Values [Object]", "menu": "", "value": "{\"Status\": \"Pending Approval\"}", "required": false},
+    {"dependsOnId": "", "dependsOnValue": "", "description": "", "id": "parameters.Core State", "label": "Core State", "menu": "", "value": "Closed", "required": false}
   ]
 }
 ```
@@ -751,6 +781,7 @@ When building treeJson programmatically, every node MUST have these flags set co
 | `defers` on Start | `false` | `true` causes Start to enter deferral — run stuck permanently |
 | `deferrable` on Start | `false` | Same as `defers` — Start hangs, no downstream triggers created |
 | `version` | `1` (number) | Must be a number, not a string |
+| `parameters[].label` | Non-empty, as the Console sets it | Runs, but the builder shows unlabeled inputs, so nobody can tell which value feeds which input or output. See "Label Every Parameter". |
 
 **Only Wait and other genuinely deferrable handlers** should have `defers: true, deferrable: true`. The Start node must NEVER be deferrable.
 
@@ -809,7 +840,7 @@ A `utilities_echo_v1` node placed in the tree with **no incoming and no outgoing
   "defers": false,
   "deferrable": false,
   "visible": true,
-  "parameters": [{"id": "input", "value": "This workflow handles X.\nKey steps:\n- Step 1...\n- Step 2..."}],
+  "parameters": [{"dependsOnId": "", "dependsOnValue": "", "description": "", "id": "input", "label": "Input", "menu": "", "value": "This workflow handles X.\nKey steps:\n- Step 1...\n- Step 2...", "required": true}],
   "messages": [],
   "dependents": []
 }
@@ -992,6 +1023,9 @@ GET /runs/{runId}?include=details,triggers,triggers.details,tasks,tasks.details,
 - **System handlers are invisible in the handlers API** — `system_start_v1`, `system_tree_return_v1`, `system_noop_v1`, etc. don't appear in `GET /handlers` but work in tree definitions
 - **Handler export endpoint does not exist** — `GET /handlers/{id}/export` returns 404. Handlers are imported via ZIP files through the Ruby SDK, not exported via REST API.
 - **WebAPI Return node requires `headers_json`** — omitting this parameter causes RuntimeError at runtime even though it appears optional
+- **Label every node parameter.** `{id, value}` alone runs but leaves unlabeled inputs in the builder. Send the full Console shape with the display name as `label`. See "Label Every Parameter".
+- **Routine inputs/outputs go at the top level of `POST /trees`.** The engine ignores `treeJson.taskDefinition.inputs`/`outputs` when it creates a Global Routine. Send top-level `inputs` (`name`, `required`, `description`, `defaultValue`) and `outputs` (`name`, `description`), or the routine is created with none. A later `PUT /trees/{title}` with `versionId` plus `inputs`/`outputs` fixes an existing routine. (Verified 2026-10, Task 7.0.0-rc4.)
+- **Saving a tree in the workflow builder can reformat code in parameters.** Opening and saving a tree re-indented multi-line Ruby in an Echo `input`. That's harmless at runtime, but trees you generate from source will drift from their source and from version-controlled exports. Rebuild and re-push from the source after builder edits.
 - **Do NOT add `system_tree_return_v1` to form-triggered workflows** — tree_return is ONLY for: (1) WebAPIs that need to return a response, (2) Routines where the parent workflow awaits results. Form-triggered trees complete naturally when all nodes finish. Adding tree_return causes `ENGINE Run Error` because it expects WebAPI/routine context.
 - **Loop head must connect to BOTH body AND tail** — the `system_loop_head_v1` node needs two outgoing Complete connectors: one to the loop body and one directly to `system_loop_tail_v1`. Without the direct connector to the tail, the engine cannot track loop completion.
 - **Loop tail needs the `number` parameter even for `type=All`** — omitting it raises `UnknownVariableError` and the loop never initializes. Leave it empty for All/Any.

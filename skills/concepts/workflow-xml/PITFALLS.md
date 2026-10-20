@@ -76,6 +76,16 @@ This file is the **citable rule catalogue** referenced by section number from th
 
 ---
 
+## § 8 — Every node parameter needs a label
+
+**Rule.** Every `<parameter>` (treeJson `parameters[]` entry) on every node has a non-empty `label` and a `required` of `true` or `false`, plus `description`, `menu`, `dependsOnId` and `dependsOnValue`, set the way the Console sets them. Use the display name as the label: `Input` for Echo, `Connection ID` / `Operation ID` / the operation input name for `system_integration_v1`, the input name for routine calls, the output name for a routine Return, and `Content` / `Content Type` / `Headers (JSON)` / `Response Code` for a WebAPI Return.
+
+**Symptom of violation.** None at runtime, which is why it slips through. In the workflow builder each input shows with no label, so nobody can tell which expression feeds which handler input or routine output. The export shows `label="" required="null" tooltip=""`.
+
+**Validator check** → `validate-workflow.mjs`: violates on any node `<parameter>` with an empty `label` or `required="null"`. **Full discussion:** SKILL.md → "Label Every Parameter (Required)".
+
+---
+
 ## Meta-lesson
 
 The Task engine prioritizes throughput over diagnostics — violating any rule above results in **no stack trace, no log line, no error notification**, just a tree that doesn't do what you wrote. The scripts in [`scripts/`](scripts/) turn these rules into machine-enforced invariants. Install the PreToolUse hook once per machine (`node skills/concepts/workflow-xml/scripts/install-hook.mjs`) and the failure modes above become impossible rather than merely unlikely. See [`scripts/README.md`](scripts/README.md) for install and usage.

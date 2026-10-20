@@ -142,16 +142,18 @@ GET https://myspace.kinops.io/app/kapps/{kapp}/webApis/list-items?timeout=15
 
 ### WebAPI Return Node Configuration (Critical)
 
-The `system_tree_return_v1` node for WebAPI trees requires these **exact parameter IDs**:
+The `system_tree_return_v1` node for WebAPI trees requires these **exact parameter IDs**, each with the Console's label:
 
-| Parameter | Required | Description |
-|-----------|----------|-------------|
-| `content` | Yes | Response body (supports ERB: `<%= ... %>`) |
-| `content_type` | Yes | MIME type (e.g., `application/json`) |
-| `response_code` | Yes | HTTP status code (e.g., `200`) |
-| `headers_json` | **Yes** | Extra response headers as JSON (`{}` if none). **Omitting this causes a RuntimeError** at runtime — the node fails silently with "ENGINE Run Error" |
+| Parameter | Label | Must be present | Description |
+|-----------|-------|-----------------|-------------|
+| `content` | `Content` | Yes | Response body (supports ERB: `<%= ... %>`) |
+| `content_type` | `Content Type` | Yes | MIME type (e.g., `application/json`) |
+| `headers_json` | `Headers (JSON)` | **Yes** | Extra response headers as JSON (`{}` if none). **Omitting this causes a RuntimeError** at runtime — the node fails silently with "ENGINE Run Error" |
+| `response_code` | `Response Code` | Yes | HTTP status code (e.g., `200`) |
 
 **Gotcha:** The `headers_json` parameter is listed as optional in some documentation but is **required in practice**. Without it, the Return node throws a RuntimeError and the WebAPI returns `{"errorKey":"run_results_error"}`.
+
+**Label every parameter.** The Console stores each parameter with `label`, `required` (`false` for all four here), `description`, `menu`, `dependsOnId` and `dependsOnValue`. A node built with only `id` and `value` runs, but the workflow builder shows four unlabeled boxes. The same applies to every other node in the tree. See `concepts/workflow-xml` → "Label Every Parameter (Required)".
 
 ### Complete WebAPI treeJson Example
 
@@ -182,10 +184,10 @@ The `system_tree_return_v1` node for WebAPI trees requires these **exact paramet
         "id": "kinetic_core_api_v1_2",
         "position": {"x": 200, "y": 10}, "version": 1,
         "parameters": [
-          {"id": "method", "value": "GET"},
-          {"id": "path", "value": "/kapps/{kapp}/forms/{form}/submissions?include=values,details&limit=25"},
-          {"id": "body", "value": ""},
-          {"id": "error_handling", "value": "Error Message"}
+          {"dependsOnId": "", "dependsOnValue": "", "description": "Determine what to return if an error is encountered.", "id": "error_handling", "label": "Error Handling", "menu": "Error Message,Raise Error", "value": "Error Message", "required": true},
+          {"dependsOnId": "", "dependsOnValue": "", "description": "GET,POST,PUT,PATCH,DELETE (Defaults to GET)", "id": "method", "label": "Method", "menu": "GET,POST,PUT,PATCH,DELETE", "value": "GET", "required": true},
+          {"dependsOnId": "", "dependsOnValue": "", "description": "Example: /kapps/:kappSlug/forms/:formSlug", "id": "path", "label": "Path", "menu": "", "value": "/kapps/{kapp}/forms/{form}/submissions?include=values,details&limit=25", "required": true},
+          {"dependsOnId": "", "dependsOnValue": "", "description": "JSON body if applicable (POST,PUT,PATCH)", "id": "body", "label": "Body", "menu": "", "value": "", "required": false}
         ],
         "definitionId": "kinetic_core_api_v1"
       },
@@ -195,10 +197,10 @@ The `system_tree_return_v1` node for WebAPI trees requires these **exact paramet
         "id": "system_tree_return_v1_3",
         "position": {"x": 400, "y": 10}, "version": 1,
         "parameters": [
-          {"id": "content", "value": "<%= @results[\"Fetch Items\"][\"Response Body\"] %>"},
-          {"id": "content_type", "value": "application/json"},
-          {"id": "response_code", "value": "200"},
-          {"id": "headers_json", "value": "{}"}
+          {"dependsOnId": "", "dependsOnValue": "", "description": "", "id": "content", "label": "Content", "menu": "", "value": "<%= @results[\"Fetch Items\"][\"Response Body\"] %>", "required": false},
+          {"dependsOnId": "", "dependsOnValue": "", "description": "", "id": "content_type", "label": "Content Type", "menu": "", "value": "application/json", "required": false},
+          {"dependsOnId": "", "dependsOnValue": "", "description": "", "id": "headers_json", "label": "Headers (JSON)", "menu": "", "value": "{}", "required": false},
+          {"dependsOnId": "", "dependsOnValue": "", "description": "", "id": "response_code", "label": "Response Code", "menu": "", "value": "200", "required": false}
         ],
         "definitionId": "system_tree_return_v1"
       }

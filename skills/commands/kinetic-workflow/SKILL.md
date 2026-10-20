@@ -42,6 +42,13 @@ Ask the user (if not clear from the description):
 
 **ERB in XML must be escaped:** `&lt;%=` and `%&gt;` (not `<%=` / `%>`).
 
+**Every node parameter needs a label.**
+- Give each parameter a non-empty `label` and `required` (`true`/`false`), plus `description`, `menu`, `dependsOnId` and `dependsOnValue`, the way the Console stores them.
+- Use the display name as the label: Echo `Input`; integration `Connection ID` / `Operation ID` / the operation input name; routine call: the input name; routine Return: the output name; WebAPI Return: `Content`, `Content Type`, `Headers (JSON)`, `Response Code`.
+- `{id, value}` alone runs, but leaves anonymous inputs in the builder. `validate-workflow.mjs` flags it (PITFALLS § 8).
+
+**Routine inputs/outputs go at the top level** of the `POST /trees` body (`inputs`, `outputs`). `treeJson.taskDefinition` copies are ignored on create.
+
 **Connector types:**
 - `Complete` — fires after source node finishes (solid line, most common)
 - `Create` — fires when a deferrable node enters deferral (dotted line, for parallel work/SLA timers)
@@ -58,10 +65,10 @@ Ask the user (if not clear from the description):
 |---|---|---|---|
 | Start | `system_start_v1` | (none) | No |
 | Noop | `system_noop_v1` | (none, ignores unknown params) | No |
-| Echo | `utilities_echo_v1` | `input` | No |
+| Echo | `utilities_echo_v1` | `input` (label `Input`) | No |
 | Wait | `system_wait_v1` | `Time to wait`, `Time unit` (menu: Second,Minute,Hour,Day,Week) | **Yes** |
 | Email | `smtp_email_send_v1` | `from`, `to`, `subject`, `htmlbody`, `textbody`, `bcc`, `error_handling` | No |
-| Return | `system_tree_return_v1` | WebAPI: `content`, `content_type`, `response_code`, `headers_json` / Event: `status`, `description` | No |
+| Return | `system_tree_return_v1` | WebAPI: `content`, `content_type`, `headers_json`, `response_code` (labels `Content`, `Content Type`, `Headers (JSON)`, `Response Code`) / Routine: one per output, labeled with the output name / Event: `status`, `description` | No |
 | Core API | `kinetic_core_api_v1` | `method`, `path`, `body`, `content_type`, `error_handling` | No |
 
 **Wait parameter IDs are case/space sensitive** — `"Time to wait"` and `"Time unit"` (with caps and spaces). Wrong IDs cause ENGINE Run Error at runtime.
