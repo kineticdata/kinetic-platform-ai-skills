@@ -49,6 +49,12 @@ Ask the user (if not clear from the description):
 
 **Routine inputs/outputs go at the top level** of the `POST /trees` body (`inputs`, `outputs`). `treeJson.taskDefinition` copies are ignored on create.
 
+**Code in parameters must be readable.**
+- Comment and indent all ERB/Ruby: what each block is for and what it does. Not every line needs a comment.
+- Use multi-line `<%= ... %>` blocks instead of `;`-packed one-liners.
+- Never minify or strip comments. People review and edit these trees in the builder.
+- See workflow-xml → "Write Readable, Commented Code in Parameters".
+
 **Connector types:**
 - `Complete` — fires after source node finishes (solid line, most common)
 - `Create` — fires when a deferrable node enters deferral (dotted line, for parallel work/SLA timers)

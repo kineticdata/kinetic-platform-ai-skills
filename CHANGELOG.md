@@ -2,6 +2,14 @@
 
 Notable changes to the Kinetic Platform Skills library.
 
+## 2026-10-20 — Readable, commented code in workflow parameters
+
+- `concepts/workflow-xml`: new "Write Readable, Commented Code in Parameters" section.
+  - Comment and indent all ERB/Ruby in node parameters, and use multi-line `<%= %>` blocks.
+  - Never minify or strip comments. Embed shared library code verbatim with a source header.
+  - Keep connector conditions as plain Ruby. Skip `require 'json'`.
+- `commands/kinetic-workflow`: the same rule added to Critical Rules.
+
 ## 2026-10-20 — Label every workflow node parameter
 
 Trees generated with `{id, value}`-only parameters run, but the workflow builder shows every input unlabeled, so a reader can't tell which expression sets which handler input or routine output. Found on a generated routine's Return node (Task 7.0.0-rc4).

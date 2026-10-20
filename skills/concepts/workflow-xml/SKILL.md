@@ -172,6 +172,26 @@ Labels the Console uses, observed on Console-built trees:
 
 For handlers, take labels, menus and descriptions from `GET /handlers/{definitionId}?include=parameters`: each parameter's `name` is the label, and `menu` and `description` come with it. The clearest source of truth is a working Console-built tree that uses the same handler. Copy its parameter objects and change only `value`. Generators should refuse to emit a parameter with a blank label. `scripts/validate-workflow.mjs` checks this on tree XML.
 
+### Write Readable, Commented Code in Parameters
+
+People review and edit workflows in the builder, so code in node parameters (ERB/Ruby in Echo inputs, Return values, integration inputs) must be commented and indented like any other source. Opening a node should never be a "what is happening here?" moment.
+
+- **Say what each block is for and what it does.** A one-line comment above a short expression is enough. Not every line needs one.
+- **Indent it.** Use multi-line ERB (`<%=` on its own line, code indented, `%>` on its own line) instead of packing statements onto one line with `;`.
+- **Never minify or strip comments to save space.** If a generator embeds shared library code, embed it verbatim with its comments, under a header naming the source file and saying to edit that file and rebuild rather than editing the node.
+- **Keep connector conditions as plain, readable Ruby,** such as `JSON.parse(@results['Plan']['output'])['ok'] == true` rather than a string-prefix hack, and give each connector a label that states the question.
+- **Skip `require 'json'` in ERB.** `JSON` is already loaded on the engine; Console-built trees call `JSON.parse` without it.
+
+```erb
+<%=
+  # Result Date: YYYY-MM-DD result of the calculation (blank on error).
+  calculation = JSON.parse(@results['Calculate']['output'])
+  calculation.dig('result', 'date').to_s
+%>
+```
+
+Comments inside `<%= %>` are safe. The output is only the value of the last expression. Avoid a trailing newline after `%>`, which ends up in the node's output.
+
 ---
 
 ## Flow Control via `<dependents>`
